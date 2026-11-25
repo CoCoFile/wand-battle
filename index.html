@@ -1,0 +1,3162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>완드 대전 온라인 (Wand Battle Online)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet" />
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background-color: #1e293b;
+      font-family: 'Noto Sans KR', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    .font-game {
+      font-family: 'Jua', 'Noto Sans KR', sans-serif;
+    }
+
+    /* 그림판 / 미니멀 벡터 스타일 플랫 버튼 */
+    .flat-btn {
+      border: 2px solid #1e293b;
+      box-shadow: 0 3px 0 #1e293b;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.12s ease;
+    }
+    .flat-btn:hover:not(:disabled) {
+      filter: brightness(0.96);
+    }
+    .flat-btn:active:not(:disabled) {
+      transform: translateY(3px);
+      box-shadow: 0 0 0 #1e293b;
+    }
+    .flat-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* 하단 실시간 3지선다 카드 */
+    .rt-choice-card {
+      border: 2.5px solid #1e293b;
+      box-shadow: 0 3px 0 #1e293b;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.1s ease;
+    }
+    .rt-choice-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 0 #1e293b;
+      background-color: #fefce8;
+    }
+    .rt-choice-card:active {
+      transform: translateY(2px);
+      box-shadow: 0 1px 0 #1e293b;
+    }
+
+    /* 고정 비율 1200x800 레터박스 영역 */
+    #arena-stage {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      background-color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 6px;
+    }
+
+    #gameCanvas {
+      display: block;
+      background-color: #ffffff;
+      border: 3px solid #334155;
+      border-radius: 6px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(18px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-slide-up {
+      animation: slideUp 0.18s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="flex flex-col h-dvh w-full bg-slate-900 text-slate-800">
+
+  <!-- ==================== 전역 토스트 알림 ==================== -->
+  <div id="toast-box" class="pointer-events-none fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2"></div>
+
+  <!-- ==================== 1. 로비 / 방 브라우저 화면 ==================== -->
+  <section id="screen-lobby" class="flex-1 w-full h-full overflow-y-auto bg-slate-100 p-3 sm:p-6 flex items-center justify-center">
+    <div class="max-w-4xl w-full my-auto">
+      <!-- 상단 타이틀 헤더 -->
+      <div class="bg-white border-4 border-slate-800 rounded-2xl shadow-[0_6px_0_#1e293b] p-4 sm:p-5 mb-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3.5">
+          <!-- 그림판 감성 캐릭터 일러스트 SVG -->
+          <svg width="86" height="58" viewBox="0 0 160 96" class="shrink-0">
+            <polyline points="54,28 84,14 108,42" fill="none" stroke="#3b6fd4" stroke-width="10" stroke-linecap="square" stroke-linejoin="miter" />
+            <polyline points="54,68 84,82 108,54" fill="none" stroke="#3b6fd4" stroke-width="10" stroke-linecap="square" stroke-linejoin="miter" />
+            <rect x="102" y="40" width="50" height="16" fill="#e87a2e" stroke="#1e293b" stroke-width="2.5" />
+            <circle cx="44" cy="48" r="26" fill="#3b6fd4" stroke="#1e293b" stroke-width="3" />
+          </svg>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="font-game text-2xl sm:text-3xl text-slate-900 leading-none">완드 대전 온라인</h1>
+              <span class="text-[11px] font-black bg-blue-100 text-blue-700 border border-slate-800 px-2 py-0.5 rounded-full">1200×800 고정맵</span>
+            </div>
+            <p class="text-xs sm:text-sm font-bold text-slate-500 mt-1">순수 운빨 오토 배틀러 · 유도 0% · 실시간 하단 레벨업</p>
+          </div>
+        </div>
+
+        <!-- 닉네임 입력 -->
+        <div class="w-full sm:w-auto flex flex-col sm:items-end gap-1">
+          <label for="input-nickname" class="text-[11px] font-black text-slate-600">내 닉네임</label>
+          <div class="flex items-center gap-1.5 w-full sm:w-auto">
+            <input id="input-nickname" type="text" maxlength="12"
+              class="w-full sm:w-44 bg-slate-50 border-2 border-slate-800 rounded-lg px-2.5 py-1.5 text-sm font-bold text-slate-900 focus:outline-none focus:bg-white"
+              placeholder="닉네임 입력" />
+            <span id="conn-badge" class="text-[11px] font-black px-2 py-1.5 rounded-lg border-2 border-slate-800 bg-amber-100 text-amber-800 whitespace-nowrap">접속 중...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 본문 2열 그리드: 좌측(방 만들기 + 코드 참가), 우측(열린 방 목록) -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+        <!-- 좌측 컨트롤 패널 -->
+        <div class="md:col-span-5 flex flex-col gap-4">
+          <!-- 방 만들기 카드 -->
+          <div class="bg-white border-4 border-slate-800 rounded-2xl shadow-[0_6px_0_#1e293b] p-4">
+            <h2 class="font-game text-xl text-slate-900 mb-3 flex items-center gap-1.5">
+              <span class="inline-block w-3 h-3 rounded-full bg-blue-500 border border-slate-800"></span>
+              방 만들기
+            </h2>
+
+            <!-- 모드 선택 -->
+            <div class="mb-3">
+              <div class="text-xs font-black text-slate-600 mb-1.5">대전 모드</div>
+              <div class="grid grid-cols-2 gap-2">
+                <button id="create-mode-1v1" type="button" class="flat-btn bg-[#3b6fd4] text-white rounded-xl py-2 px-2 text-xs sm:text-sm font-black cursor-pointer">
+                  1:1 대전 (2인)
+                </button>
+                <button id="create-mode-royale" type="button" class="flat-btn bg-slate-100 text-slate-800 rounded-xl py-2 px-2 text-xs sm:text-sm font-black cursor-pointer">
+                  배틀로얄 (4인)
+                </button>
+              </div>
+            </div>
+
+            <!-- 중립 몹 토글 -->
+            <div class="flex items-center justify-between bg-slate-50 border-2 border-slate-800 rounded-xl px-3 py-2 mb-4">
+              <div>
+                <div class="text-xs sm:text-sm font-black text-slate-800">중립 몹 등장</div>
+                <div class="text-[11px] font-bold text-slate-500">잡몹 처치로 추가 경험치 획득</div>
+              </div>
+              <button id="toggle-neutral-mobs" type="button" class="flat-btn bg-emerald-400 text-slate-900 px-3 py-1 rounded-lg text-xs font-black cursor-pointer">
+                ON
+              </button>
+            </div>
+
+            <button id="btn-create-room" type="button" disabled class="flat-btn w-full bg-orange-500 text-white font-game text-xl py-2.5 rounded-xl cursor-pointer">
+              새 방 만들기
+            </button>
+          </div>
+
+          <!-- 방 코드로 참가 카드 -->
+          <div class="bg-white border-4 border-slate-800 rounded-2xl shadow-[0_6px_0_#1e293b] p-4">
+            <h2 class="font-game text-xl text-slate-900 mb-2.5 flex items-center gap-1.5">
+              <span class="inline-block w-3 h-3 rounded-full bg-emerald-500 border border-slate-800"></span>
+              방 코드로 참가
+            </h2>
+            <div class="flex gap-2">
+              <input id="input-room-code" type="text" maxlength="4"
+                class="flex-1 uppercase tracking-widest text-center bg-slate-50 border-2 border-slate-800 rounded-xl px-3 py-2 font-game text-xl text-slate-900 focus:outline-none focus:bg-white"
+                placeholder="ABCD" />
+              <button id="btn-join-code" type="button" disabled class="flat-btn bg-emerald-500 text-white font-game text-lg px-5 py-2 rounded-xl cursor-pointer shrink-0">
+                참가
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 우측: 열린 방 목록 -->
+        <div class="md:col-span-7 bg-white border-4 border-slate-800 rounded-2xl shadow-[0_6px_0_#1e293b] p-4 flex flex-col min-h-[300px] max-h-[430px]">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-game text-xl text-slate-900 flex items-center gap-1.5">
+              <span class="inline-block w-3 h-3 rounded-full bg-amber-400 border border-slate-800"></span>
+              열린 방 목록
+            </h2>
+            <span id="open-room-count" class="text-xs font-black bg-slate-100 border-2 border-slate-800 px-2.5 py-0.5 rounded-full text-slate-700">0개 대기 중</span>
+          </div>
+
+          <div id="open-rooms-list" class="flex-1 overflow-y-auto space-y-2 pr-1">
+            <div class="h-full flex flex-col items-center justify-center text-slate-400 text-sm font-bold py-12">
+              <p>열린 방을 불러오는 중...</p>
+            </div>
+          </div>
+
+          <div class="mt-3 pt-2.5 border-t-2 border-slate-200 text-[11px] font-bold text-slate-500 flex flex-wrap justify-between gap-1">
+            <span>💡 혼자 테스트하려면 방을 만든 뒤 [AI 봇 추가]를 눌러보세요!</span>
+            <span>브라우저 탭 2개로 1:1 테스트 가능</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 2. 대기실 화면 ==================== -->
+  <section id="screen-waiting" class="hidden flex-1 w-full h-full overflow-y-auto bg-slate-100 p-3 sm:p-6 flex items-center justify-center">
+    <div class="max-w-2xl w-full bg-white border-4 border-slate-800 rounded-2xl shadow-[0_8px_0_#1e293b] p-4 sm:p-6">
+      <!-- 상단 방 코드 및 나가기 -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b-2 border-slate-200 mb-4">
+        <div class="flex items-center gap-2.5">
+          <div>
+            <div class="text-[11px] font-black text-slate-500">방 코드</div>
+            <div class="flex items-center gap-2">
+              <span id="wait-room-code" class="font-game text-3xl sm:text-4xl tracking-widest text-blue-700">----</span>
+              <button id="btn-copy-code" type="button" class="flat-btn bg-sky-100 text-slate-900 px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer">
+                복사
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button id="btn-leave-waiting" type="button" class="flat-btn bg-slate-200 text-slate-900 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-black cursor-pointer">
+          방 나가기
+        </button>
+      </div>
+
+      <!-- 방 설정 (방장만 변경 가능) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div class="bg-slate-50 border-2 border-slate-800 rounded-xl p-3">
+          <div class="text-xs font-black text-slate-600 mb-1.5">대전 모드 <span id="wait-host-only-tag" class="text-[10px] text-blue-600">(방장 설정)</span></div>
+          <div class="grid grid-cols-2 gap-1.5">
+            <button id="wait-mode-1v1" type="button" class="flat-btn rounded-lg py-1.5 text-xs font-black cursor-pointer">1:1 대전</button>
+            <button id="wait-mode-royale" type="button" class="flat-btn rounded-lg py-1.5 text-xs font-black cursor-pointer">배틀로얄 (4인)</button>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 border-2 border-slate-800 rounded-xl p-3 flex items-center justify-between">
+          <div>
+            <div class="text-xs font-black text-slate-800">중립 몹 등장</div>
+            <div class="text-[11px] font-bold text-slate-500">맵에 잡몹 + 파워 구슬 스폰</div>
+          </div>
+          <button id="wait-toggle-mobs" type="button" class="flat-btn px-3 py-1.5 rounded-lg text-xs font-black cursor-pointer">ON</button>
+        </div>
+      </div>
+
+      <!-- 참가자 슬롯 목록 -->
+      <div class="mb-5">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-game text-lg text-slate-900">참가자 목록 (<span id="wait-player-count">1/2</span>)</h3>
+          <div id="wait-bot-controls" class="flex items-center gap-1.5">
+            <button id="btn-add-bot" type="button" class="flat-btn bg-amber-200 text-slate-900 px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer">
+              + AI 봇 추가
+            </button>
+            <button id="btn-remove-bot" type="button" class="flat-btn bg-rose-100 text-slate-900 px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer">
+              - 봇 제거
+            </button>
+          </div>
+        </div>
+
+        <div id="wait-player-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <!-- 동적 생성 -->
+        </div>
+      </div>
+
+      <!-- 게임 시작 버튼 (방장) / 대기 안내 (참가자) -->
+      <div class="text-center">
+        <button id="btn-start-match" type="button" class="flat-btn w-full bg-[#3b6fd4] text-white font-game text-2xl py-3 rounded-xl cursor-pointer">
+          게임 시작!
+        </button>
+        <p id="wait-guest-msg" class="hidden text-sm font-black text-slate-600 bg-amber-50 border-2 border-slate-800 rounded-xl py-3">
+          방장이 게임을 시작할 때까지 기다리고 있습니다...
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. 인게임 화면 ==================== -->
+  <section id="screen-game" class="hidden flex-1 flex flex-col h-dvh w-full overflow-hidden">
+    <!-- 상단 컴팩트 HUD -->
+    <header class="w-full bg-white border-b-2 border-slate-800 px-2.5 py-1.5 sm:px-4 flex flex-wrap items-center justify-between gap-2 z-20 shrink-0">
+      <!-- 좌측: 방 정보, 모드, 생존자, 타이머 -->
+      <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+        <span class="bg-slate-800 text-white px-2 py-0.5 rounded-md font-game text-xs sm:text-sm tracking-wider" id="hud-room-code">----</span>
+        <span class="bg-blue-100 text-blue-800 border border-slate-800 px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-black" id="hud-mode">1:1</span>
+        <span class="bg-emerald-100 text-emerald-800 border border-slate-800 px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-black" id="hud-alive">생존 2/2</span>
+        <span class="bg-slate-100 text-slate-800 border border-slate-800 px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-black tabular-nums" id="hud-timer">00:00</span>
+      </div>
+
+      <!-- 중앙: 참가자별 미니 HP바 & 레벨 -->
+      <div id="hud-participants" class="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 justify-start sm:justify-center py-0.5">
+        <!-- 동적 생성 -->
+      </div>
+
+      <!-- 우측: 사운드 / 방 나가기 -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button id="btn-sound" type="button" class="flat-btn bg-emerald-100 text-slate-900 px-2 py-1 rounded-lg text-xs font-black cursor-pointer" title="효과음 켜기/끄기">🔊</button>
+        <button id="btn-leave-game" type="button" class="flat-btn bg-slate-200 text-slate-900 px-2.5 py-1 rounded-lg text-xs font-black cursor-pointer">나가기</button>
+      </div>
+    </header>
+
+    <!-- 중앙: 고정 1200x800 레터박스 아레나 -->
+    <main id="arena-stage">
+      <canvas id="gameCanvas"></canvas>
+
+      <!-- 킬피드 / 상단 미니 알림 -->
+      <div id="kill-feed" class="pointer-events-none absolute top-3 right-3 flex flex-col items-end gap-1 z-10"></div>
+
+      <!-- 관전 중 배지 (사망 시) -->
+      <div id="spectate-banner" class="hidden pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 bg-slate-900/85 text-white border-2 border-slate-600 px-4 py-1.5 rounded-full text-xs sm:text-sm font-black z-10">
+        탈락했습니다 — 관전 중...
+      </div>
+
+      <!-- ==================== 경기 종료 오버레이 ==================== -->
+      <div id="overlay-gameover" class="hidden absolute inset-0 bg-slate-900/65 flex items-center justify-center p-3 z-30">
+        <div class="bg-white border-4 border-slate-800 rounded-2xl shadow-[0_8px_0_#1e293b] max-w-lg w-full p-5 text-center max-h-[92%] overflow-y-auto">
+          <span class="inline-block bg-amber-300 border-2 border-slate-800 px-3 py-0.5 rounded-full text-xs font-black mb-1.5">MATCH END</span>
+          <h2 id="winner-title" class="font-game text-3xl text-slate-900 mb-1">우승자!</h2>
+          <p id="winner-subtitle" class="text-xs font-bold text-slate-500 mb-4">경기 시간 00:00</p>
+
+          <!-- 최종 순위표 -->
+          <div id="final-rankings" class="space-y-2 text-left mb-5">
+            <!-- 동적 생성 -->
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button id="btn-return-lobby" type="button" class="flat-btn flex-1 bg-[#3b6fd4] text-white font-game text-lg py-2.5 rounded-xl cursor-pointer">
+              대기실로 돌아가기
+            </button>
+            <button id="btn-exit-match" type="button" class="flat-btn bg-slate-200 text-slate-900 font-game text-lg px-5 py-2.5 rounded-xl cursor-pointer">
+              방 나가기
+            </button>
+          </div>
+          <p id="gameover-wait-hint" class="hidden text-[11px] font-bold text-slate-500 mt-2">
+            방장이 [대기실로 돌아가기]를 누르면 자동으로 대기실로 이동합니다.
+          </p>
+        </div>
+      </div>
+    </main>
+
+    <!-- 하단 바: 평소에는 내 보유 마법 & 경험치 바 / 레벨업 시 실시간 3지선다 슬라이드 업 -->
+    <footer id="bottom-bar" class="w-full bg-white border-t-2 border-slate-800 px-2.5 py-2 sm:px-4 z-20 shrink-0">
+      <!-- 평소 상태: 내 XP 바 + 보유 마법 + 스탯 -->
+      <div id="bottom-idle-bar" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <!-- 내 레벨 & XP -->
+          <div class="flex flex-col w-28 sm:w-36 shrink-0">
+            <div class="flex justify-between text-[11px] font-black leading-tight mb-0.5">
+              <span class="text-amber-600">LV.<span id="my-hud-lv">1</span></span>
+              <span id="my-hud-xp-text" class="text-slate-500">0/35</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-200 rounded border border-slate-800 overflow-hidden">
+              <div id="my-hud-xp-bar" class="h-full bg-amber-400 transition-all duration-150" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <!-- 보유 마법 칩 목록 -->
+          <div id="my-build-magics" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1"></div>
+        </div>
+
+        <!-- 핵심 스탯 -->
+        <div class="flex items-center gap-2 text-[11px] sm:text-xs font-bold text-slate-700 shrink-0 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 self-end sm:self-auto">
+          <span>연사 <b id="my-stat-fr" class="text-blue-600">100%</b></span>
+          <span class="text-slate-300">|</span>
+          <span>범위 <b id="my-stat-rg" class="text-emerald-600">100%</b></span>
+          <span class="text-slate-300">|</span>
+          <span>발사수 <b id="my-stat-ms" class="text-orange-600">1</b></span>
+        </div>
+      </div>
+
+      <!-- 실시간 레벨업 3지선다 바 (일시정지 없음 · 보호막 없음) -->
+      <div id="bottom-levelup-bar" class="hidden animate-slide-up">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="flex items-center gap-2">
+            <span class="bg-amber-300 border-2 border-slate-800 px-2 py-0.5 rounded-full text-[11px] font-black text-slate-900">⚡ 실시간 LEVEL UP!</span>
+            <span class="text-xs font-bold text-slate-600 hidden sm:inline">전투는 계속됩니다! 빠르게 클릭 또는 [1, 2, 3] 키로 선택하세요</span>
+          </div>
+          <span id="levelup-queue-badge" class="bg-rose-100 border border-slate-800 text-rose-700 px-2 py-0.5 rounded-md text-[11px] font-black">남은 선택: 1</span>
+        </div>
+        <div id="rt-choices-container" class="grid grid-cols-3 gap-2">
+          <!-- 3개 카드 동적 생성 -->
+        </div>
+      </div>
+    </footer>
+  </section>
+
+  <!-- ==================== Firebase + 게임 엔진 스크립트 ==================== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
+      onSnapshot, collection
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    /*************************************************************************
+     * 완드 대전 온라인 (Wand Battle Online)
+     * - 고정 논리 맵 크기: 1200 x 800
+     * - 호스트 권위(Host-Authoritative) 60fps 시뮬레이션 + 13Hz Firestore 동기화
+     * - 클라이언트 60fps 보간 렌더링 + 실시간 하단 레벨업 선택 전송
+     * - 도탄 볼트(Ricochet) 소멸 버그 완전 해결 (고유 ID + 독립 수명/반사 + 배열 절단 없음)
+     *************************************************************************/
+
+    // =========================================================================
+    // 1. 상수 및 마법/스탯/색상 정의
+    // =========================================================================
+    const ARENA_W = 1200;
+    const ARENA_H = 800;
+
+    const PLAYER_PALETTE = [
+      { name: '파랑', hex: '#3b6fd4', bg: '#DBEAFE' },
+      { name: '빨강', hex: '#dc2626', bg: '#FEE2E2' },
+      { name: '초록', hex: '#16a34a', bg: '#DCFCE7' },
+      { name: '보라', hex: '#7c3aed', bg: '#EDE9FE' }
+    ];
+
+    const MAGIC_DEFS = {
+      laser: {
+        id: 'laser',
+        name: '레이저',
+        color: '#0EA5E9',
+        bg: '#E0F2FE',
+        icon: '━',
+        desc: '완드 방향 직선 관통 빔',
+        upDesc: '사거리·두께·피해 증가'
+      },
+      fire: {
+        id: 'fire',
+        name: '화염구',
+        color: '#F97316',
+        bg: '#FFEDD5',
+        icon: '●',
+        desc: '충돌 시 원형 범위 폭발',
+        upDesc: '폭발 피해·반경 증가'
+      },
+      ice: {
+        id: 'ice',
+        name: '얼음 창',
+        color: '#0284C7',
+        bg: '#E0F2FE',
+        icon: '◆',
+        desc: '빠른 관통 창 + 적 둔화',
+        upDesc: '피해·둔화 시간 증가'
+      },
+      bounce: {
+        id: 'bounce',
+        name: '도탄 볼트',
+        color: '#CA8A04',
+        bg: '#FEF9C3',
+        icon: '○',
+        desc: '벽에 여러 번 튕기는 볼트',
+        upDesc: '벽 반사 횟수·피해 증가'
+      },
+      poison: {
+        id: 'poison',
+        name: '독 플라스크',
+        color: '#16A34A',
+        bg: '#DCFCE7',
+        icon: '◉',
+        desc: '지속 피해 초록 독 장판',
+        upDesc: '독 장판 범위·피해 증가'
+      },
+      boomerang: {
+        id: 'boomerang',
+        name: '부메랑 칼날',
+        color: '#0D9488',
+        bg: '#CCFBF1',
+        icon: '✕',
+        desc: '직진 후 시전자에게 왕복',
+        upDesc: '왕복 피해·사거리 증가'
+      },
+      shockwave: {
+        id: 'shockwave',
+        name: '충격파 링',
+        color: '#9333EA',
+        bg: '#F3E8FF',
+        icon: '◎',
+        desc: '주변 원형 파동 + 넉백',
+        upDesc: '파동 반경·피해 증가'
+      },
+      scatter: {
+        id: 'scatter',
+        name: '산탄 파편',
+        color: '#57534E',
+        bg: '#F5F5F4',
+        icon: '▲',
+        desc: '전방 부채꼴 삼각 파편',
+        upDesc: '파편 개수·피해 증가'
+      }
+    };
+    const MAGIC_IDS = Object.keys(MAGIC_DEFS);
+
+    const STAT_DEFS = {
+      fireRate: {
+        id: 'fireRate',
+        name: '연사 속도 +22%',
+        color: '#2563EB',
+        bg: '#DBEAFE',
+        icon: '⏩',
+        desc: '마법 발사 확률/속도 증가'
+      },
+      range: {
+        id: 'range',
+        name: '마법 범위 +20%',
+        color: '#059669',
+        bg: '#D1FAE5',
+        icon: '⤢',
+        desc: '사거리·크기·폭발 반경 증가'
+      },
+      multiShot: {
+        id: 'multiShot',
+        name: '동시 발사 +1',
+        color: '#EA580C',
+        bg: '#FFEDD5',
+        icon: '⑂',
+        desc: '한 번에 나가는 마법 +1'
+      },
+      maxHp: {
+        id: 'maxHp',
+        name: '최대 체력 +25',
+        color: '#E11D48',
+        bg: '#FFE4E6',
+        icon: '♥',
+        desc: '최대 HP +25 & 35 회복'
+      },
+      agility: {
+        id: 'agility',
+        name: '이동·회전 +15%',
+        color: '#7C3AED',
+        bg: '#EDE9FE',
+        icon: '↻',
+        desc: '이동 및 머리 회전 가속'
+      }
+    };
+    const STAT_IDS = Object.keys(STAT_DEFS);
+
+    const rand = (min, max) => Math.random() * (max - min) + min;
+    const randInt = (min, max) => Math.floor(rand(min, max + 1));
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
+    const round1 = (n) => Math.round(n * 10) / 10;
+    const round2 = (n) => Math.round(n * 100) / 100;
+
+    function lerpAngle(a, b, t) {
+      let diff = ((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      return a + diff * t;
+    }
+
+    function showToast(msg, tone = 'dark') {
+      const box = document.getElementById('toast-box');
+      const el = document.createElement('div');
+      const bgClass = tone === 'error' ? 'bg-rose-600 text-white' : (tone === 'ok' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white');
+      el.className = `${bgClass} border-2 border-white/20 px-4 py-2 rounded-xl shadow-lg text-xs sm:text-sm font-black transition-opacity duration-300`;
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; }, 2100);
+      setTimeout(() => { el.remove(); }, 2500);
+    }
+
+    // =========================================================================
+    // 2. 심플 레트로 효과음 (Web Audio API)
+    // =========================================================================
+    const Sound = {
+      ctx: null,
+      muted: false,
+      init() {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) this.ctx = new AC();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      },
+      play(type) {
+        if (this.muted || !this.ctx) return;
+        try {
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          if (type === 'laser') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(760, now);
+            osc.frequency.exponentialRampToValueAtTime(220, now + 0.07);
+            gain.gain.setValueAtTime(0.04, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+            osc.start(now); osc.stop(now + 0.07);
+          } else if (type === 'fire') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(230, now);
+            osc.frequency.exponentialRampToValueAtTime(85, now + 0.11);
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+            osc.start(now); osc.stop(now + 0.11);
+          } else if (type === 'bounce') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(640, now);
+            osc.frequency.exponentialRampToValueAtTime(920, now + 0.05);
+            gain.gain.setValueAtTime(0.035, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.start(now); osc.stop(now + 0.05);
+          } else if (type === 'hit') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(170, now);
+            osc.frequency.exponentialRampToValueAtTime(95, now + 0.04);
+            gain.gain.setValueAtTime(0.035, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+            osc.start(now); osc.stop(now + 0.04);
+          } else if (type === 'pickup') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(540, now);
+            osc.frequency.setValueAtTime(790, now + 0.045);
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+            osc.start(now); osc.stop(now + 0.11);
+          } else if (type === 'levelup') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(523, now);
+            osc.frequency.setValueAtTime(659, now + 0.06);
+            osc.frequency.setValueAtTime(784, now + 0.12);
+            osc.frequency.setValueAtTime(1046, now + 0.18);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+            osc.start(now); osc.stop(now + 0.28);
+          } else if (type === 'win') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(523, now);
+            osc.frequency.setValueAtTime(659, now + 0.1);
+            osc.frequency.setValueAtTime(784, now + 0.2);
+            osc.frequency.setValueAtTime(1046, now + 0.3);
+            gain.gain.setValueAtTime(0.09, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+            osc.start(now); osc.stop(now + 0.48);
+          }
+        } catch (e) {}
+      }
+    };
+
+    // =========================================================================
+    // 3. Firebase 초기화 및 네트워크 상태
+    // =========================================================================
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+
+    let app = null;
+    let auth = null;
+    let db = null;
+    let currentUser = null;
+
+    const net = {
+      nickname: `완드술사_${randInt(100, 999)}`,
+      createMode: '1v1',
+      createNeutralMobs: true,
+      roomCode: null,
+      roomData: null,
+      isHost: false,
+      unsubLobby: null,
+      unsubRoom: null,
+      unsubState: null,
+      unsubInputs: [],
+      clientChoiceSeq: 0,
+      lastChoiceSentLevel: -1,
+      hostSyncAccum: 0,
+      syncInFlight: false,
+      lastStateReceivedAt: 0,
+      shownChoicesKey: ''
+    };
+
+    // 경로 헬퍼 (RULE 1 엄수: /artifacts/{appId}/public/data/{collectionName})
+    const roomsCol = () => collection(db, 'artifacts', appId, 'public', 'data', 'wand_rooms');
+    const roomDocRef = (code) => doc(db, 'artifacts', appId, 'public', 'data', 'wand_rooms', code);
+    const stateDocRef = (code) => doc(db, 'artifacts', appId, 'public', 'data', 'wand_states', code);
+    const inputDocRef = (code, uid) => doc(db, 'artifacts', appId, 'public', 'data', 'wand_inputs', `${code}_${uid}`);
+
+    async function initFirebase() {
+      const badge = document.getElementById('conn-badge');
+      if (!firebaseConfig) {
+        badge.textContent = '설정 없음';
+        badge.className = 'text-[11px] font-black px-2 py-1.5 rounded-lg border-2 border-slate-800 bg-rose-100 text-rose-800';
+        showToast('온라인 서버 설정을 찾을 수 없습니다.', 'error');
+        return;
+      }
+
+      try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+
+        // RULE 3: 쿼리 전 인증 완료 대기
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          const cred = await signInWithCustomToken(auth, __initial_auth_token);
+          currentUser = cred.user;
+        } else {
+          const cred = await signInAnonymously(auth);
+          currentUser = cred.user;
+        }
+
+        badge.textContent = '온라인 연결됨';
+        badge.className = 'text-[11px] font-black px-2 py-1.5 rounded-lg border-2 border-slate-800 bg-emerald-100 text-emerald-800 whitespace-nowrap';
+        document.getElementById('btn-create-room').disabled = false;
+        document.getElementById('btn-join-code').disabled = false;
+
+        subscribeOpenRooms();
+      } catch (err) {
+        console.error('Firebase init error:', err);
+        badge.textContent = '연결 실패';
+        badge.className = 'text-[11px] font-black px-2 py-1.5 rounded-lg border-2 border-slate-800 bg-rose-100 text-rose-800';
+        showToast('온라인 서버 연결에 실패했습니다.', 'error');
+      }
+    }
+
+    // =========================================================================
+    // 4. 화면 전환 & 로비 / 대기실 로직
+    // =========================================================================
+    function showScreen(name) {
+      document.getElementById('screen-lobby').classList.toggle('hidden', name !== 'lobby');
+      document.getElementById('screen-waiting').classList.toggle('hidden', name !== 'waiting');
+      document.getElementById('screen-game').classList.toggle('hidden', name !== 'game');
+      if (name === 'game') {
+        resizeCanvas();
+      }
+    }
+
+    function getNickname() {
+      const val = document.getElementById('input-nickname').value.trim();
+      return val || net.nickname;
+    }
+
+    function generateRoomCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let out = '';
+      for (let i = 0; i < 4; i++) out += chars[randInt(0, chars.length - 1)];
+      return out;
+    }
+
+    function subscribeOpenRooms() {
+      if (!currentUser) return;
+      if (net.unsubLobby) net.unsubLobby();
+
+      // RULE 2: 단순 collection 쿼리 후 메모리에서 필터/정렬
+      net.unsubLobby = onSnapshot(roomsCol(), (snap) => {
+        const now = Date.now();
+        const rooms = [];
+        snap.forEach((d) => {
+          const data = d.data();
+          if (!data || data.status !== 'waiting') return;
+          // 20분 이상 방치된 유령 방 제외
+          if (data.updatedAt && now - data.updatedAt > 20 * 60 * 1000) return;
+          const playersArr = Object.values(data.players || {});
+          if (playersArr.length === 0) return;
+          rooms.push({ code: d.id, ...data, playerCount: playersArr.length });
+        });
+
+        rooms.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        renderOpenRooms(rooms);
+      }, (err) => {
+        console.error('Open rooms snapshot error:', err);
+      });
+    }
+
+    function renderOpenRooms(rooms) {
+      const list = document.getElementById('open-rooms-list');
+      const countEl = document.getElementById('open-room-count');
+      countEl.textContent = `${rooms.length}개 대기 중`;
+
+      if (rooms.length === 0) {
+        list.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-slate-400 text-xs sm:text-sm font-bold py-12 text-center">
+            <p class="mb-1">현재 대기 중인 방이 없습니다.</p>
+            <p class="text-slate-500">왼쪽에서 새 방을 만들어 보세요!</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = '';
+      for (const r of rooms) {
+        const maxP = r.mode === '1v1' ? 2 : 4;
+        const isFull = r.playerCount >= maxP;
+        const hostPlayer = (r.players && r.players[r.hostId]) ? r.players[r.hostId] : Object.values(r.players || {})[0];
+        const hostName = hostPlayer ? hostPlayer.name : '방장';
+
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between gap-2 bg-slate-50 border-2 border-slate-800 rounded-xl px-3 py-2.5';
+        row.innerHTML = `
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="font-game text-lg tracking-wider bg-slate-800 text-white px-2.5 py-0.5 rounded-lg shrink-0">${r.code}</span>
+            <div class="min-w-0">
+              <div class="text-xs sm:text-sm font-black text-slate-900 truncate">${escapeHtml(hostName)}의 방</div>
+              <div class="flex items-center gap-1.5 mt-0.5">
+                <span class="text-[10px] font-black px-1.5 py-0.2 rounded border border-slate-800 ${r.mode === '1v1' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}">
+                  ${r.mode === '1v1' ? '1:1 대전' : '배틀로얄'}
+                </span>
+                <span class="text-[10px] font-bold text-slate-500">${r.neutralMobs ? '중립몹 ON' : '중립몹 OFF'}</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="text-xs font-black ${isFull ? 'text-rose-600' : 'text-slate-700'}">${r.playerCount}/${maxP}</span>
+            <button type="button" ${isFull ? 'disabled' : ''} data-join="${r.code}"
+              class="flat-btn ${isFull ? 'bg-slate-200 text-slate-500' : 'bg-emerald-400 text-slate-900'} px-3 py-1 rounded-lg text-xs font-black cursor-pointer">
+              ${isFull ? '만원' : '참가'}
+            </button>
+          </div>
+        `;
+        const btn = row.querySelector('button[data-join]');
+        if (btn && !isFull) {
+          btn.addEventListener('click', () => joinRoom(r.code));
+        }
+        list.appendChild(row);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    async function createRoom() {
+      if (!currentUser) return;
+      Sound.init();
+      const myName = getNickname();
+      const code = generateRoomCode();
+      const now = Date.now();
+
+      const roomPayload = {
+        code,
+        hostId: currentUser.uid,
+        mode: net.createMode,
+        neutralMobs: net.createNeutralMobs,
+        status: 'waiting',
+        createdAt: now,
+        updatedAt: now,
+        players: {
+          [currentUser.uid]: {
+            id: currentUser.uid,
+            name: myName,
+            colorIdx: 0,
+            isBot: false,
+            joinedAt: now
+          }
+        },
+        winner: null,
+        rankings: []
+      };
+
+      try {
+        await setDoc(roomDocRef(code), roomPayload);
+        enterRoom(code);
+        showToast(`방 [${code}] 생성 완료!`, 'ok');
+      } catch (e) {
+        console.error(e);
+        showToast('방 생성에 실패했습니다.', 'error');
+      }
+    }
+
+    async function joinRoom(rawCode) {
+      if (!currentUser) return;
+      Sound.init();
+      const code = String(rawCode || '').trim().toUpperCase();
+      if (code.length !== 4) {
+        showToast('4자리 방 코드를 입력해 주세요.', 'error');
+        return;
+      }
+
+      try {
+        const snap = await getDoc(roomDocRef(code));
+        if (!snap.exists()) {
+          showToast('존재하지 않는 방 코드입니다.', 'error');
+          return;
+        }
+        const data = snap.data();
+        if (data.status !== 'waiting') {
+          showToast('이미 게임이 진행 중인 방입니다.', 'error');
+          return;
+        }
+
+        const players = data.players || {};
+        const maxP = data.mode === '1v1' ? 2 : 4;
+        if (!players[currentUser.uid] && Object.keys(players).length >= maxP) {
+          showToast('방 정원이 가득 찼습니다.', 'error');
+          return;
+        }
+
+        if (!players[currentUser.uid]) {
+          // 비어있는 색상 인덱스 배정
+          const usedColors = new Set(Object.values(players).map(p => p.colorIdx));
+          let colorIdx = 0;
+          for (let i = 0; i < 4; i++) {
+            if (!usedColors.has(i)) { colorIdx = i; break; }
+          }
+          await updateDoc(roomDocRef(code), {
+            [`players.${currentUser.uid}`]: {
+              id: currentUser.uid,
+              name: getNickname(),
+              colorIdx,
+              isBot: false,
+              joinedAt: Date.now()
+            },
+            updatedAt: Date.now()
+          });
+        }
+
+        enterRoom(code);
+        showToast(`방 [${code}]에 참가했습니다!`, 'ok');
+      } catch (e) {
+        console.error(e);
+        showToast('방 참가 중 오류가 발생했습니다.', 'error');
+      }
+    }
+
+    function enterRoom(code) {
+      cleanupRoomListeners();
+      net.roomCode = code;
+      net.roomData = null;
+      net.shownChoicesKey = '';
+      net.clientChoiceSeq = 0;
+      net.lastChoiceSentLevel = -1;
+
+      showScreen('waiting');
+
+      net.unsubRoom = onSnapshot(roomDocRef(code), (snap) => {
+        if (!snap.exists()) {
+          showToast('방이 종료되었습니다.', 'error');
+          leaveRoomLocal();
+          return;
+        }
+
+        const prevStatus = net.roomData ? net.roomData.status : null;
+        const data = snap.data();
+        net.roomData = data;
+        net.isHost = data.hostId === currentUser.uid;
+
+        // 내가 방에서 제거되었는지 확인
+        if (!data.players || !data.players[currentUser.uid]) {
+          leaveRoomLocal();
+          return;
+        }
+
+        if (data.status === 'waiting') {
+          stopMatchLoop();
+          document.getElementById('overlay-gameover').classList.add('hidden');
+          showScreen('waiting');
+          renderWaitingRoom(data);
+        } else if (data.status === 'playing') {
+          if (prevStatus !== 'playing') {
+            startMatchClientOrHost(data);
+          }
+        } else if (data.status === 'ended') {
+          if (prevStatus !== 'ended') {
+            showMatchEndOverlay(data);
+          }
+        }
+      }, (err) => {
+        console.error('Room snapshot error:', err);
+      });
+    }
+
+    function renderWaitingRoom(data) {
+      document.getElementById('wait-room-code').textContent = data.code;
+      const isHost = data.hostId === currentUser.uid;
+      const maxP = data.mode === '1v1' ? 2 : 4;
+      const players = Object.values(data.players || {}).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+
+      document.getElementById('wait-host-only-tag').textContent = isHost ? '(내가 방장)' : '(방장만 변경 가능)';
+
+      // 모드 버튼 스타일
+      const b1 = document.getElementById('wait-mode-1v1');
+      const b2 = document.getElementById('wait-mode-royale');
+      b1.disabled = !isHost;
+      b2.disabled = !isHost;
+      b1.className = `flat-btn rounded-lg py-1.5 text-xs font-black ${data.mode === '1v1' ? 'bg-[#3b6fd4] text-white' : 'bg-white text-slate-700'} ${isHost ? 'cursor-pointer' : ''}`;
+      b2.className = `flat-btn rounded-lg py-1.5 text-xs font-black ${data.mode === 'royale' ? 'bg-purple-600 text-white' : 'bg-white text-slate-700'} ${isHost ? 'cursor-pointer' : ''}`;
+
+      // 중립 몹 토글
+      const mobBtn = document.getElementById('wait-toggle-mobs');
+      mobBtn.disabled = !isHost;
+      mobBtn.textContent = data.neutralMobs ? 'ON' : 'OFF';
+      mobBtn.className = `flat-btn px-3 py-1.5 rounded-lg text-xs font-black ${data.neutralMobs ? 'bg-emerald-400 text-slate-900' : 'bg-slate-200 text-slate-600'} ${isHost ? 'cursor-pointer' : ''}`;
+
+      // 참가자 수 & 봇 컨트롤
+      document.getElementById('wait-player-count').textContent = `${players.length}/${maxP}`;
+      const botCtrl = document.getElementById('wait-bot-controls');
+      botCtrl.classList.toggle('hidden', !isHost);
+      if (isHost) {
+        const hasBot = players.some(p => p.isBot);
+        document.getElementById('btn-add-bot').disabled = players.length >= maxP;
+        document.getElementById('btn-remove-bot').disabled = !hasBot;
+      }
+
+      // 참가자 슬롯 렌더링
+      const listEl = document.getElementById('wait-player-list');
+      listEl.innerHTML = '';
+      for (let i = 0; i < maxP; i++) {
+        const p = players[i];
+        const card = document.createElement('div');
+        if (p) {
+          const pal = PLAYER_PALETTE[p.colorIdx % PLAYER_PALETTE.length];
+          const isMe = p.id === currentUser.uid;
+          const isRoomHost = p.id === data.hostId;
+          card.className = 'flex items-center justify-between bg-white border-2 border-slate-800 rounded-xl px-3 py-2.5';
+          card.innerHTML = `
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-7 h-7 rounded-full border-2 border-slate-800 shrink-0" style="background:${pal.hex};"></span>
+              <div class="min-w-0">
+                <div class="text-sm font-black text-slate-900 truncate flex items-center gap-1">
+                  <span>${escapeHtml(p.name)}</span>
+                  ${isMe ? '<span class="text-[10px] bg-sky-100 text-sky-800 border border-slate-800 px-1.5 rounded">나</span>' : ''}
+                </div>
+                <div class="text-[11px] font-bold text-slate-500">
+                  ${isRoomHost ? '👑 방장' : (p.isBot ? '🤖 AI 봇' : '🎮 플레이어')} · ${pal.name}
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          card.className = 'flex items-center justify-center bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl px-3 py-3 text-xs font-bold text-slate-400';
+          card.textContent = '빈 자리 (참가자 대기 중...)';
+        }
+        listEl.appendChild(card);
+      }
+
+      // 시작 버튼
+      const startBtn = document.getElementById('btn-start-match');
+      const guestMsg = document.getElementById('wait-guest-msg');
+      startBtn.classList.toggle('hidden', !isHost);
+      guestMsg.classList.toggle('hidden', isHost);
+      if (isHost) {
+        startBtn.disabled = players.length < 2;
+        startBtn.textContent = players.length < 2 ? '최소 2명 이상 필요합니다 (AI 봇 추가 가능)' : '게임 시작!';
+      }
+    }
+
+    async function hostUpdateMode(newMode) {
+      if (!currentUser || !net.isHost || !net.roomData) return;
+      const players = { ...(net.roomData.players || {}) };
+      if (newMode === '1v1' && Object.keys(players).length > 2) {
+        // 봇부터 제거해서 2명으로 맞춤
+        const entries = Object.values(players);
+        const bots = entries.filter(p => p.isBot);
+        while (Object.keys(players).length > 2 && bots.length > 0) {
+          const b = bots.pop();
+          delete players[b.id];
+        }
+        if (Object.keys(players).length > 2) {
+          showToast('현재 3명 이상의 플레이어가 있어 1:1로 바꿀 수 없습니다.', 'error');
+          return;
+        }
+      }
+      try {
+        await updateDoc(roomDocRef(net.roomCode), {
+          mode: newMode,
+          players,
+          updatedAt: Date.now()
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    async function hostToggleNeutralMobs() {
+      if (!currentUser || !net.isHost || !net.roomData) return;
+      try {
+        await updateDoc(roomDocRef(net.roomCode), {
+          neutralMobs: !net.roomData.neutralMobs,
+          updatedAt: Date.now()
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    async function hostAddBot() {
+      if (!currentUser || !net.isHost || !net.roomData) return;
+      const players = net.roomData.players || {};
+      const maxP = net.roomData.mode === '1v1' ? 2 : 4;
+      if (Object.keys(players).length >= maxP) return;
+
+      const usedColors = new Set(Object.values(players).map(p => p.colorIdx));
+      let colorIdx = 0;
+      for (let i = 0; i < 4; i++) {
+        if (!usedColors.has(i)) { colorIdx = i; break; }
+      }
+
+      const botId = `bot_${Date.now().toString(36)}_${randInt(10, 99)}`;
+      const botNames = ['알파완드', '빙글봇', '막대기AI', '운빨마법사', '도탄장인'];
+      const botName = `${botNames[randInt(0, botNames.length - 1)]}_${randInt(1, 99)}`;
+
+      try {
+        await updateDoc(roomDocRef(net.roomCode), {
+          [`players.${botId}`]: {
+            id: botId,
+            name: botName,
+            colorIdx,
+            isBot: true,
+            joinedAt: Date.now()
+          },
+          updatedAt: Date.now()
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    async function hostRemoveBot() {
+      if (!currentUser || !net.isHost || !net.roomData) return;
+      const players = { ...(net.roomData.players || {}) };
+      const bots = Object.values(players).filter(p => p.isBot);
+      if (bots.length === 0) return;
+      const target = bots[bots.length - 1];
+      delete players[target.id];
+
+      try {
+        await updateDoc(roomDocRef(net.roomCode), {
+          players,
+          updatedAt: Date.now()
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    async function leaveRoom() {
+      if (!currentUser || !net.roomCode) {
+        leaveRoomLocal();
+        return;
+      }
+      const code = net.roomCode;
+      const data = net.roomData;
+      const isHost = net.isHost;
+
+      try {
+        if (data) {
+          const players = { ...(data.players || {}) };
+          delete players[currentUser.uid];
+          const remainingHumans = Object.values(players).filter(p => !p.isBot);
+
+          if (remainingHumans.length === 0) {
+            await deleteDoc(roomDocRef(code));
+            await deleteDoc(stateDocRef(code)).catch(() => {});
+          } else {
+            const updates = { players, updatedAt: Date.now() };
+            if (isHost) {
+              // 남은 사람 중 첫 번째에게 방장 위임
+              updates.hostId = remainingHumans[0].id;
+              if (data.status === 'playing') {
+                updates.status = 'waiting';
+              }
+            }
+            await updateDoc(roomDocRef(code), updates);
+          }
+        }
+      } catch (e) {
+        console.error('Leave room error:', e);
+      }
+
+      leaveRoomLocal();
+    }
+
+    function leaveRoomLocal() {
+      stopMatchLoop();
+      cleanupRoomListeners();
+      net.roomCode = null;
+      net.roomData = null;
+      net.isHost = false;
+      document.getElementById('overlay-gameover').classList.add('hidden');
+      showScreen('lobby');
+    }
+
+    function cleanupRoomListeners() {
+      if (net.unsubRoom) { net.unsubRoom(); net.unsubRoom = null; }
+      if (net.unsubState) { net.unsubState(); net.unsubState = null; }
+      for (const u of net.unsubInputs) { try { u(); } catch (e) {} }
+      net.unsubInputs = [];
+    }
+
+    // =========================================================================
+    // 5. 고정 1200x800 캔버스 스케일링
+    // =========================================================================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const arenaStage = document.getElementById('arena-stage');
+
+    function resizeCanvas() {
+      const rect = arenaStage.getBoundingClientRect();
+      const pad = 12;
+      const availW = Math.max(240, rect.width - pad);
+      const availH = Math.max(160, rect.height - pad);
+      const targetRatio = ARENA_W / ARENA_H; // 1.5
+
+      let dispW = availW;
+      let dispH = dispW / targetRatio;
+      if (dispH > availH) {
+        dispH = availH;
+        dispW = dispH * targetRatio;
+      }
+
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.style.width = `${Math.floor(dispW)}px`;
+      canvas.style.height = `${Math.floor(dispH)}px`;
+      canvas.width = Math.floor(dispW * dpr);
+      canvas.height = Math.floor(dispH * dpr);
+    }
+
+    // =========================================================================
+    // 6. 호스트 시뮬레이션 엔진 & 클라이언트 보간 상태
+    // =========================================================================
+    let nextProjId = 1;
+    let nextMobId = 1;
+    let nextOrbId = 1;
+    let nextFxId = 1;
+
+    const sim = {
+      active: false,
+      matchTime: 0,
+      neutralMobsEnabled: true,
+      players: [],      // 참가자 전체
+      mobs: [],         // 중립 잡몹
+      orbs: [],         // 경험치/회복 구슬
+      projectiles: [],  // 모든 투사체 (도탄 포함 - 고유 ID, 절단 없음)
+      beams: [],        // 레이저 빔
+      explosions: [],   // 화염/사망 폭발 원
+      shockwaves: [],   // 충격파 링
+      puddles: [],      // 독 장판
+      killFeed: [],     // 최근 킬 알림
+      orbTimer: 0,
+      mobTimer: 0,
+      ended: false
+    };
+
+    // 클라이언트 보간 및 렌더링용 상태
+    const view = {
+      matchTime: 0,
+      players: new Map(),     // id -> interpolated player object
+      mobs: new Map(),        // id -> interpolated mob
+      projectiles: new Map(), // id -> interpolated proj
+      orbs: [],
+      beams: [],
+      explosions: [],
+      shockwaves: [],
+      puddles: [],
+      killFeed: [],
+      seenFxIds: new Set(),
+      floatingTexts: []
+    };
+
+    // 호스트: 새 경기 초기화
+    async function hostStartMatch() {
+      if (!currentUser || !net.isHost || !net.roomData) return;
+      const pList = Object.values(net.roomData.players || {});
+      if (pList.length < 2) {
+        showToast('최소 2명 이상 필요합니다.', 'error');
+        return;
+      }
+
+      try {
+        await updateDoc(roomDocRef(net.roomCode), {
+          status: 'playing',
+          winner: null,
+          rankings: [],
+          updatedAt: Date.now()
+        });
+      } catch (e) {
+        console.error(e);
+        showToast('게임 시작에 실패했습니다.', 'error');
+      }
+    }
+
+    function initHostSimulation(roomData) {
+      nextProjId = 1;
+      nextMobId = 1;
+      nextOrbId = 1;
+      nextFxId = 1;
+
+      sim.active = true;
+      sim.ended = false;
+      sim.matchTime = 0;
+      sim.neutralMobsEnabled = !!roomData.neutralMobs;
+      sim.players = [];
+      sim.mobs = [];
+      sim.orbs = [];
+      sim.projectiles = [];
+      sim.beams = [];
+      sim.explosions = [];
+      sim.shockwaves = [];
+      sim.puddles = [];
+      sim.killFeed = [];
+      sim.orbTimer = 0;
+      sim.mobTimer = 0;
+
+      const sortedPlayers = Object.values(roomData.players || {}).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+      const spawnPoints = sortedPlayers.length === 2
+        ? [{ x: 240, y: 400 }, { x: 960, y: 400 }]
+        : [
+            { x: 230, y: 210 },
+            { x: 970, y: 210 },
+            { x: 230, y: 590 },
+            { x: 970, y: 590 }
+          ];
+
+      sortedPlayers.forEach((p, idx) => {
+        const sp = spawnPoints[idx % spawnPoints.length];
+        const pal = PLAYER_PALETTE[p.colorIdx % PLAYER_PALETTE.length];
+        sim.players.push({
+          id: p.id,
+          name: p.name,
+          isBot: !!p.isBot,
+          colorIdx: p.colorIdx,
+          color: pal.hex,
+          x: sp.x,
+          y: sp.y,
+          vx: rand(-1, 1) * 100,
+          vy: rand(-1, 1) * 100,
+          angle: rand(0, Math.PI * 2),
+          rotDir: Math.random() < 0.5 ? 1 : -1,
+          rotSpeed: 2.35,
+          moveSpeed: 138,
+          radius: 22,
+          hp: 150,
+          maxHp: 150,
+          alive: true,
+          deathOrder: 0,
+          kills: 0,
+          level: 1,
+          xp: 0,
+          xpNext: 35,
+          magics: { laser: 1 }, // 초기 마법: 짧은 레이저 Lv.1
+          fireRateMult: 1.0,
+          baseFireProb: 1.75,
+          rangeMult: 1.0,
+          multiShot: 1,
+          aiDirTimer: rand(0.6, 1.6),
+          aiRotTimer: rand(1.8, 3.8),
+          hitFlash: 0,
+          slowTimer: 0,
+          levelUpQueue: [],     // 실시간 레벨업 선택 대기열 (일시정지/보호막 없음)
+          botPickTimer: 0,
+          lastProcessedSeq: 0
+        });
+      });
+
+      // 초기 파워 구슬 & 중립 몹 배치
+      for (let i = 0; i < 6; i++) spawnSimOrb();
+      if (sim.neutralMobsEnabled) {
+        for (let i = 0; i < 4; i++) spawnSimMob();
+      }
+
+      // 비호스트 플레이어들의 실시간 선택 입력 리스너 구독
+      for (const u of net.unsubInputs) { try { u(); } catch (e) {} }
+      net.unsubInputs = [];
+
+      for (const p of sim.players) {
+        if (!p.isBot && p.id !== currentUser.uid) {
+          // 이전 입력 문서 초기화
+          setDoc(inputDocRef(net.roomCode, p.id), { seq: 0, idx: -1, ts: Date.now() }).catch(() => {});
+          const unsub = onSnapshot(inputDocRef(net.roomCode, p.id), (snap) => {
+            if (!snap.exists()) return;
+            const inp = snap.data();
+            if (!inp || !inp.seq || inp.seq <= p.lastProcessedSeq) return;
+            p.lastProcessedSeq = inp.seq;
+            if (typeof inp.idx === 'number' && inp.idx >= 0 && inp.idx <= 2) {
+              applyPlayerChoice(p, inp.idx);
+            }
+          }, (err) => console.error('Input snapshot error:', err));
+          net.unsubInputs.push(unsub);
+        }
+      }
+
+      // 초기 스냅샷 즉시 전송
+      pushHostSnapshot(true);
+    }
+
+    function startMatchClientOrHost(roomData) {
+      Sound.init();
+      showScreen('game');
+      document.getElementById('overlay-gameover').classList.add('hidden');
+      document.getElementById('spectate-banner').classList.add('hidden');
+      document.getElementById('hud-room-code').textContent = roomData.code;
+      document.getElementById('hud-mode').textContent = roomData.mode === '1v1' ? '1:1 대전' : '배틀로얄';
+
+      view.players.clear();
+      view.mobs.clear();
+      view.projectiles.clear();
+      view.orbs = [];
+      view.beams = [];
+      view.explosions = [];
+      view.shockwaves = [];
+      view.puddles = [];
+      view.killFeed = [];
+      view.seenFxIds.clear();
+      view.floatingTexts = [];
+      net.shownChoicesKey = '';
+      net.clientChoiceSeq = 0;
+
+      if (net.isHost) {
+        initHostSimulation(roomData);
+      } else {
+        sim.active = false;
+        // 클라이언트: Firestore 상태 스냅샷 구독
+        if (net.unsubState) { net.unsubState(); net.unsubState = null; }
+        net.unsubState = onSnapshot(stateDocRef(net.roomCode), (snap) => {
+          if (!snap.exists()) return;
+          applyClientSnapshot(snap.data());
+        }, (err) => console.error('State snapshot error:', err));
+      }
+
+      startRenderLoop();
+    }
+
+    // =========================================================================
+    // 7. 호스트 시뮬레이션 상세 로직 (순수 운빨 + 8종 비유도 마법 + 도탄 버그 수정)
+    // =========================================================================
+    function getWandTip(u) {
+      const r = u.radius;
+      const tipDist = r * 1.45 + r * 1.65;
+      return {
+        x: u.x + Math.cos(u.angle) * tipDist,
+        y: u.y + Math.sin(u.angle) * tipDist
+      };
+    }
+
+    function spawnSimOrb(x, y, forceType) {
+      if (sim.orbs.length >= 14 && !forceType) return;
+      const roll = Math.random();
+      let type = forceType || (roll < 0.16 ? 'heal' : (roll < 0.38 ? 'bigxp' : 'xp'));
+      sim.orbs.push({
+        id: nextOrbId++,
+        t: type,
+        x: x !== undefined ? clamp(x, 45, ARENA_W - 45) : rand(60, ARENA_W - 60),
+        y: y !== undefined ? clamp(y, 45, ARENA_H - 45) : rand(60, ARENA_H - 60),
+        r: type === 'bigxp' ? 12 : (type === 'heal' ? 11 : 9),
+        xp: type === 'bigxp' ? 28 : (type === 'xp' ? 16 : 6),
+        heal: type === 'heal' ? 26 : 0
+      });
+    }
+
+    function spawnSimMob() {
+      if (sim.mobs.length >= 6) return;
+      let mx = rand(80, ARENA_W - 80);
+      let my = rand(80, ARENA_H - 80);
+      for (let tries = 0; tries < 8; tries++) {
+        const tx = rand(80, ARENA_W - 80);
+        const ty = rand(80, ARENA_H - 80);
+        if (sim.players.every(p => !p.alive || dist(tx, ty, p.x, p.y) > 180)) {
+          mx = tx; my = ty; break;
+        }
+      }
+      sim.mobs.push({
+        id: nextMobId++,
+        x: mx,
+        y: my,
+        vx: rand(-1, 1) * 85,
+        vy: rand(-1, 1) * 85,
+        r: 13,
+        hp: 30,
+        maxHp: 30,
+        aiTimer: rand(0.6, 1.8),
+        hitFlash: 0,
+        slowTimer: 0
+      });
+    }
+
+    function generateThreeChoices(p) {
+      const pool = [];
+      for (const mId of MAGIC_IDS) {
+        const curLv = p.magics[mId] || 0;
+        pool.push({ kind: 'm', id: mId, nextLv: curLv + 1 });
+      }
+      for (const sId of STAT_IDS) {
+        pool.push({ kind: 's', id: sId, nextLv: 0 });
+      }
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = randInt(0, i);
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      return pool.slice(0, 3);
+    }
+
+    function grantPlayerXP(p, amount) {
+      if (!p || !p.alive) return;
+      p.xp += Math.max(1, Math.round(amount));
+      while (p.xp >= p.xpNext) {
+        p.xp -= p.xpNext;
+        p.level += 1;
+        p.xpNext = Math.round(p.xpNext * 1.28 + 12);
+        p.levelUpQueue.push(generateThreeChoices(p));
+        if (p.id === currentUser.uid) {
+          Sound.play('levelup');
+        }
+        if (p.isBot && p.botPickTimer <= 0) {
+          p.botPickTimer = rand(0.5, 1.1);
+        }
+      }
+    }
+
+    function applyPlayerChoice(p, choiceIdx) {
+      if (!p || !p.alive || p.levelUpQueue.length === 0) return;
+      const choices = p.levelUpQueue[0];
+      const picked = choices[choiceIdx];
+      if (!picked) return;
+
+      if (picked.kind === 'm') {
+        p.magics[picked.id] = (p.magics[picked.id] || 0) + 1;
+      } else if (picked.kind === 's') {
+        if (picked.id === 'fireRate') p.fireRateMult *= 1.22;
+        else if (picked.id === 'range') p.rangeMult *= 1.2;
+        else if (picked.id === 'multiShot') p.multiShot += 1;
+        else if (picked.id === 'maxHp') {
+          p.maxHp += 25;
+          p.hp = Math.min(p.maxHp, p.hp + 35);
+        } else if (picked.id === 'agility') {
+          p.moveSpeed *= 1.15;
+          p.rotSpeed *= 1.15;
+        }
+      }
+
+      p.levelUpQueue.shift();
+      if (p.id === currentUser.uid) {
+        Sound.play('pickup');
+      }
+    }
+
+    function pointToSegmentDist(px, py, x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+      let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+      t = clamp(t, 0, 1);
+      return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+    }
+
+    function castMagic(caster) {
+      const owned = Object.keys(caster.magics);
+      if (owned.length === 0) return;
+
+      const magicId = owned[randInt(0, owned.length - 1)];
+      const lv = caster.magics[magicId];
+      const tip = getWandTip(caster);
+      const rangeM = caster.rangeMult;
+      const count = caster.multiShot;
+
+      const spreadAngles = (n, stepRad) => {
+        const arr = [];
+        for (let i = 0; i < n; i++) {
+          arr.push(caster.angle + (i - (n - 1) / 2) * stepRad);
+        }
+        return arr;
+      };
+
+      // 1) 레이저 (Laser)
+      if (magicId === 'laser') {
+        if (caster.id === currentUser.uid) Sound.play('laser');
+        const angles = spreadAngles(count, 0.15);
+        const len = (135 + (lv - 1) * 34) * rangeM;
+        const width = (6 + lv * 1.4) * Math.sqrt(rangeM);
+        const dmg = Math.round(13 + lv * 5.5);
+
+        for (const ang of angles) {
+          const x2 = tip.x + Math.cos(ang) * len;
+          const y2 = tip.y + Math.sin(ang) * len;
+          sim.beams.push({
+            id: nextFxId++,
+            x1: tip.x, y1: tip.y, x2, y2,
+            w: width,
+            col: caster.color,
+            life: 0.17,
+            maxLife: 0.17
+          });
+
+          // 적 플레이어 타격
+          for (const t of sim.players) {
+            if (!t.alive || t.id === caster.id) continue;
+            if (pointToSegmentDist(t.x, t.y, tip.x, tip.y, x2, y2) <= t.radius + width * 0.55) {
+              damagePlayer(t, dmg, caster, Math.cos(ang) * 45, Math.sin(ang) * 45);
+            }
+          }
+          // 중립 몹 타격
+          for (const m of sim.mobs) {
+            if (m.hp <= 0) continue;
+            if (pointToSegmentDist(m.x, m.y, tip.x, tip.y, x2, y2) <= m.r + width * 0.55) {
+              damageMob(m, dmg, caster);
+            }
+          }
+        }
+      }
+
+      // 2) 화염구 (Fireball)
+      else if (magicId === 'fire') {
+        if (caster.id === currentUser.uid) Sound.play('fire');
+        const angles = spreadAngles(count, 0.22);
+        const dmg = Math.round(14 + lv * 6);
+        const r = 8.5 * Math.sqrt(rangeM);
+        for (const ang of angles) {
+          sim.projectiles.push({
+            id: nextProjId++,
+            kind: 'fire',
+            ownerId: caster.id,
+            x: clamp(tip.x, r + 2, ARENA_W - r - 2),
+            y: clamp(tip.y, r + 2, ARENA_H - r - 2),
+            vx: Math.cos(ang) * 310,
+            vy: Math.sin(ang) * 310,
+            a: ang,
+            r,
+            dmg,
+            explodeR: (46 + lv * 10) * rangeM,
+            life: 1.15 * rangeM
+          });
+        }
+      }
+
+      // 3) 얼음 창 (Ice Spear - 관통 + 둔화)
+      else if (magicId === 'ice') {
+        const angles = spreadAngles(count, 0.16);
+        const dmg = Math.round(11 + lv * 5);
+        const r = 9 * Math.sqrt(rangeM);
+        for (const ang of angles) {
+          sim.projectiles.push({
+            id: nextProjId++,
+            kind: 'ice',
+            ownerId: caster.id,
+            x: tip.x,
+            y: tip.y,
+            vx: Math.cos(ang) * 450,
+            vy: Math.sin(ang) * 450,
+            a: ang,
+            r,
+            dmg,
+            slowDur: 1.6 + lv * 0.4,
+            pierce: true,
+            hitSet: new Set(),
+            life: 1.25 * rangeM
+          });
+        }
+      }
+
+      // 4) 도탄 볼트 (Ricochet Bolt) — CRITICAL BUG FIX:
+      //    - 전역 고유 증가 ID 부여 (nextProjId++)
+      //    - 기존 발사된 도탄을 절대 삭제/덮어쓰기/배열 절단하지 않음
+      //    - 벽 바깥 스폰 방지 클램핑으로 스폰 즉시 소멸 방지
+      //    - 각 볼트가 완전히 독립적인 bouncesLeft와 life 타이머 유지
+      else if (magicId === 'bounce') {
+        if (caster.id === currentUser.uid) Sound.play('bounce');
+        const angles = spreadAngles(count, 0.22);
+        const dmg = Math.round(13 + lv * 5.5);
+        const maxBounces = 2 + lv; // Lv1: 3회, Lv2: 4회, Lv3: 5회...
+        const r = 8 * Math.sqrt(rangeM);
+        const sx = clamp(tip.x, r + 4, ARENA_W - r - 4);
+        const sy = clamp(tip.y, r + 4, ARENA_H - r - 4);
+
+        for (const ang of angles) {
+          sim.projectiles.push({
+            id: nextProjId++,
+            kind: 'bounce',
+            ownerId: caster.id,
+            x: sx,
+            y: sy,
+            vx: Math.cos(ang) * 355,
+            vy: Math.sin(ang) * 355,
+            a: ang,
+            r,
+            dmg,
+            bouncesLeft: maxBounces,
+            life: 4.5 * rangeM
+          });
+        }
+      }
+
+      // 5) 독 플라스크 (Poison Flask)
+      else if (magicId === 'poison') {
+        const angles = spreadAngles(count, 0.24);
+        const dmg = Math.round(6 + lv * 2.5);
+        const r = 7.5 * Math.sqrt(rangeM);
+        for (const ang of angles) {
+          sim.projectiles.push({
+            id: nextProjId++,
+            kind: 'poison',
+            ownerId: caster.id,
+            x: clamp(tip.x, r + 2, ARENA_W - r - 2),
+            y: clamp(tip.y, r + 2, ARENA_H - r - 2),
+            vx: Math.cos(ang) * 260,
+            vy: Math.sin(ang) * 260,
+            a: ang,
+            r,
+            dmg,
+            puddleR: (42 + lv * 9) * rangeM,
+            puddleDmg: Math.round(5 + lv * 3),
+            life: 0.7 * rangeM
+          });
+        }
+      }
+
+      // 6) 부메랑 칼날 (Boomerang Blade)
+      else if (magicId === 'boomerang') {
+        const angles = spreadAngles(count, 0.24);
+        const dmg = Math.round(11 + lv * 5);
+        const r = 13 * Math.sqrt(rangeM);
+        for (const ang of angles) {
+          sim.projectiles.push({
+            id: nextProjId++,
+            kind: 'boomerang',
+            ownerId: caster.id,
+            x: tip.x,
+            y: tip.y,
+            vx: Math.cos(ang) * 365,
+            vy: Math.sin(ang) * 365,
+            speed: 365,
+            a: 0,
+            r,
+            dmg,
+            returning: false,
+            outTimer: 0.58 * rangeM,
+            pierce: true,
+            hitSet: new Set(),
+            life: 3.6
+          });
+        }
+      }
+
+      // 7) 충격파 링 (Shockwave Ring)
+      else if (magicId === 'shockwave') {
+        const dmg = Math.round(14 + lv * 5.5);
+        const maxR = (96 + lv * 20) * rangeM;
+        const ringCount = Math.min(count, 3);
+        for (let i = 0; i < ringCount; i++) {
+          sim.shockwaves.push({
+            id: nextFxId++,
+            ownerId: caster.id,
+            x: caster.x,
+            y: caster.y,
+            r: caster.radius + i * 12,
+            maxR: maxR + i * 14,
+            speed: 280 * Math.sqrt(rangeM),
+            dmg: Math.round(dmg * (i === 0 ? 1 : 0.65)),
+            kb: 165 + lv * 20,
+            col: i % 2 === 0 ? '#A855F7' : '#EC4899',
+            hitSet: new Set()
+          });
+        }
+      }
+
+      // 8) 산탄 파편 (Scatter Shards - 삼각형 파편 부채꼴)
+      else if (magicId === 'scatter') {
+        const pellets = 4 + lv + (count - 1) * 2;
+        const cone = 0.64;
+        const dmg = Math.round(6 + lv * 2.6);
+        const r = 6 * Math.sqrt(rangeM);
+        for (let i = 0; i < pellets; i++) {
+          const t = pellets === 1 ? 0 : (i / (pellets - 1) - 0.5);
+          const ang = caster.angle + t * cone + rand(-0.04, 0.04);
+          const spd = rand(330, 420);
+          sim.projectiles.push({
+            id: nextProjId++,
+            kind: 'scatter',
+            ownerId: caster.id,
+            x: tip.x,
+            y: tip.y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            a: ang,
+            r,
+            dmg,
+            life: 0.44 * rangeM
+          });
+        }
+      }
+    }
+
+    function damagePlayer(target, amount, attacker, kbX = 0, kbY = 0) {
+      if (!target || !target.alive) return;
+      const dmg = Math.max(1, Math.round(amount));
+      target.hp -= dmg;
+      target.hitFlash = 0.12;
+      if (kbX || kbY) {
+        target.vx += kbX;
+        target.vy += kbY;
+      }
+
+      if (attacker && attacker.alive && attacker.id !== target.id) {
+        // 적에게 피해를 주면 소량의 경험치 획득
+        grantPlayerXP(attacker, Math.max(2, Math.round(dmg * 0.25)));
+      }
+
+      if (target.id === currentUser.uid || (attacker && attacker.id === currentUser.uid)) {
+        Sound.play('hit');
+      }
+
+      if (target.hp <= 0) {
+        target.hp = 0;
+        target.alive = false;
+        const deadCount = sim.players.filter(p => !p.alive).length;
+        target.deathOrder = deadCount;
+
+        sim.explosions.push({
+          id: nextFxId++,
+          x: target.x, y: target.y,
+          r: 46,
+          col: target.color,
+          life: 0.3,
+          maxLife: 0.3
+        });
+
+        // 사망 위치에 경험치 구슬 드롭
+        spawnSimOrb(target.x - 15, target.y, 'bigxp');
+        spawnSimOrb(target.x + 15, target.y, 'xp');
+
+        if (attacker && attacker.id !== target.id) {
+          attacker.kills += 1;
+          grantPlayerXP(attacker, 45);
+          sim.killFeed.unshift({
+            id: nextFxId++,
+            txt: `${attacker.name} → ${target.name} 처치!`,
+            t: sim.matchTime
+          });
+        } else {
+          sim.killFeed.unshift({
+            id: nextFxId++,
+            txt: `${target.name} 탈락!`,
+            t: sim.matchTime
+          });
+        }
+        if (sim.killFeed.length > 4) sim.killFeed.pop();
+
+        checkWinCondition();
+      }
+    }
+
+    function damageMob(mob, amount, attacker) {
+      if (!mob || mob.hp <= 0) return;
+      mob.hp -= Math.max(1, Math.round(amount));
+      mob.hitFlash = 0.1;
+      if (mob.hp <= 0) {
+        spawnSimOrb(mob.x, mob.y, 'xp');
+        if (attacker && attacker.alive) {
+          grantPlayerXP(attacker, 16);
+        }
+        sim.explosions.push({
+          id: nextFxId++,
+          x: mob.x, y: mob.y,
+          r: 22,
+          col: '#64748b',
+          life: 0.2,
+          maxLife: 0.2
+        });
+      }
+    }
+
+    function explodeFireball(proj) {
+      const owner = sim.players.find(p => p.id === proj.ownerId);
+      sim.explosions.push({
+        id: nextFxId++,
+        x: proj.x, y: proj.y,
+        r: proj.explodeR,
+        col: '#EF4444',
+        life: 0.24,
+        maxLife: 0.24
+      });
+
+      for (const t of sim.players) {
+        if (!t.alive || t.id === proj.ownerId) continue;
+        if (dist(proj.x, proj.y, t.x, t.y) <= proj.explodeR + t.radius) {
+          const ang = Math.atan2(t.y - proj.y, t.x - proj.x);
+          damagePlayer(t, proj.dmg, owner, Math.cos(ang) * 85, Math.sin(ang) * 85);
+        }
+      }
+      for (const m of sim.mobs) {
+        if (m.hp <= 0) continue;
+        if (dist(proj.x, proj.y, m.x, m.y) <= proj.explodeR + m.r) {
+          damageMob(m, proj.dmg, owner);
+        }
+      }
+    }
+
+    function spawnPoisonPuddle(proj) {
+      sim.puddles.push({
+        id: nextFxId++,
+        ownerId: proj.ownerId,
+        x: clamp(proj.x, 35, ARENA_W - 35),
+        y: clamp(proj.y, 35, ARENA_H - 35),
+        r: proj.puddleR,
+        dmg: proj.puddleDmg,
+        life: 3.6,
+        maxLife: 3.6,
+        tickTimer: 0.1
+      });
+    }
+
+    function checkWinCondition() {
+      if (sim.ended) return;
+      const alive = sim.players.filter(p => p.alive);
+      if (alive.length <= 1) {
+        sim.ended = true;
+        const winner = alive[0] || null;
+        const rankings = [...sim.players].sort((a, b) => {
+          if (a.alive !== b.alive) return a.alive ? -1 : 1;
+          return (b.deathOrder || 0) - (a.deathOrder || 0);
+        }).map((p, idx) => ({
+          rank: idx + 1,
+          id: p.id,
+          name: p.name,
+          colorIdx: p.colorIdx,
+          isBot: p.isBot,
+          kills: p.kills,
+          level: p.level,
+          magics: Object.entries(p.magics).map(([id, lv]) => ({ id, lv }))
+        }));
+
+        pushHostSnapshot(true);
+
+        updateDoc(roomDocRef(net.roomCode), {
+          status: 'ended',
+          matchDuration: Math.floor(sim.matchTime),
+          winner: winner ? { id: winner.id, name: winner.name, colorIdx: winner.colorIdx } : null,
+          rankings,
+          updatedAt: Date.now()
+        }).catch((err) => console.error('End match update error:', err));
+      }
+    }
+
+    function stepHostSimulation(dt) {
+      if (!sim.active || sim.ended) return;
+      sim.matchTime += dt;
+
+      // 1) 플레이어 순수 운빨 이동 + 회전 + 자동 마법 시전
+      for (const p of sim.players) {
+        if (!p.alive) continue;
+        const slowM = p.slowTimer > 0 ? 0.45 : 1.0;
+
+        // 머리 축 회전 (가끔 방향 전환)
+        p.aiRotTimer -= dt;
+        if (p.aiRotTimer <= 0) {
+          p.aiRotTimer = rand(1.6, 4.0);
+          if (Math.random() < 0.65) p.rotDir *= -1;
+        }
+        p.angle += p.rotSpeed * p.rotDir * slowM * dt;
+
+        // 무작위 배회 이동 (수동 조작 없음)
+        p.aiDirTimer -= dt;
+        if (p.aiDirTimer <= 0) {
+          p.aiDirTimer = rand(0.7, 1.8);
+          const dir = rand(0, Math.PI * 2);
+          p.vx = Math.cos(dir) * p.moveSpeed;
+          p.vy = Math.sin(dir) * p.moveSpeed;
+        }
+
+        // 넉백 감쇠
+        const curV = Math.hypot(p.vx, p.vy);
+        if (curV > p.moveSpeed * 2.2) {
+          p.vx = (p.vx / curV) * p.moveSpeed * 2.2;
+          p.vy = (p.vy / curV) * p.moveSpeed * 2.2;
+        }
+
+        p.x += p.vx * slowM * dt;
+        p.y += p.vy * slowM * dt;
+
+        // 고정 1200x800 벽 부드러운 반사
+        const margin = p.radius + 8;
+        if (p.x < margin) { p.x = margin; p.vx = Math.abs(p.vx); }
+        else if (p.x > ARENA_W - margin) { p.x = ARENA_W - margin; p.vx = -Math.abs(p.vx); }
+        if (p.y < margin) { p.y = margin; p.vy = Math.abs(p.vy); }
+        else if (p.y > ARENA_H - margin) { p.y = ARENA_H - margin; p.vy = -Math.abs(p.vy); }
+
+        if (p.hitFlash > 0) p.hitFlash -= dt;
+        if (p.slowTimer > 0) p.slowTimer -= dt;
+
+        // 확률 기반 마법 자동 발사
+        const probPerSec = p.baseFireProb * p.fireRateMult;
+        if (Math.random() < probPerSec * dt) {
+          castMagic(p);
+        }
+
+        // AI 봇 실시간 자동 선택
+        if (p.isBot && p.levelUpQueue.length > 0) {
+          p.botPickTimer -= dt;
+          if (p.botPickTimer <= 0) {
+            applyPlayerChoice(p, randInt(0, 2));
+            p.botPickTimer = rand(0.5, 1.1);
+          }
+        }
+      }
+
+      // 플레이어 간 몸통 밀어내기
+      for (let i = 0; i < sim.players.length; i++) {
+        const a = sim.players[i];
+        if (!a.alive) continue;
+        for (let j = i + 1; j < sim.players.length; j++) {
+          const b = sim.players[j];
+          if (!b.alive) continue;
+          const d = dist(a.x, a.y, b.x, b.y);
+          const minD = a.radius + b.radius;
+          if (d < minD) {
+            const nx = (a.x - b.x) / (d || 1);
+            const ny = (a.y - b.y) / (d || 1);
+            const overlap = (minD - d) * 0.5;
+            a.x = clamp(a.x + nx * overlap, a.radius + 8, ARENA_W - a.radius - 8);
+            a.y = clamp(a.y + ny * overlap, a.radius + 8, ARENA_H - a.radius - 8);
+            b.x = clamp(b.x - nx * overlap, b.radius + 8, ARENA_W - b.radius - 8);
+            b.y = clamp(b.y - ny * overlap, b.radius + 8, ARENA_H - b.radius - 8);
+          }
+        }
+      }
+
+      // 2) 중립 몹 업데이트 & 스폰
+      if (sim.neutralMobsEnabled) {
+        sim.mobTimer += dt;
+        if (sim.mobTimer >= 5.0) {
+          sim.mobTimer = 0;
+          spawnSimMob();
+        }
+      }
+      for (const m of sim.mobs) {
+        if (m.hp <= 0) continue;
+        m.aiTimer -= dt;
+        if (m.aiTimer <= 0) {
+          m.aiTimer = rand(0.7, 1.8);
+          const dir = rand(0, Math.PI * 2);
+          m.vx = Math.cos(dir) * 85;
+          m.vy = Math.sin(dir) * 85;
+        }
+        const sm = m.slowTimer > 0 ? 0.45 : 1.0;
+        m.x += m.vx * sm * dt;
+        m.y += m.vy * sm * dt;
+        if (m.x < m.r + 8) { m.x = m.r + 8; m.vx = Math.abs(m.vx); }
+        else if (m.x > ARENA_W - m.r - 8) { m.x = ARENA_W - m.r - 8; m.vx = -Math.abs(m.vx); }
+        if (m.y < m.r + 8) { m.y = m.r + 8; m.vy = Math.abs(m.vy); }
+        else if (m.y > ARENA_H - m.r - 8) { m.y = ARENA_H - m.r - 8; m.vy = -Math.abs(m.vy); }
+        if (m.hitFlash > 0) m.hitFlash -= dt;
+        if (m.slowTimer > 0) m.slowTimer -= dt;
+      }
+      sim.mobs = sim.mobs.filter(m => m.hp > 0);
+
+      // 3) 파워 구슬 스폰 및 획득
+      sim.orbTimer += dt;
+      if (sim.orbTimer >= 2.6) {
+        sim.orbTimer = 0;
+        spawnSimOrb();
+      }
+      for (let i = sim.orbs.length - 1; i >= 0; i--) {
+        const o = sim.orbs[i];
+        let taken = false;
+        for (const p of sim.players) {
+          if (!p.alive) continue;
+          if (dist(p.x, p.y, o.x, o.y) <= p.radius + o.r + 6) {
+            if (o.heal > 0) p.hp = Math.min(p.maxHp, p.hp + o.heal);
+            grantPlayerXP(p, o.xp);
+            if (p.id === currentUser.uid) Sound.play('pickup');
+            taken = true;
+            break;
+          }
+        }
+        if (taken) sim.orbs.splice(i, 1);
+      }
+
+      // 4) 투사체 업데이트 (도탄 볼트 독립 수명/반사 완벽 유지)
+      for (let i = sim.projectiles.length - 1; i >= 0; i--) {
+        const proj = sim.projectiles[i];
+        proj.life -= dt;
+
+        // 부메랑 귀환 로직
+        if (proj.kind === 'boomerang') {
+          proj.a += dt * 16;
+          if (!proj.returning) {
+            proj.outTimer -= dt;
+            if (proj.outTimer <= 0) {
+              proj.returning = true;
+              proj.hitSet.clear();
+            }
+          } else {
+            const caster = sim.players.find(p => p.id === proj.ownerId);
+            if (!caster || !caster.alive) {
+              sim.projectiles.splice(i, 1);
+              continue;
+            }
+            const dx = caster.x - proj.x;
+            const dy = caster.y - proj.y;
+            const d = Math.hypot(dx, dy);
+            if (d < caster.radius + 12) {
+              sim.projectiles.splice(i, 1);
+              continue;
+            }
+            proj.vx = (dx / d) * (proj.speed * 1.15);
+            proj.vy = (dy / d) * (proj.speed * 1.15);
+          }
+        }
+
+        proj.x += proj.vx * dt;
+        proj.y += proj.vy * dt;
+
+        // 도탄 볼트: 1200x800 고정 벽 반사
+        if (proj.kind === 'bounce') {
+          let bounced = false;
+          if (proj.x < proj.r && proj.vx < 0) {
+            proj.x = proj.r; proj.vx *= -1; bounced = true;
+          } else if (proj.x > ARENA_W - proj.r && proj.vx > 0) {
+            proj.x = ARENA_W - proj.r; proj.vx *= -1; bounced = true;
+          }
+          if (proj.y < proj.r && proj.vy < 0) {
+            proj.y = proj.r; proj.vy *= -1; bounced = true;
+          } else if (proj.y > ARENA_H - proj.r && proj.vy > 0) {
+            proj.y = ARENA_H - proj.r; proj.vy *= -1; bounced = true;
+          }
+          if (bounced) {
+            proj.bouncesLeft -= 1;
+            proj.a = Math.atan2(proj.vy, proj.vx);
+            if (proj.bouncesLeft < 0) {
+              sim.projectiles.splice(i, 1);
+              continue;
+            }
+          }
+        }
+
+        // 화염구 벽 충돌 폭발
+        const hitWall = proj.x <= proj.r || proj.x >= ARENA_W - proj.r ||
+                        proj.y <= proj.r || proj.y >= ARENA_H - proj.r;
+        if (proj.kind === 'fire' && hitWall) {
+          proj.x = clamp(proj.x, proj.r, ARENA_W - proj.r);
+          proj.y = clamp(proj.y, proj.r, ARENA_H - proj.r);
+          explodeFireball(proj);
+          sim.projectiles.splice(i, 1);
+          continue;
+        }
+
+        // 화면 밖 이탈 (도탄과 부메랑 제외)
+        const outOfBounds = proj.kind !== 'bounce' && proj.kind !== 'boomerang' &&
+          (proj.x < -30 || proj.x > ARENA_W + 30 || proj.y < -30 || proj.y > ARENA_H + 30);
+
+        if (proj.life <= 0 || outOfBounds) {
+          if (proj.kind === 'fire') explodeFireball(proj);
+          else if (proj.kind === 'poison') spawnPoisonPuddle(proj);
+          sim.projectiles.splice(i, 1);
+          continue;
+        }
+
+        // 플레이어 및 중립 몹 충돌 판정
+        const owner = sim.players.find(p => p.id === proj.ownerId);
+        let destroyed = false;
+
+        for (const t of sim.players) {
+          if (!t.alive || t.id === proj.ownerId) continue;
+          if (proj.pierce && proj.hitSet.has(t.id)) continue;
+
+          if (dist(proj.x, proj.y, t.x, t.y) <= proj.r + t.radius) {
+            const ang = Math.atan2(proj.vy, proj.vx);
+            if (proj.kind === 'fire') {
+              explodeFireball(proj);
+              destroyed = true;
+              break;
+            } else if (proj.kind === 'ice') {
+              proj.hitSet.add(t.id);
+              damagePlayer(t, proj.dmg, owner, Math.cos(ang) * 40, Math.sin(ang) * 40);
+              t.slowTimer = Math.max(t.slowTimer, proj.slowDur);
+            } else if (proj.kind === 'bounce') {
+              damagePlayer(t, proj.dmg, owner, Math.cos(ang) * 60, Math.sin(ang) * 60);
+              destroyed = true;
+              break;
+            } else if (proj.kind === 'poison') {
+              damagePlayer(t, proj.dmg, owner);
+              spawnPoisonPuddle(proj);
+              destroyed = true;
+              break;
+            } else if (proj.kind === 'boomerang') {
+              proj.hitSet.add(t.id);
+              damagePlayer(t, proj.dmg, owner, Math.cos(ang) * 55, Math.sin(ang) * 55);
+            } else if (proj.kind === 'scatter') {
+              damagePlayer(t, proj.dmg, owner, Math.cos(ang) * 60, Math.sin(ang) * 60);
+              destroyed = true;
+              break;
+            }
+          }
+        }
+
+        if (!destroyed) {
+          for (const m of sim.mobs) {
+            if (m.hp <= 0) continue;
+            if (proj.pierce && proj.hitSet.has(`m_${m.id}`)) continue;
+            if (dist(proj.x, proj.y, m.x, m.y) <= proj.r + m.r) {
+              if (proj.kind === 'fire') {
+                explodeFireball(proj);
+                destroyed = true;
+                break;
+              } else if (proj.kind === 'ice') {
+                proj.hitSet.add(`m_${m.id}`);
+                damageMob(m, proj.dmg, owner);
+                m.slowTimer = Math.max(m.slowTimer, proj.slowDur);
+              } else if (proj.kind === 'bounce') {
+                damageMob(m, proj.dmg, owner);
+                destroyed = true;
+                break;
+              } else if (proj.kind === 'poison') {
+                damageMob(m, proj.dmg, owner);
+                spawnPoisonPuddle(proj);
+                destroyed = true;
+                break;
+              } else if (proj.kind === 'boomerang') {
+                proj.hitSet.add(`m_${m.id}`);
+                damageMob(m, proj.dmg, owner);
+              } else if (proj.kind === 'scatter') {
+                damageMob(m, proj.dmg, owner);
+                destroyed = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (destroyed) sim.projectiles.splice(i, 1);
+      }
+
+      // 5) 충격파 링 업데이트
+      for (let i = sim.shockwaves.length - 1; i >= 0; i--) {
+        const sw = sim.shockwaves[i];
+        sw.r += sw.speed * dt;
+        const owner = sim.players.find(p => p.id === sw.ownerId);
+
+        for (const t of sim.players) {
+          if (!t.alive || t.id === sw.ownerId || sw.hitSet.has(t.id)) continue;
+          const d = dist(sw.x, sw.y, t.x, t.y);
+          if (Math.abs(d - sw.r) <= t.radius + 10) {
+            sw.hitSet.add(t.id);
+            const ang = Math.atan2(t.y - sw.y, t.x - sw.x);
+            damagePlayer(t, sw.dmg, owner, Math.cos(ang) * sw.kb, Math.sin(ang) * sw.kb);
+          }
+        }
+        for (const m of sim.mobs) {
+          if (m.hp <= 0 || sw.hitSet.has(`m_${m.id}`)) continue;
+          const d = dist(sw.x, sw.y, m.x, m.y);
+          if (Math.abs(d - sw.r) <= m.r + 10) {
+            sw.hitSet.add(`m_${m.id}`);
+            damageMob(m, sw.dmg, owner);
+          }
+        }
+        if (sw.r >= sw.maxR) sim.shockwaves.splice(i, 1);
+      }
+
+      // 6) 독 장판 업데이트
+      for (let i = sim.puddles.length - 1; i >= 0; i--) {
+        const pd = sim.puddles[i];
+        pd.life -= dt;
+        pd.tickTimer -= dt;
+        if (pd.tickTimer <= 0) {
+          pd.tickTimer = 0.45;
+          const owner = sim.players.find(p => p.id === pd.ownerId);
+          for (const t of sim.players) {
+            if (t.alive && t.id !== pd.ownerId && dist(pd.x, pd.y, t.x, t.y) <= pd.r + t.radius * 0.7) {
+              damagePlayer(t, pd.dmg, owner);
+            }
+          }
+          for (const m of sim.mobs) {
+            if (m.hp > 0 && dist(pd.x, pd.y, m.x, m.y) <= pd.r + m.r * 0.7) {
+              damageMob(m, pd.dmg, owner);
+            }
+          }
+        }
+        if (pd.life <= 0) sim.puddles.splice(i, 1);
+      }
+
+      // 7) 빔 / 폭발 수명 감소
+      for (let i = sim.beams.length - 1; i >= 0; i--) {
+        sim.beams[i].life -= dt;
+        if (sim.beams[i].life <= 0) sim.beams.splice(i, 1);
+      }
+      for (let i = sim.explosions.length - 1; i >= 0; i--) {
+        sim.explosions[i].life -= dt;
+        if (sim.explosions[i].life <= 0) sim.explosions.splice(i, 1);
+      }
+    }
+
+    // =========================================================================
+    // 8. 호스트 스냅샷 송신 (13Hz) & 클라이언트 보간 수신
+    // =========================================================================
+    function buildCompactSnapshot() {
+      return {
+        ts: Date.now(),
+        mt: round1(sim.matchTime),
+        ps: sim.players.map(p => ({
+          id: p.id,
+          nm: p.name,
+          ci: p.colorIdx,
+          x: round1(p.x),
+          y: round1(p.y),
+          a: round2(p.angle),
+          hp: Math.ceil(p.hp),
+          mhp: p.maxHp,
+          al: p.alive,
+          lv: p.level,
+          xp: Math.floor(p.xp),
+          xpn: p.xpNext,
+          k: p.kills,
+          hf: p.hitFlash > 0,
+          sl: p.slowTimer > 0,
+          fr: Math.round(p.fireRateMult * 100),
+          rg: Math.round(p.rangeMult * 100),
+          ms: p.multiShot,
+          mag: Object.entries(p.magics).map(([id, lv]) => ({ id, lv })),
+          pc: p.levelUpQueue.length,
+          ch: p.levelUpQueue.length > 0 ? p.levelUpQueue[0] : []
+        })),
+        mb: sim.mobs.map(m => ({
+          id: m.id,
+          x: round1(m.x),
+          y: round1(m.y),
+          hp: m.hp,
+          mhp: m.maxHp,
+          hf: m.hitFlash > 0,
+          sl: m.slowTimer > 0
+        })),
+        ob: sim.orbs.map(o => ({
+          id: o.id,
+          t: o.t,
+          x: round1(o.x),
+          y: round1(o.y),
+          r: o.r
+        })),
+        // 모든 투사체를 고유 ID와 함께 그대로 전송 (도탄 누락 방지)
+        pr: sim.projectiles.map(pr => ({
+          id: pr.id,
+          k: pr.kind,
+          x: round1(pr.x),
+          y: round1(pr.y),
+          vx: round1(pr.vx),
+          vy: round1(pr.vy),
+          a: round2(pr.a),
+          r: round1(pr.r)
+        })),
+        bm: sim.beams.map(b => ({
+          id: b.id,
+          x1: round1(b.x1), y1: round1(b.y1),
+          x2: round1(b.x2), y2: round1(b.y2),
+          w: round1(b.w),
+          col: b.col,
+          l: round2(b.life / b.maxLife)
+        })),
+        ex: sim.explosions.map(e => ({
+          id: e.id,
+          x: round1(e.x), y: round1(e.y),
+          r: round1(e.r),
+          col: e.col,
+          l: round2(e.life / e.maxLife)
+        })),
+        sw: sim.shockwaves.map(s => ({
+          id: s.id,
+          x: round1(s.x), y: round1(s.y),
+          r: round1(s.r),
+          mr: round1(s.maxR),
+          col: s.col
+        })),
+        pd: sim.puddles.map(p => ({
+          id: p.id,
+          x: round1(p.x), y: round1(p.y),
+          r: round1(p.r),
+          l: round2(p.life / p.maxLife)
+        })),
+        kf: sim.killFeed.map(k => ({ id: k.id, txt: k.txt }))
+      };
+    }
+
+    function pushHostSnapshot(force = false) {
+      if (!currentUser || !net.isHost || !net.roomCode) return;
+      if (net.syncInFlight && !force) return;
+      const snap = buildCompactSnapshot();
+      // 호스트도 동일한 view 구조로 렌더링·UI 동기화
+      applyClientSnapshot(snap, true);
+
+      net.syncInFlight = true;
+      setDoc(stateDocRef(net.roomCode), snap)
+        .catch((err) => console.error('Host sync error:', err))
+        .finally(() => { net.syncInFlight = false; });
+    }
+
+    function applyClientSnapshot(snap, isDirectHost = false) {
+      if (!snap) return;
+      view.matchTime = snap.mt || 0;
+      net.lastStateReceivedAt = Date.now();
+
+      // 플레이어 보간 타겟 갱신
+      const seenP = new Set();
+      for (const p of (snap.ps || [])) {
+        seenP.add(p.id);
+        const existing = view.players.get(p.id);
+        if (!existing || isDirectHost) {
+          view.players.set(p.id, {
+            ...p,
+            rx: p.x, ry: p.y, ra: p.a,
+            tx: p.x, ty: p.y, ta: p.a
+          });
+        } else {
+          Object.assign(existing, p);
+          existing.tx = p.x;
+          existing.ty = p.y;
+          existing.ta = p.a;
+        }
+      }
+      for (const id of view.players.keys()) {
+        if (!seenP.has(id)) view.players.delete(id);
+      }
+
+      // 중립 몹 보간 타겟 갱신
+      const seenM = new Set();
+      for (const m of (snap.mb || [])) {
+        seenM.add(m.id);
+        const existing = view.mobs.get(m.id);
+        if (!existing || isDirectHost) {
+          view.mobs.set(m.id, { ...m, rx: m.x, ry: m.y, tx: m.x, ty: m.y });
+        } else {
+          Object.assign(existing, m);
+          existing.tx = m.x;
+          existing.ty = m.y;
+        }
+      }
+      for (const id of view.mobs.keys()) {
+        if (!seenM.has(id)) view.mobs.delete(id);
+      }
+
+      // 투사체 보간 타겟 갱신 (고유 ID 기반)
+      const seenPr = new Set();
+      for (const pr of (snap.pr || [])) {
+        seenPr.add(pr.id);
+        const existing = view.projectiles.get(pr.id);
+        if (!existing || isDirectHost) {
+          view.projectiles.set(pr.id, { ...pr, rx: pr.x, ry: pr.y, tx: pr.x, ty: pr.y });
+        } else {
+          Object.assign(existing, pr);
+          existing.tx = pr.x;
+          existing.ty = pr.y;
+        }
+      }
+      for (const id of view.projectiles.keys()) {
+        if (!seenPr.has(id)) view.projectiles.delete(id);
+      }
+
+      view.orbs = snap.ob || [];
+      view.beams = snap.bm || [];
+      view.explosions = snap.ex || [];
+      view.shockwaves = snap.sw || [];
+      view.puddles = snap.pd || [];
+      view.killFeed = snap.kf || [];
+
+      updateInGameUI();
+    }
+
+    function interpolateView(dt) {
+      if (net.isHost) {
+        // 호스트는 sim에서 직접 최신 좌표 반영 (60fps 즉각 반응)
+        for (const p of sim.players) {
+          const vp = view.players.get(p.id);
+          if (vp) { vp.rx = p.x; vp.ry = p.y; vp.ra = p.angle; }
+        }
+        for (const m of sim.mobs) {
+          const vm = view.mobs.get(m.id);
+          if (vm) { vm.rx = m.x; vm.ry = m.y; }
+        }
+        for (const pr of sim.projectiles) {
+          const vpr = view.projectiles.get(pr.id);
+          if (vpr) { vpr.rx = pr.x; vpr.ry = pr.y; vpr.a = pr.a; }
+        }
+        return;
+      }
+
+      // 비호스트 클라이언트 부드러운 보간 + 속도 예측
+      const smooth = Math.min(1, dt * 16);
+      for (const p of view.players.values()) {
+        p.rx += (p.tx - p.rx) * smooth;
+        p.ry += (p.ty - p.ry) * smooth;
+        p.ra = lerpAngle(p.ra, p.ta, smooth);
+      }
+      for (const m of view.mobs.values()) {
+        m.rx += (m.tx - m.rx) * smooth;
+        m.ry += (m.ty - m.ry) * smooth;
+      }
+      for (const pr of view.projectiles.values()) {
+        pr.tx = clamp(pr.tx + pr.vx * dt, 0, ARENA_W);
+        pr.ty = clamp(pr.ty + pr.vy * dt, 0, ARENA_H);
+        pr.rx += (pr.tx - pr.rx) * Math.min(1, dt * 22);
+        pr.ry += (pr.ty - pr.ry) * Math.min(1, dt * 22);
+        if (pr.k === 'boomerang') pr.a += dt * 16;
+      }
+    }
+
+    // =========================================================================
+    // 9. 인게임 HUD & 실시간 하단 3지선다 선택 처리
+    // =========================================================================
+    function formatTime(sec) {
+      const s = Math.max(0, Math.floor(sec));
+      const mm = String(Math.floor(s / 60)).padStart(2, '0');
+      const ss = String(s % 60).padStart(2, '0');
+      return `${mm}:${ss}`;
+    }
+
+    function updateInGameUI() {
+      const players = Array.from(view.players.values());
+      const aliveCount = players.filter(p => p.al).length;
+
+      document.getElementById('hud-alive').textContent = `생존 ${aliveCount}/${players.length}`;
+      document.getElementById('hud-timer').textContent = formatTime(view.matchTime);
+
+      // 상단 참가자 미니 HP바
+      const partEl = document.getElementById('hud-participants');
+      partEl.innerHTML = '';
+      for (const p of players) {
+        const pal = PLAYER_PALETTE[p.ci % PLAYER_PALETTE.length];
+        const pct = clamp((p.hp / (p.mhp || 1)) * 100, 0, 100);
+        const item = document.createElement('div');
+        item.className = `flex items-center gap-1.5 px-2 py-0.5 rounded-lg border border-slate-800 shrink-0 ${p.al ? 'bg-slate-50' : 'bg-slate-200 opacity-50'}`;
+        item.innerHTML = `
+          <span class="w-3 h-3 rounded-full border border-slate-800 shrink-0" style="background:${pal.hex};"></span>
+          <div class="flex flex-col w-20 sm:w-24">
+            <div class="flex justify-between text-[10px] font-black leading-tight">
+              <span class="truncate max-w-[54px] text-slate-900">${escapeHtml(p.nm)}</span>
+              <span class="text-amber-600">Lv.${p.lv}</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-200 rounded-sm border border-slate-700 overflow-hidden mt-0.5">
+              <div class="h-full ${p.al ? 'bg-rose-500' : 'bg-slate-400'}" style="width:${pct}%;"></div>
+            </div>
+          </div>
+        `;
+        partEl.appendChild(item);
+      }
+
+      // 킬피드
+      const kfEl = document.getElementById('kill-feed');
+      kfEl.innerHTML = '';
+      for (const k of view.killFeed) {
+        const badge = document.createElement('div');
+        badge.className = 'bg-slate-900/80 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg border border-slate-600';
+        badge.textContent = k.txt;
+        kfEl.appendChild(badge);
+      }
+
+      // 내 상태 확인
+      const me = currentUser ? view.players.get(currentUser.uid) : null;
+      if (!me) return;
+
+      document.getElementById('spectate-banner').classList.toggle('hidden', me.al);
+
+      // 내 XP & 스탯 & 보유 마법
+      document.getElementById('my-hud-lv').textContent = me.lv;
+      document.getElementById('my-hud-xp-text').textContent = `${me.xp}/${me.xpn}`;
+      document.getElementById('my-hud-xp-bar').style.width = `${clamp((me.xp / (me.xpn || 1)) * 100, 0, 100)}%`;
+      document.getElementById('my-stat-fr').textContent = `${me.fr}%`;
+      document.getElementById('my-stat-rg').textContent = `${me.rg}%`;
+      document.getElementById('my-stat-ms').textContent = me.ms;
+
+      const buildEl = document.getElementById('my-build-magics');
+      buildEl.innerHTML = '';
+      for (const m of (me.mag || [])) {
+        const def = MAGIC_DEFS[m.id];
+        if (!def) continue;
+        const chip = document.createElement('div');
+        chip.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-slate-800 text-[11px] font-bold shrink-0';
+        chip.style.backgroundColor = def.bg;
+        chip.style.color = def.color;
+        chip.innerHTML = `<span>${def.icon}</span><span class="text-slate-900">${def.name}</span><span class="font-black">Lv.${m.lv}</span>`;
+        buildEl.appendChild(chip);
+      }
+
+      // 실시간 하단 3지선다 표시 여부
+      const idleBar = document.getElementById('bottom-idle-bar');
+      const lvBar = document.getElementById('bottom-levelup-bar');
+
+      if (me.al && me.pc > 0 && me.ch && me.ch.length === 3) {
+        idleBar.classList.add('hidden');
+        lvBar.classList.remove('hidden');
+        document.getElementById('levelup-queue-badge').textContent = `남은 선택: ${me.pc}`;
+
+        const key = `${me.lv}_${me.pc}_${me.ch.map(c => c.kind + c.id + c.nextLv).join('_')}`;
+        if (net.shownChoicesKey !== key) {
+          net.shownChoicesKey = key;
+          renderRealtimeChoices(me.ch);
+        }
+      } else {
+        lvBar.classList.add('hidden');
+        idleBar.classList.remove('hidden');
+        net.shownChoicesKey = '';
+      }
+    }
+
+    function renderRealtimeChoices(choices) {
+      const container = document.getElementById('rt-choices-container');
+      container.innerHTML = '';
+
+      choices.forEach((c, idx) => {
+        const isMagic = c.kind === 'm';
+        const def = isMagic ? MAGIC_DEFS[c.id] : STAT_DEFS[c.id];
+        const badgeText = isMagic ? (c.nextLv === 1 ? 'NEW 마법' : `Lv.${c.nextLv}`) : '스탯';
+        const descText = isMagic ? (c.nextLv === 1 ? def.desc : def.upDesc) : def.desc;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'rt-choice-card bg-white rounded-xl p-2 sm:p-2.5 text-left flex flex-col justify-between cursor-pointer';
+        btn.innerHTML = `
+          <div class="flex items-center justify-between gap-1 mb-1">
+            <span class="text-[10px] font-black px-1.5 py-0.2 rounded border border-slate-800 truncate" style="background:${def.bg}; color:${def.color};">
+              ${badgeText}
+            </span>
+            <span class="text-[11px] font-black text-slate-400 shrink-0">[${idx + 1}]</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-md border border-slate-800 flex items-center justify-center text-sm font-black shrink-0" style="background:${def.bg}; color:${def.color};">
+              ${def.icon}
+            </span>
+            <div class="min-w-0">
+              <div class="font-game text-xs sm:text-base text-slate-900 leading-tight truncate">${def.name}</div>
+              <div class="text-[10px] sm:text-[11px] font-bold text-slate-500 truncate">${descText}</div>
+            </div>
+          </div>
+        `;
+        btn.addEventListener('click', () => handleLocalChoiceSelect(idx));
+        container.appendChild(btn);
+      });
+    }
+
+    async function handleLocalChoiceSelect(idx) {
+      if (!currentUser || !net.roomCode) return;
+      const me = view.players.get(currentUser.uid);
+      if (!me || !me.al || me.pc <= 0) return;
+
+      if (net.isHost) {
+        const hostPlayer = sim.players.find(p => p.id === currentUser.uid);
+        if (hostPlayer) {
+          applyPlayerChoice(hostPlayer, idx);
+          pushHostSnapshot(true);
+        }
+      } else {
+        // 클라이언트: 선택 인덱스를 Firestore 입력 문서로 전송
+        net.clientChoiceSeq += 1;
+        Sound.play('pickup');
+        // 중복 클릭 방지용으로 임시 숨김
+        document.getElementById('bottom-levelup-bar').classList.add('hidden');
+        document.getElementById('bottom-idle-bar').classList.remove('hidden');
+        try {
+          await setDoc(inputDocRef(net.roomCode, currentUser.uid), {
+            seq: net.clientChoiceSeq,
+            idx,
+            ts: Date.now()
+          });
+        } catch (err) {
+          console.error('Choice send error:', err);
+        }
+      }
+    }
+
+    function showMatchEndOverlay(roomData) {
+      Sound.play('win');
+      const winner = roomData.winner;
+      const titleEl = document.getElementById('winner-title');
+      if (winner) {
+        const pal = PLAYER_PALETTE[winner.colorIdx % PLAYER_PALETTE.length];
+        titleEl.innerHTML = `<span style="color:${pal.hex};">👑 ${escapeHtml(winner.name)}</span> 우승!`;
+      } else {
+        titleEl.textContent = '무승부!';
+      }
+
+      document.getElementById('winner-subtitle').textContent = `경기 시간 ${formatTime(roomData.matchDuration || view.matchTime)}`;
+
+      const rankEl = document.getElementById('final-rankings');
+      rankEl.innerHTML = '';
+      for (const r of (roomData.rankings || [])) {
+        const pal = PLAYER_PALETTE[r.colorIdx % PLAYER_PALETTE.length];
+        const magChips = (r.magics || []).map(m => {
+          const d = MAGIC_DEFS[m.id];
+          return d ? `<span class="text-[10px] font-bold px-1.5 py-0.2 rounded border border-slate-700" style="background:${d.bg}; color:${d.color};">${d.name} ${m.lv}</span>` : '';
+        }).join('');
+
+        const row = document.createElement('div');
+        row.className = 'bg-slate-50 border-2 border-slate-800 rounded-xl p-2.5 flex flex-col gap-1.5';
+        row.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="font-game text-lg w-6 text-center ${r.rank === 1 ? 'text-amber-500' : 'text-slate-500'}">#${r.rank}</span>
+              <span class="w-4 h-4 rounded-full border border-slate-800" style="background:${pal.hex};"></span>
+              <span class="text-sm font-black text-slate-900">${escapeHtml(r.name)}</span>
+              ${r.isBot ? '<span class="text-[10px] font-bold text-slate-400">(AI)</span>' : ''}
+            </div>
+            <div class="text-xs font-black text-slate-700 flex items-center gap-2">
+              <span class="text-amber-600">LV.${r.level}</span>
+              <span class="text-rose-600">킬 ${r.kills}</span>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-1 pl-8">${magChips}</div>
+        `;
+        rankEl.appendChild(row);
+      }
+
+      const retBtn = document.getElementById('btn-return-lobby');
+      const hint = document.getElementById('gameover-wait-hint');
+      retBtn.classList.toggle('hidden', !net.isHost);
+      hint.classList.toggle('hidden', net.isHost);
+
+      document.getElementById('overlay-gameover').classList.remove('hidden');
+    }
+
+    async function hostReturnToLobby() {
+      if (!currentUser || !net.isHost || !net.roomCode) return;
+      try {
+        await updateDoc(roomDocRef(net.roomCode), {
+          status: 'waiting',
+          winner: null,
+          rankings: [],
+          updatedAt: Date.now()
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    // =========================================================================
+    // 10. 1200x800 고정 논리 좌표 렌더링 (그림판 감성)
+    // =========================================================================
+    let pulseClock = 0;
+
+    function renderArena() {
+      // 논리 좌표계 1200x800 -> 현재 캔버스 픽셀 크기로 정확히 매핑
+      const scaleX = canvas.width / ARENA_W;
+      const scaleY = canvas.height / ARENA_H;
+      ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
+
+      // 1) 깔끔한 흰색 모눈종이 배경
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, ARENA_W, ARENA_H);
+
+      const step = 40;
+      ctx.strokeStyle = '#eef2f6';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (let x = step; x < ARENA_W; x += step) {
+        ctx.moveTo(x, 0); ctx.lineTo(x, ARENA_H);
+      }
+      for (let y = step; y < ARENA_H; y += step) {
+        ctx.moveTo(0, y); ctx.lineTo(ARENA_W, y);
+      }
+      ctx.stroke();
+
+      // 2) 독 장판
+      for (const pd of view.puddles) {
+        const alpha = clamp(pd.l, 0, 1) * 0.34;
+        ctx.beginPath();
+        ctx.arc(pd.x, pd.y, pd.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(34, 197, 94, ${alpha})`;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(21, 128, 61, ${alpha + 0.25})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // 3) 충격파 링
+      for (const sw of view.shockwaves) {
+        const alpha = clamp(1 - sw.r / (sw.mr || 1), 0.15, 1);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.arc(sw.x, sw.y, sw.r, 0, Math.PI * 2);
+        ctx.strokeStyle = sw.col;
+        ctx.lineWidth = 6.5;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 4) 파워 구슬 (노란 마름모 경험치 / 빨간 십자 회복)
+      for (const o of view.orbs) {
+        const s = o.r + Math.sin(pulseClock * 5 + o.id) * 1.4;
+        ctx.save();
+        ctx.translate(o.x, o.y);
+        if (o.t === 'heal') {
+          ctx.beginPath();
+          ctx.arc(0, 0, s, 0, Math.PI * 2);
+          ctx.fillStyle = '#F43F5E';
+          ctx.fill();
+          ctx.lineWidth = 1.8;
+          ctx.strokeStyle = '#1e293b';
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-s * 0.52, -s * 0.18, s * 1.04, s * 0.36);
+          ctx.fillRect(-s * 0.18, -s * 0.52, s * 0.36, s * 1.04);
+        } else {
+          ctx.rotate(pulseClock * 0.9 + o.id);
+          ctx.beginPath();
+          ctx.moveTo(0, -s * 1.15);
+          ctx.lineTo(s * 0.85, 0);
+          ctx.lineTo(0, s * 1.15);
+          ctx.lineTo(-s * 0.85, 0);
+          ctx.closePath();
+          ctx.fillStyle = o.t === 'bigxp' ? '#06B6D4' : '#FACC15';
+          ctx.fill();
+          ctx.lineWidth = 1.6;
+          ctx.strokeStyle = '#1e293b';
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // 5) 중립 몹
+      for (const m of view.mobs.values()) {
+        ctx.save();
+        ctx.translate(m.rx, m.ry);
+        ctx.beginPath();
+        ctx.arc(0, 0, 13, 0, Math.PI * 2);
+        ctx.fillStyle = m.hf ? '#ffffff' : (m.sl ? '#38BDF8' : '#64748b');
+        ctx.fill();
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = '#1e293b';
+        ctx.stroke();
+
+        // 미니 HP바
+        const bw = 24;
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(-bw / 2, -21, bw, 4);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-bw / 2, -21, bw * clamp(m.hp / (m.mhp || 1), 0, 1), 4);
+        ctx.restore();
+      }
+
+      // 6) 플레이어 캐릭터 (동그라미 머리 + 꺾인 막대기 팔 + 주황색 완드)
+      for (const p of view.players.values()) {
+        if (!p.al) continue;
+        const pal = PLAYER_PALETTE[p.ci % PLAYER_PALETTE.length];
+        const r = 22;
+        const bodyCol = p.hf ? '#ffffff' : (p.sl ? '#38BDF8' : pal.hex);
+
+        ctx.save();
+        ctx.translate(p.rx, p.ry);
+
+        ctx.save();
+        ctx.rotate(p.ra);
+
+        // 꺾인 두 막대기 팔
+        const armW = 7.5;
+        ctx.strokeStyle = bodyCol;
+        ctx.lineWidth = armW;
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+
+        ctx.beginPath();
+        ctx.moveTo(r * 0.55, -r * 0.78);
+        ctx.lineTo(r * 1.45, -r * 1.15);
+        ctx.lineTo(r * 2.15, -r * 0.22);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(r * 0.55, r * 0.78);
+        ctx.lineTo(r * 1.45, r * 1.15);
+        ctx.lineTo(r * 2.15, r * 0.22);
+        ctx.stroke();
+
+        // 주황색 직사각형 완드
+        const wandLen = r * 1.65;
+        const wandThick = 10;
+        ctx.fillStyle = '#e87a2e';
+        ctx.fillRect(r * 1.9, -wandThick / 2, wandLen, wandThick);
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(r * 1.9, -wandThick / 2, wandLen, wandThick);
+
+        // 동그라미 머리
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fillStyle = bodyCol;
+        ctx.fill();
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = '#1e293b';
+        ctx.stroke();
+
+        ctx.restore();
+
+        // 하단 닉네임 + HP바 + Lv 배지
+        const bw = 48;
+        const bh = 6;
+        const by = r + 8;
+
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(-bw / 2, by, bw, bh);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(-bw / 2, by, bw * clamp(p.hp / (p.mhp || 1), 0, 1), bh);
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(-bw / 2, by, bw, bh);
+
+        const isMe = currentUser && p.id === currentUser.uid;
+        ctx.font = isMe ? '900 13px "Noto Sans KR"' : '700 12px "Noto Sans KR"';
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#ffffff';
+        const label = `${p.nm} Lv.${p.lv}`;
+        ctx.strokeText(label, 0, by + 20);
+        ctx.fillStyle = isMe ? '#1d4ed8' : '#1e293b';
+        ctx.fillText(label, 0, by + 20);
+
+        ctx.restore();
+      }
+
+      // 7) 투사체 (심플 기하학 도형)
+      for (const pr of view.projectiles.values()) {
+        ctx.save();
+        ctx.translate(pr.rx, pr.ry);
+
+        if (pr.k === 'fire') {
+          ctx.beginPath();
+          ctx.arc(0, 0, pr.r, 0, Math.PI * 2);
+          ctx.fillStyle = '#F97316';
+          ctx.fill();
+          ctx.lineWidth = 1.8;
+          ctx.strokeStyle = '#1e293b';
+          ctx.stroke();
+        } else if (pr.k === 'poison') {
+          ctx.beginPath();
+          ctx.arc(0, 0, pr.r, 0, Math.PI * 2);
+          ctx.fillStyle = '#22C55E';
+          ctx.fill();
+          ctx.lineWidth = 1.8;
+          ctx.strokeStyle = '#1e293b';
+          ctx.stroke();
+        } else if (pr.k === 'bounce') {
+          // 도탄 볼트: 선명한 노란색 원 + 검은 외곽선
+          ctx.beginPath();
+          ctx.arc(0, 0, pr.r, 0, Math.PI * 2);
+          ctx.fillStyle = '#FACC15';
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#1e293b';
+          ctx.stroke();
+        } else if (pr.k === 'ice') {
+          ctx.rotate(pr.a);
+          const r = pr.r;
+          ctx.beginPath();
+          ctx.moveTo(r * 1.6, 0);
+          ctx.lineTo(0, r * 0.72);
+          ctx.lineTo(-r * 1.1, 0);
+          ctx.lineTo(0, -r * 0.72);
+          ctx.closePath();
+          ctx.fillStyle = '#38BDF8';
+          ctx.fill();
+          ctx.lineWidth = 1.6;
+          ctx.strokeStyle = '#1e293b';
+          ctx.stroke();
+        } else if (pr.k === 'boomerang') {
+          ctx.rotate(pr.a);
+          const r = pr.r;
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 6.5;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(-r, 0); ctx.lineTo(r, 0);
+          ctx.moveTo(0, -r); ctx.lineTo(0, r);
+          ctx.stroke();
+          ctx.strokeStyle = '#14B8A6';
+          ctx.lineWidth = 3.8;
+          ctx.stroke();
+        } else if (pr.k === 'scatter') {
+          // 산탄 파편: 심플 삼각형
+          ctx.rotate(pr.a);
+          const r = pr.r * 1.3;
+          ctx.beginPath();
+          ctx.moveTo(r, 0);
+          ctx.lineTo(-r * 0.8, r * 0.75);
+          ctx.lineTo(-r * 0.8, -r * 0.75);
+          ctx.closePath();
+          ctx.fillStyle = '#57534E';
+          ctx.fill();
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = '#1e293b';
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      // 8) 레이저 빔
+      for (const b of view.beams) {
+        ctx.save();
+        ctx.globalAlpha = clamp(b.l, 0, 1);
+        ctx.beginPath();
+        ctx.moveTo(b.x1, b.y1);
+        ctx.lineTo(b.x2, b.y2);
+        ctx.strokeStyle = b.col;
+        ctx.lineWidth = b.w;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(b.x1, b.y1);
+        ctx.lineTo(b.x2, b.y2);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(2, b.w * 0.35);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 9) 폭발 원형 이펙트
+      for (const ex of view.explosions) {
+        const t = 1 - clamp(ex.l, 0, 1);
+        const curR = ex.r * (0.45 + t * 0.55);
+        ctx.save();
+        ctx.globalAlpha = clamp(ex.l, 0, 1) * 0.3;
+        ctx.beginPath();
+        ctx.arc(ex.x, ex.y, curR, 0, Math.PI * 2);
+        ctx.fillStyle = ex.col;
+        ctx.fill();
+        ctx.globalAlpha = clamp(ex.l, 0, 1);
+        ctx.strokeStyle = ex.col;
+        ctx.lineWidth = 3.2;
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // =========================================================================
+    // 11. 메인 루프 (60fps 시뮬레이션/보간 + 13Hz 호스트 동기화)
+    // =========================================================================
+    let rafId = null;
+    let lastTs = 0;
+
+    function startRenderLoop() {
+      stopMatchLoop();
+      lastTs = 0;
+      net.hostSyncAccum = 0;
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function stopMatchLoop() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      sim.active = false;
+    }
+
+    function loop(ts) {
+      if (!lastTs) lastTs = ts;
+      let dt = (ts - lastTs) / 1000;
+      lastTs = ts;
+      dt = Math.min(dt, 0.05);
+      pulseClock += dt;
+
+      if (net.isHost && sim.active && !sim.ended) {
+        stepHostSimulation(dt);
+        net.hostSyncAccum += dt;
+        // 약 13Hz (75ms 간격)로 스냅샷 동기화
+        if (net.hostSyncAccum >= 0.075) {
+          net.hostSyncAccum = 0;
+          pushHostSnapshot(false);
+        }
+      }
+
+      interpolateView(dt);
+      renderArena();
+
+      rafId = requestAnimationFrame(loop);
+    }
+
+    // =========================================================================
+    // 12. UI 이벤트 바인딩
+    // =========================================================================
+    function copyRoomCode() {
+      if (!net.roomCode) return;
+      const ta = document.createElement('textarea');
+      ta.value = net.roomCode;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(`방 코드 [${net.roomCode}] 복사됨!`, 'ok');
+      } catch (e) {
+        showToast(`방 코드: ${net.roomCode}`);
+      }
+      document.body.removeChild(ta);
+    }
+
+    function bindEvents() {
+      document.getElementById('input-nickname').value = net.nickname;
+
+      // 방 만들기 모드 토글
+      const btn1v1 = document.getElementById('create-mode-1v1');
+      const btnRoyale = document.getElementById('create-mode-royale');
+      btn1v1.addEventListener('click', () => {
+        net.createMode = '1v1';
+        btn1v1.className = 'flat-btn bg-[#3b6fd4] text-white rounded-xl py-2 px-2 text-xs sm:text-sm font-black cursor-pointer';
+        btnRoyale.className = 'flat-btn bg-slate-100 text-slate-800 rounded-xl py-2 px-2 text-xs sm:text-sm font-black cursor-pointer';
+      });
+      btnRoyale.addEventListener('click', () => {
+        net.createMode = 'royale';
+        btnRoyale.className = 'flat-btn bg-purple-600 text-white rounded-xl py-2 px-2 text-xs sm:text-sm font-black cursor-pointer';
+        btn1v1.className = 'flat-btn bg-slate-100 text-slate-800 rounded-xl py-2 px-2 text-xs sm:text-sm font-black cursor-pointer';
+      });
+
+      const mobToggle = document.getElementById('toggle-neutral-mobs');
+      mobToggle.addEventListener('click', () => {
+        net.createNeutralMobs = !net.createNeutralMobs;
+        mobToggle.textContent = net.createNeutralMobs ? 'ON' : 'OFF';
+        mobToggle.className = `flat-btn px-3 py-1 rounded-lg text-xs font-black cursor-pointer ${net.createNeutralMobs ? 'bg-emerald-400 text-slate-900' : 'bg-slate-200 text-slate-600'}`;
+      });
+
+      document.getElementById('btn-create-room').addEventListener('click', createRoom);
+      document.getElementById('btn-join-code').addEventListener('click', () => {
+        joinRoom(document.getElementById('input-room-code').value);
+      });
+      document.getElementById('input-room-code').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') joinRoom(e.target.value);
+      });
+
+      // 대기실 버튼
+      document.getElementById('btn-copy-code').addEventListener('click', copyRoomCode);
+      document.getElementById('btn-leave-waiting').addEventListener('click', leaveRoom);
+      document.getElementById('wait-mode-1v1').addEventListener('click', () => hostUpdateMode('1v1'));
+      document.getElementById('wait-mode-royale').addEventListener('click', () => hostUpdateMode('royale'));
+      document.getElementById('wait-toggle-mobs').addEventListener('click', hostToggleNeutralMobs);
+      document.getElementById('btn-add-bot').addEventListener('click', hostAddBot);
+      document.getElementById('btn-remove-bot').addEventListener('click', hostRemoveBot);
+      document.getElementById('btn-start-match').addEventListener('click', hostStartMatch);
+
+      // 인게임 및 종료 화면 버튼
+      document.getElementById('btn-leave-game').addEventListener('click', leaveRoom);
+      document.getElementById('btn-exit-match').addEventListener('click', leaveRoom);
+      document.getElementById('btn-return-lobby').addEventListener('click', hostReturnToLobby);
+      document.getElementById('btn-sound').addEventListener('click', (e) => {
+        Sound.init();
+        Sound.muted = !Sound.muted;
+        e.target.textContent = Sound.muted ? '🔇' : '🔊';
+        e.target.classList.toggle('bg-emerald-100', !Sound.muted);
+        e.target.classList.toggle('bg-slate-200', Sound.muted);
+      });
+
+      // 실시간 레벨업 단축키 1, 2, 3 (수동 이동 WASD 없음)
+      window.addEventListener('keydown', (e) => {
+        if (document.getElementById('bottom-levelup-bar').classList.contains('hidden')) return;
+        if (e.key === '1') handleLocalChoiceSelect(0);
+        else if (e.key === '2') handleLocalChoiceSelect(1);
+        else if (e.key === '3') handleLocalChoiceSelect(2);
+      });
+
+      window.addEventListener('resize', resizeCanvas);
+      window.addEventListener('beforeunload', () => {
+        // 창 닫기 시 가벼운 정리 시도
+        if (net.roomCode && currentUser && net.roomData) {
+          const players = { ...(net.roomData.players || {}) };
+          delete players[currentUser.uid];
+          if (Object.values(players).filter(p => !p.isBot).length === 0) {
+            deleteDoc(roomDocRef(net.roomCode)).catch(() => {});
+          }
+        }
+      });
+    }
+
+    window.onload = function () {
+      bindEvents();
+      resizeCanvas();
+      initFirebase();
+    };
+  </script>
+</body>
+</html>
