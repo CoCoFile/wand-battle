@@ -946,44 +946,6 @@
         return u;
       },
 
-      steerCombatAI(u, units) {
-        let near = null, best = Infinity;
-        for (const o of units) {
-          if (!o.alive || o.id === u.id || o.team === u.team || o.kind === 'mob') continue;
-          const d = dist(u.x, u.y, o.x, o.y);
-          if (d < best) { best = d; near = o; }
-        }
-        if (!u.strafeDir || Math.random() < 0.28) u.strafeDir = Math.random() < 0.5 ? 1 : -1;
-
-        let dir;
-        const nearWall = u.x < 105 || u.x > CONFIG.W - 105 || u.y < 95 || u.y > CONFIG.H - 95;
-        if (nearWall) {
-          // 벽에 몰렸을 때만 중앙 한 점이 아닌 넓은 내부 영역으로 이탈
-          dir = Math.atan2(rand(170, CONFIG.H - 170) - u.y, rand(220, CONFIG.W - 220) - u.x);
-        } else if (near && Math.random() < 0.84) {
-          const toEnemy = Math.atan2(near.y - u.y, near.x - u.x);
-          const closeBuild = !!(u.magics && (u.magics.scatter || u.magics.shockwave));
-          const minR = closeBuild ? 125 : 175;
-          const maxR = closeBuild ? 250 : 330;
-
-          if (best < minR) {
-            // 너무 가까우면 뒤로 빠지며 거리 확보
-            dir = toEnemy + Math.PI + rand(-0.55, 0.55);
-          } else if (best <= maxR) {
-            // 적정 교전 거리에서는 좌우로 크게 돌며 측면 기동
-            dir = toEnemy + u.strafeDir * (Math.PI * 0.5 + rand(-0.32, 0.32));
-          } else {
-            // 멀리 있으면 측면 각도로 접근
-            dir = toEnemy + u.strafeDir * rand(0.28, 0.68);
-          }
-        } else {
-          // 자유 이동 시 맵 전역의 랜덤 좌표로 넓게 전개
-          dir = Math.atan2(rand(120, CONFIG.H - 120) - u.y, rand(140, CONFIG.W - 140) - u.x);
-        }
-        u.vx = Math.cos(dir) * u.moveSpeed;
-        u.vy = Math.sin(dir) * u.moveSpeed;
-      },
-
       startDemo() {
         const w = this.newWorld('demo');
         const cfgs = [
@@ -1298,23 +1260,14 @@
             else { u.vx *= 0.85; u.vy *= 0.85; }
           } else {
             u.aiDirT -= dt;
-            if (u.aiDirT <= 0) { u.aiDirT = rand(0.55, 1.15); this.steerCombatAI(u, w.units); }
-          }
-
-          // 캐릭터끼리 한곳에 겹치지 않도록 부드러운 거리 유지 반발력 적용
-          for (const o of w.units) {
-            if (!o.alive || o.id === u.id || o.kind === 'mob') continue;
-            const dx = u.x - o.x, dy = u.y - o.y, d = Math.hypot(dx, dy);
-            const sepR = u.radius + o.radius + 90;
-            if (d > 0.1 && d < sepR) {
-              const push = ((sepR - d) / sepR) * 440 * dt;
-              u.vx += (dx / d) * push;
-              u.vy += (dy / d) * push;
+            if (u.aiDirT <= 0) {
+              u.aiDirT = rand(0.45, 1.35);
+              const dir = rand(0, Math.PI * 2);
+              u.vx = Math.cos(dir) * u.moveSpeed;
+              u.vy = Math.sin(dir) * u.moveSpeed;
             }
           }
 
-          const cv = Math.hypot(u.vx, u.vy);
-          if (cv > u.moveSpeed * 2.2) { u.vx = (u.vx / cv) * u.moveSpeed * 2.2; u.vy = (u.vy / cv) * u.moveSpeed * 2.2; }
           u.x += u.vx * sm * dt; u.y += u.vy * sm * dt;
           const m = u.radius + 8;
           if (u.x < m) { u.x = m; u.vx = Math.abs(u.vx); } else if (u.x > CONFIG.W - m) { u.x = CONFIG.W - m; u.vx = -Math.abs(u.vx); }
