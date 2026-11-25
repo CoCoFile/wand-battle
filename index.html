@@ -350,19 +350,19 @@
       </div>
     </div>
 
-    <!-- 온라인 실시간 3지선다 바 (일시정지 없음) -->
-    <div id="bot-on-lvup" class="hidden">
+    <!-- 온라인 실시간 3지선다 바 (항상 공간 할당 · 일시정지 없음) -->
+    <div id="bot-on-lvup" class="hidden mt-2 pt-2 border-t-2 border-slate-200">
       <div class="flex items-center justify-between gap-2 mb-1.5">
         <div class="flex items-center gap-2">
-          <span class="bg-amber-300 border-2 border-slate-900 px-2 py-0.5 rounded-full text-[11px] font-black text-slate-900">⚡ 실시간 LEVEL UP!</span>
-          <span class="text-xs font-bold text-slate-600 hidden sm:inline">클릭 또는 [1, 2, 3] 선택 · [R] 리롤</span>
+          <span id="on-lvup-badge" class="bg-slate-200 border-2 border-slate-900 px-2 py-0.5 rounded-full text-[11px] font-black text-slate-700">⚡ 레벨업 선택 슬롯</span>
+          <span id="on-lvup-hint" class="text-xs font-bold text-slate-500 hidden sm:inline">레벨업 시 여기에 3지선다가 표시됩니다</span>
         </div>
         <div class="flex items-center gap-1.5">
-          <span id="on-lvup-q" class="bg-rose-100 border border-slate-900 text-rose-700 px-2 py-0.5 rounded-md text-[11px] font-black">남은 선택: 1</span>
-          <button id="btn-on-reroll" type="button" class="btn-flat bg-amber-300 text-slate-900 px-2.5 py-0.5 rounded-lg text-[11px] sm:text-xs font-black cursor-pointer">🎲 리롤 (1)</button>
+          <span id="on-lvup-q" class="bg-slate-100 border border-slate-900 text-slate-600 px-2 py-0.5 rounded-md text-[11px] font-black">남은 선택: 0</span>
+          <button id="btn-on-reroll" type="button" disabled class="btn-flat bg-amber-300 text-slate-900 px-2.5 py-0.5 rounded-lg text-[11px] sm:text-xs font-black cursor-pointer">🎲 리롤 (1)</button>
         </div>
       </div>
-      <div id="on-choices" class="grid grid-cols-3 gap-2"></div>
+      <div id="on-choices" class="grid grid-cols-3 gap-2 h-[88px] sm:h-[104px]"></div>
     </div>
   </footer>
 
@@ -538,7 +538,7 @@
         const desc = isGolden ? def.desc : (isMagic ? (c.nextLv === 1 ? def.desc : def.up) : def.desc);
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = `card-choice ${isGolden ? 'card-golden' : 'bg-white'} ${isModal ? 'rounded-2xl p-3 sm:p-3.5' : 'rounded-xl p-2 sm:p-2.5'} text-left flex flex-col justify-between cursor-pointer`;
+        btn.className = `card-choice ${isGolden ? 'card-golden' : 'bg-white'} ${isModal ? 'rounded-2xl p-3 sm:p-3.5' : 'rounded-xl p-2 sm:p-2.5 h-full overflow-hidden'} text-left flex flex-col justify-between cursor-pointer`;
         btn.innerHTML = `
           <div>
             <div class="flex items-center justify-between gap-1 mb-1.5">
@@ -953,11 +953,33 @@
           const d = dist(u.x, u.y, o.x, o.y);
           if (d < best) { best = d; near = o; }
         }
+        if (!u.strafeDir || Math.random() < 0.28) u.strafeDir = Math.random() < 0.5 ? 1 : -1;
+
         let dir;
-        const r = Math.random();
-        if (near && r < 0.68) dir = Math.atan2(near.y - u.y, near.x - u.x) + (Math.random() < 0.5 ? 1 : -1) * rand(0.18, 0.58);
-        else if (r < 0.92) dir = Math.atan2(CONFIG.H * 0.5 + rand(-120, 120) - u.y, CONFIG.W * 0.5 + rand(-160, 160) - u.x) + rand(-0.45, 0.45);
-        else dir = rand(0, Math.PI * 2);
+        const nearWall = u.x < 105 || u.x > CONFIG.W - 105 || u.y < 95 || u.y > CONFIG.H - 95;
+        if (nearWall) {
+          // 벽에 몰렸을 때만 중앙 한 점이 아닌 넓은 내부 영역으로 이탈
+          dir = Math.atan2(rand(170, CONFIG.H - 170) - u.y, rand(220, CONFIG.W - 220) - u.x);
+        } else if (near && Math.random() < 0.84) {
+          const toEnemy = Math.atan2(near.y - u.y, near.x - u.x);
+          const closeBuild = !!(u.magics && (u.magics.scatter || u.magics.shockwave));
+          const minR = closeBuild ? 125 : 175;
+          const maxR = closeBuild ? 250 : 330;
+
+          if (best < minR) {
+            // 너무 가까우면 뒤로 빠지며 거리 확보
+            dir = toEnemy + Math.PI + rand(-0.55, 0.55);
+          } else if (best <= maxR) {
+            // 적정 교전 거리에서는 좌우로 크게 돌며 측면 기동
+            dir = toEnemy + u.strafeDir * (Math.PI * 0.5 + rand(-0.32, 0.32));
+          } else {
+            // 멀리 있으면 측면 각도로 접근
+            dir = toEnemy + u.strafeDir * rand(0.28, 0.68);
+          }
+        } else {
+          // 자유 이동 시 맵 전역의 랜덤 좌표로 넓게 전개
+          dir = Math.atan2(rand(120, CONFIG.H - 120) - u.y, rand(140, CONFIG.W - 140) - u.x);
+        }
         u.vx = Math.cos(dir) * u.moveSpeed;
         u.vy = Math.sin(dir) * u.moveSpeed;
       },
@@ -1276,7 +1298,19 @@
             else { u.vx *= 0.85; u.vy *= 0.85; }
           } else {
             u.aiDirT -= dt;
-            if (u.aiDirT <= 0) { u.aiDirT = rand(0.4, 0.95); this.steerCombatAI(u, w.units); }
+            if (u.aiDirT <= 0) { u.aiDirT = rand(0.55, 1.15); this.steerCombatAI(u, w.units); }
+          }
+
+          // 캐릭터끼리 한곳에 겹치지 않도록 부드러운 거리 유지 반발력 적용
+          for (const o of w.units) {
+            if (!o.alive || o.id === u.id || o.kind === 'mob') continue;
+            const dx = u.x - o.x, dy = u.y - o.y, d = Math.hypot(dx, dy);
+            const sepR = u.radius + o.radius + 90;
+            if (d > 0.1 && d < sepR) {
+              const push = ((sepR - d) / sepR) * 440 * dt;
+              u.vx += (dx / d) * push;
+              u.vy += (dy / d) * push;
+            }
           }
 
           const cv = Math.hypot(u.vx, u.vy);
@@ -1775,12 +1809,13 @@
 
       beginMatch(r) {
         SFX.init(); ENGINE.screen = 'online';
-        ['view-title', 'view-online', 'modal-on-over', 'arena-banner', 'hud-solo', 'bot-on-lvup'].forEach(id => $(id).classList.add('hidden'));
-        ['top-hud', 'hud-online', 'bottom-bar', 'bot-idle'].forEach(id => $(id).classList.remove('hidden'));
+        ['view-title', 'view-online', 'modal-on-over', 'arena-banner', 'hud-solo'].forEach(id => $(id).classList.add('hidden'));
+        ['top-hud', 'hud-online', 'bottom-bar', 'bot-idle', 'bot-on-lvup'].forEach(id => $(id).classList.remove('hidden'));
         $('on-code').textContent = r.code;
         $('on-mode').textContent = r.mode === '1v1' ? '1:1 대전' : '배틀로얄';
         this.view = { time: 0, units: new Map(), projectiles: new Map(), orbs: [], beams: [], explosions: [], shockwaves: [], puddles: [], chaosZones: [], shards: [], texts: [], killFeed: [] };
-        this.shownKey = ''; this.syncAcc = 0; this.seenBanners.clear();
+        this.shownKey = 'empty'; this.syncAcc = 0; this.seenBanners.clear();
+        this.renderEmptyChoices(false);
 
         if (this.isHost) {
           const w = ENGINE.newWorld('online');
@@ -1937,11 +1972,16 @@
         const magObj = Object.fromEntries((me.mag || []).map(m => [m.id, m.lv]));
         ENGINE.renderBottomBuild(me.hp, me.mhp, 0.48 / ((me.cd || 100) / 100), (me.rg || 100) / 100, me.ms, CONFIG.SPEED * ((me.sp || 100) / 100), magObj, me.gs || {});
 
-        const idle = $('bot-idle'), lvBar = $('bot-on-lvup');
+        $('bot-idle').classList.remove('hidden');
+        $('bot-on-lvup').classList.remove('hidden');
         if (me.al && me.qc > 0 && me.ch && me.ch.length === 3) {
-          idle.classList.add('hidden'); lvBar.classList.remove('hidden');
-          $('on-lvup-q').textContent = `남은 선택: ${me.qc}`;
-          const rBtn = $('btn-on-reroll');
+          const badge = $('on-lvup-badge'), hint = $('on-lvup-hint'), qEl = $('on-lvup-q'), rBtn = $('btn-on-reroll');
+          badge.textContent = '⚡ 실시간 LEVEL UP!';
+          badge.className = 'bg-amber-300 border-2 border-slate-900 px-2 py-0.5 rounded-full text-[11px] font-black text-slate-900';
+          hint.textContent = '클릭 또는 [1, 2, 3] 선택 · [R] 리롤';
+          hint.className = 'text-xs font-bold text-slate-700 hidden sm:inline';
+          qEl.textContent = `남은 선택: ${me.qc}`;
+          qEl.className = 'bg-rose-100 border border-slate-900 text-rose-700 px-2 py-0.5 rounded-md text-[11px] font-black';
           rBtn.textContent = `🎲 리롤 (${me.rr ? 0 : 1})`;
           rBtn.disabled = !!me.rr;
           const key = `${me.lv}_${me.qc}_${me.rr ? 1 : 0}_${me.ch.map(c => c.kind + c.id + c.nextLv).join('_')}`;
@@ -1954,7 +1994,33 @@
               grid.appendChild(btn);
             });
           }
-        } else { lvBar.classList.add('hidden'); idle.classList.remove('hidden'); this.shownKey = ''; }
+        } else {
+          const emptyKey = me.al ? 'empty_alive' : 'empty_dead';
+          if (this.shownKey !== emptyKey) {
+            this.shownKey = emptyKey;
+            this.renderEmptyChoices(!me.al);
+          }
+        }
+      },
+
+      renderEmptyChoices(isDead) {
+        const badge = $('on-lvup-badge'), hint = $('on-lvup-hint'), qEl = $('on-lvup-q'), rBtn = $('btn-on-reroll');
+        badge.textContent = isDead ? '👻 관전 모드' : '⚡ 레벨업 선택 슬롯';
+        badge.className = 'bg-slate-200 border-2 border-slate-900 px-2 py-0.5 rounded-full text-[11px] font-black text-slate-700';
+        hint.textContent = isDead ? '경기가 끝날 때까지 다른 마법사의 전투를 관전합니다' : '경험치를 모아 레벨업하면 여기에 3지선다가 나타납니다';
+        hint.className = 'text-xs font-bold text-slate-500 hidden sm:inline';
+        qEl.textContent = '남은 선택: 0';
+        qEl.className = 'bg-slate-100 border border-slate-900 text-slate-600 px-2 py-0.5 rounded-md text-[11px] font-black';
+        rBtn.textContent = '🎲 리롤 (1)';
+        rBtn.disabled = true;
+
+        const grid = $('on-choices'); grid.innerHTML = '';
+        for (let i = 0; i < 3; i++) {
+          const slot = document.createElement('div');
+          slot.className = 'h-full rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center text-center px-2 select-none';
+          slot.innerHTML = `<span class="text-[11px] font-black text-slate-400">[${i + 1}]</span><span class="text-[11px] sm:text-xs font-bold text-slate-400 mt-0.5">${isDead ? '관전 중' : '레벨업 대기 중...'}</span>`;
+          grid.appendChild(slot);
+        }
       },
 
       rerollChoice() {
@@ -1983,7 +2049,8 @@
           if (u && u.lvQueue.length) { SPELLS.applyChoice(u, u.lvQueue.shift()[idx]); u.rerolled = false; SFX.play('pickup'); this.broadcastSnap(); }
         } else if (this.hostConn && this.hostConn.open) {
           SFX.play('pickup');
-          $('bot-on-lvup').classList.add('hidden'); $('bot-idle').classList.remove('hidden');
+          this.shownKey = 'empty_alive';
+          this.renderEmptyChoices(false);
           try { this.hostConn.send({ type: 'pick', idx }); } catch (e) {}
         }
       },
@@ -2366,6 +2433,10 @@
       $('wait-royale').onclick = () => NET.setWaitMode('royale');
       $('wait-mobs').onclick = () => { if (NET.isHost && NET.room) { NET.room.mobs = !NET.room.mobs; NET.broadcastRoom(); NET.renderWaiting(); } };
       $('btn-add-bot').onclick = () => NET.addBot();
+      $('btn-del-bot').onclick = () => NET.delBot();
+      $('btn-start-match').onclick = () => NET.startMatch();
+      $('btn-on-lobby').onclick = () => NET.returnLobby();
+
       // 키보드 단축키 (1/2/3 선택, R 리롤, P/ESC 일시정지, WASD 이동)
       window.addEventListener('keydown', (e) => {
         if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
@@ -2400,6 +2471,9 @@
       stick.addEventListener('touchcancel', endStick);
 
       window.addEventListener('resize', resizeCanvas);
+      if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => resizeCanvas()).observe($('arena-wrap'));
+      }
       window.addEventListener('beforeunload', () => NET.leaveLocal());
     }
 
