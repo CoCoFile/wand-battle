@@ -29,6 +29,26 @@
     }
     .card-choice:hover { transform: translateY(-3px); box-shadow: 0 7px 0 #1e293b; background: #fefce8; }
     .card-choice:active { transform: translateY(2px); box-shadow: 0 2px 0 #1e293b; }
+    .card-golden {
+      background: linear-gradient(135deg, #fef08a 0%, #fde047 50%, #fef9c3 100%);
+      border-color: #b45309;
+      box-shadow: 0 4px 0 #92400e, 0 0 16px rgba(250, 204, 21, 0.65);
+    }
+    .card-golden:hover {
+      background: linear-gradient(135deg, #fde047 0%, #facc15 50%, #fef08a 100%);
+      box-shadow: 0 7px 0 #92400e, 0 0 22px rgba(250, 204, 21, 0.9);
+    }
+    @keyframes popDramatic {
+      0% { transform: translate(-50%, -50%) scale(0.45) rotate(-4deg); opacity: 0; }
+      18% { transform: translate(-50%, -50%) scale(1.12) rotate(1.5deg); opacity: 1; }
+      30% { transform: translate(-50%, -50%) scale(1.0) rotate(0deg); opacity: 1; }
+      82% { transform: translate(-50%, -50%) scale(1.0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(-50%, -58%) scale(0.92); opacity: 0; }
+    }
+    .dramatic-pop {
+      animation: popDramatic 1.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      text-shadow: -3px -3px 0 #1e293b, 3px -3px 0 #1e293b, -3px 3px 0 #1e293b, 3px 3px 0 #1e293b, 0 6px 0 #1e293b;
+    }
     #arena-wrap {
       position: relative; flex: 1 1 auto; min-height: 0; width: 100%;
       display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 6px;
@@ -242,10 +262,13 @@
             <span class="inline-block bg-amber-300 border-2 border-slate-900 px-2.5 py-0.5 rounded-full text-xs font-black mb-1">⏸ 일시정지 · LEVEL UP!</span>
             <h2 class="font-game text-2xl sm:text-3xl text-slate-900">강화할 마법 또는 능력을 선택하세요</h2>
           </div>
-          <span id="solo-lvup-q" class="hidden bg-rose-100 border-2 border-slate-900 text-rose-700 px-2.5 py-1 rounded-xl text-xs font-black">남은 레벨업: 1</span>
+          <div class="flex items-center gap-2">
+            <span id="solo-lvup-q" class="hidden bg-rose-100 border-2 border-slate-900 text-rose-700 px-2.5 py-1 rounded-xl text-xs font-black">남은 레벨업: 1</span>
+            <button id="btn-solo-reroll" type="button" class="btn-flat bg-amber-300 text-slate-900 px-3 py-1 rounded-xl text-xs sm:text-sm font-black cursor-pointer">🎲 리롤 (1)</button>
+          </div>
         </div>
         <div id="solo-choices" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5"></div>
-        <p class="text-center text-[11px] font-bold text-slate-500 mt-3">카드를 클릭하거나 [1, 2, 3] 키로 선택하세요</p>
+        <p class="text-center text-[11px] font-bold text-slate-500 mt-3">카드를 클릭하거나 [1, 2, 3] 선택 · [R] 리롤</p>
       </div>
     </div>
 
@@ -295,9 +318,9 @@
         <p id="on-over-hint" class="hidden text-[11px] font-bold text-slate-500 mt-2">방장이 대기실로 돌아가면 자동으로 이동합니다.</p>
       </div>
     </div>
-
-    <!-- 아레나 중앙 배너 / 킬피드 / 모바일 조이스틱 -->
+    <!-- 아레나 중앙 배너 / 드라마틱 연출 배너 / 킬피드 / 모바일 조이스틱 -->
     <div id="arena-banner" class="hidden pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white border-2 border-white/25 px-4 py-1.5 rounded-full font-game text-base sm:text-lg shadow-lg z-10">STAGE 1</div>
+    <div id="dramatic-banner" class="hidden pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-game text-4xl sm:text-6xl tracking-wide text-center whitespace-nowrap z-20 px-4"></div>
     <div id="on-killfeed" class="pointer-events-none absolute top-3 right-3 flex flex-col items-end gap-1 z-10"></div>
     <div id="touch-stick" class="hidden md:hidden absolute bottom-4 left-4 w-28 h-28 rounded-full bg-slate-900/15 border-2 border-slate-900/30 flex items-center justify-center z-10">
       <div id="touch-knob" class="w-11 h-11 rounded-full bg-[#3b82f6]/80 border-2 border-slate-900 pointer-events-none"></div>
@@ -332,9 +355,12 @@
       <div class="flex items-center justify-between gap-2 mb-1.5">
         <div class="flex items-center gap-2">
           <span class="bg-amber-300 border-2 border-slate-900 px-2 py-0.5 rounded-full text-[11px] font-black text-slate-900">⚡ 실시간 LEVEL UP!</span>
-          <span class="text-xs font-bold text-slate-600 hidden sm:inline">클릭 또는 [1, 2, 3] 선택</span>
+          <span class="text-xs font-bold text-slate-600 hidden sm:inline">클릭 또는 [1, 2, 3] 선택 · [R] 리롤</span>
         </div>
-        <span id="on-lvup-q" class="bg-rose-100 border border-slate-900 text-rose-700 px-2 py-0.5 rounded-md text-[11px] font-black">남은 선택: 1</span>
+        <div class="flex items-center gap-1.5">
+          <span id="on-lvup-q" class="bg-rose-100 border border-slate-900 text-rose-700 px-2 py-0.5 rounded-md text-[11px] font-black">남은 선택: 1</span>
+          <button id="btn-on-reroll" type="button" class="btn-flat bg-amber-300 text-slate-900 px-2.5 py-0.5 rounded-lg text-[11px] sm:text-xs font-black cursor-pointer">🎲 리롤 (1)</button>
+        </div>
       </div>
       <div id="on-choices" class="grid grid-cols-3 gap-2"></div>
     </div>
@@ -371,24 +397,35 @@
         shield:    { id: 'shield',    name: '마력 방패',   color: '#0284C7', bg: '#E0F2FE', icon: '🛡', desc: '공격 1회 방어 후 파괴·재생성', up: '방패 수·호 각도↑ 쿨타임↓' }
       },
       STATS: {
+        power:     { id: 'power',     name: '공격력 증가',    color: '#DC2626', bg: '#FEE2E2', icon: '⚔',  desc: '모든 마법 피해량 +15%' },
         firerate:  { id: 'firerate',  name: '연사 속도',      color: '#2563EB', bg: '#DBEAFE', icon: '⏩', desc: '마법 연사 속도 +18%' },
         area:      { id: 'area',      name: '마법 범위',      color: '#059669', bg: '#D1FAE5', icon: '⤢',  desc: '마법 크기 및 사거리 +18%' },
         multishot: { id: 'multishot', name: '동시 발사 수',   color: '#EA580C', bg: '#FFEDD5', icon: '⑂',  desc: '동시 발사 투사체 수 +1' },
         maxhp:     { id: 'maxhp',     name: '최대 체력+회복', color: '#E11D48', bg: '#FFE4E6', icon: '♥',  desc: '최대 체력 +35 & 체력 35 회복' },
         speed:     { id: 'speed',     name: '이동·회전 속도', color: '#7C3AED', bg: '#EDE9FE', icon: '↻',  desc: '이동 및 회전 속도 +15%' }
+      },
+      GOLDEN_CARD: {
+        id: 'golden', name: '황금 카드', color: '#B45309', bg: '#FEF08A', icon: '🃏',
+        desc: '50% 대박 궁극기(10초 쿨) / 50% 꽝(5초 패널티)'
+      },
+      GOLDEN_SKILLS: {
+        stop:    { id: 'stop',    name: '멈춰!',             color: '#CA8A04', bg: '#FEF9C3', icon: '⏱', desc: '10초마다 주변 모든 적 3초 광역 스턴' },
+        oneshot: { id: 'oneshot', name: '파괴 광선',         color: '#DC2626', bg: '#FEE2E2', icon: '⚡', desc: '10초마다 관통 광선 발사 (적중 시 즉시 탈락)' },
+        chaos:   { id: 'chaos',   name: '혼돈! 파괴! 망각!', color: '#9333EA', bg: '#F3E8FF', icon: '🌀', desc: '10초마다 광역 혼돈 장판 4개 소환' }
       }
     };
     const MAGIC_KEYS = Object.keys(CONFIG.MAGICS);
     const STAT_KEYS = Object.keys(CONFIG.STATS);
+    const GOLDEN_KEYS = Object.keys(CONFIG.GOLDEN_SKILLS);
 
-    const $ = (id) => document.getElementById(id);
-    const rand = (min, max) => Math.random() * (max - min) + min;
-    const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const randInt = (a, b) => Math.floor(rand(a, b + 1));
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
     const dist = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
-    const r1 = (v) => Math.round(v * 10) / 10;
-    const r2 = (v) => Math.round(v * 100) / 100;
-    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const r1 = n => Math.round(n * 10) / 10;
+    const r2 = n => Math.round(n * 100) / 100;
 
     function lerpAngle(a, b, t) {
       let d = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI;
@@ -451,6 +488,7 @@
 
     const UI = {
       bannerTimer: null,
+      dramaticTimer: null,
       toast(msg, tone = 'info') {
         const box = $('toast-box'), el = document.createElement('div');
         const cls = tone === 'error' ? 'bg-rose-600 text-white border-slate-900'
@@ -467,6 +505,20 @@
         clearTimeout(this.bannerTimer);
         if (ms > 0) this.bannerTimer = setTimeout(() => el.classList.add('hidden'), ms);
       },
+      dramaticBanner(text, style = 'gold') {
+        const el = $('dramatic-banner');
+        const colorMap = {
+          gold: 'text-yellow-300',
+          beam: 'text-rose-400',
+          chaos: 'text-purple-300',
+          poop: 'text-amber-300'
+        };
+        el.className = `pointer-events-none absolute top-1/2 left-1/2 font-game text-4xl sm:text-6xl tracking-wide text-center whitespace-nowrap z-20 px-4 dramatic-pop ${colorMap[style] || 'text-yellow-300'}`;
+        el.textContent = text;
+        void el.offsetWidth;
+        clearTimeout(this.dramaticTimer);
+        this.dramaticTimer = setTimeout(() => el.classList.add('hidden'), 1850);
+      },
       copy(text) {
         try {
           const ta = document.createElement('textarea');
@@ -479,25 +531,26 @@
         if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => this.toast(`방 코드 [${text}] 복사 완료!`, 'ok')).catch(() => {});
       },
       buildCard(c, idx, isModal) {
+        const isGolden = c.kind === 'g';
         const isMagic = c.kind === 'm';
-        const def = isMagic ? CONFIG.MAGICS[c.id] : CONFIG.STATS[c.id];
-        const badge = isMagic ? (c.nextLv === 1 ? 'NEW 마법' : `Lv.${c.nextLv} 강화`) : '능력치 강화';
-        const desc = isMagic ? (c.nextLv === 1 ? def.desc : def.up) : def.desc;
+        const def = isGolden ? CONFIG.GOLDEN_CARD : (isMagic ? CONFIG.MAGICS[c.id] : CONFIG.STATS[c.id]);
+        const badge = isGolden ? '🎲 10% 도박' : (isMagic ? (c.nextLv === 1 ? 'NEW 마법' : `Lv.${c.nextLv} 강화`) : '능력치 강화');
+        const desc = isGolden ? def.desc : (isMagic ? (c.nextLv === 1 ? def.desc : def.up) : def.desc);
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = `card-choice bg-white ${isModal ? 'rounded-2xl p-3 sm:p-3.5' : 'rounded-xl p-2 sm:p-2.5'} text-left flex flex-col justify-between cursor-pointer`;
+        btn.className = `card-choice ${isGolden ? 'card-golden' : 'bg-white'} ${isModal ? 'rounded-2xl p-3 sm:p-3.5' : 'rounded-xl p-2 sm:p-2.5'} text-left flex flex-col justify-between cursor-pointer`;
         btn.innerHTML = `
           <div>
             <div class="flex items-center justify-between gap-1 mb-1.5">
               <span class="text-[10px] sm:text-[11px] font-black px-2 py-0.5 rounded-full border border-slate-900 truncate" style="background:${def.bg};color:${def.color}">${badge}</span>
-              <span class="text-xs font-black text-slate-400">[${idx + 1}]</span>
+              <span class="text-xs font-black ${isGolden ? 'text-amber-900' : 'text-slate-400'}">[${idx + 1}]</span>
             </div>
             <div class="flex items-center gap-2 mb-1">
               <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl border-2 border-slate-900 flex items-center justify-center text-sm sm:text-base font-black shrink-0" style="background:${def.bg};color:${def.color}">${def.icon}</span>
               <div class="font-game text-sm sm:text-xl text-slate-900 leading-tight truncate">${def.name}</div>
             </div>
           </div>
-          <p class="text-[10px] sm:text-xs font-bold text-slate-600 leading-snug line-clamp-2">${desc}</p>`;
+          <p class="text-[10px] sm:text-xs font-bold ${isGolden ? 'text-amber-950' : 'text-slate-600'} leading-snug line-clamp-2">${desc}</p>`;
         return btn;
       }
     };
@@ -524,16 +577,24 @@
           const j = randInt(0, i);
           [pool[i], pool[j]] = [pool[j], pool[i]];
         }
-        return pool.slice(0, 3);
+        const picked = pool.slice(0, 3);
+        // 10% 확률로 3장 중 1장이 황금 카드로 등장
+        if (Math.random() < 0.10 && picked.length > 0) {
+          picked[randInt(0, picked.length - 1)] = { kind: 'g', id: 'golden', nextLv: 1 };
+        }
+        return picked;
       },
 
       applyChoice(u, c) {
         if (!u || !c) return;
-        if (c.kind === 'm') {
+        if (c.kind === 'g') {
+          this.resolveGoldenCard(u, ENGINE.world);
+        } else if (c.kind === 'm') {
           u.magics[c.id] = Math.min(CONFIG.MAX_LV, (u.magics[c.id] || 0) + 1);
           if (c.id === 'shield') this.syncShieldSlots(u);
         } else if (c.kind === 's') {
-          if (c.id === 'firerate') u.fireInterval = Math.max(0.13, u.fireInterval * 0.847);
+          if (c.id === 'power') u.damageMult = (u.damageMult || 1) * 1.15;
+          else if (c.id === 'firerate') u.fireInterval = Math.max(0.13, u.fireInterval * 0.847);
           else if (c.id === 'area') u.rangeMult *= 1.18;
           else if (c.id === 'multishot') u.multiShot += 1;
           else if (c.id === 'maxhp') { u.maxHp += 35; u.hp = Math.min(u.maxHp, u.hp + 35); }
@@ -541,58 +602,158 @@
         }
       },
 
+      resolveGoldenCard(u, world) {
+        if (!u || !world) return;
+        const isLocalTarget = world.mode === 'solo' || u.id === NET.myId;
+        if (Math.random() < 0.5) {
+          // 50% 성공: 3종 궁극기 중 랜덤 1종 획득 (10초 쿨 자동 발동) 및 즉시 1회 발동
+          const sid = GOLDEN_KEYS[randInt(0, GOLDEN_KEYS.length - 1)];
+          if (!u.goldenSkills) u.goldenSkills = {};
+          u.goldenSkills[sid] = 10.0;
+          if (isLocalTarget) {
+            SFX.play('win');
+            UI.toast(`🎰 황금 카드 대박! [${CONFIG.GOLDEN_SKILLS[sid].name}] 획득!`, 'ok');
+          }
+          this.triggerGoldenSkill(u, sid, world);
+        } else {
+          // 50% 실패 (꽝): 5초간 똥 변신 (1회성 패널티, 이동/공격 불가, 받는 피해 2배, 본인 화면에만 '똥!똥!똥!' 출력)
+          u.poopTimer = 5.0;
+          u.vx = 0;
+          u.vy = 0;
+          if (isLocalTarget) SFX.play('hit');
+          ENGINE.emitBanner(world, '똥!똥!똥!', 'poop', u.id);
+        }
+      },
+
+      triggerGoldenSkill(caster, sid, world) {
+        if (!caster || !caster.alive || !world) return;
+        const sfxOk = world.mode === 'solo' || caster.id === NET.myId;
+
+        if (sid === 'stop') {
+          // 광역 스턴: 시전자 제외 모든 적 3초 스턴 + 모두에게 "멈춰!" 출력
+          if (sfxOk) SFX.play('win');
+          world.shockwaves.push({
+            uid: NEXT_UID++, ownerId: caster.id, team: caster.team,
+            x: caster.x, y: caster.y, r: caster.radius + 10, maxR: 1350, speed: 1500,
+            dmg: 0, kb: 0, col: '#facc15', hitSet: new Set()
+          });
+          for (const t of world.units) {
+            if (!t.alive || t.id === caster.id || t.team === caster.team) continue;
+            t.stunTimer = Math.max(t.stunTimer || 0, 3.0);
+            t.vx = 0;
+            t.vy = 0;
+            world.texts.push({ uid: NEXT_UID++, x: t.x, y: t.y - t.radius - 16, vy: -24, text: '멈춰!', col: '#CA8A04', life: 1.4, maxLife: 1.4 });
+          }
+          ENGINE.emitBanner(world, '멈춰!', 'gold', null);
+        } else if (sid === 'oneshot') {
+          // 파괴 광선: 얇은 관통 광선 발사, 적중 대상 즉시 탈락 & 피해자 화면에 "한방 컷 ㅋㅋ" 출력
+          if (sfxOk) SFX.play('laser');
+          const tip = this.wandTip(caster);
+          const a = caster.angle;
+          const x2 = tip.x + Math.cos(a) * 1500;
+          const y2 = tip.y + Math.sin(a) * 1500;
+          world.beams.push({ uid: NEXT_UID++, x1: tip.x, y1: tip.y, x2, y2, w: 6, col: '#facc15', gold: true, life: 0.34, maxLife: 0.34 });
+          for (const t of world.units) {
+            if (!t.alive || t.id === caster.id || t.team === caster.team) continue;
+            if (ptSegDist(t.x, t.y, tip.x, tip.y, x2, y2) <= t.radius + 5) {
+              world.texts.push({ uid: NEXT_UID++, x: t.x, y: t.y - 18, vy: -38, text: '한방 컷 ㅋㅋ', col: '#DC2626', life: 1.5, maxLife: 1.5 });
+              if (t.kind !== 'mob') {
+                ENGINE.emitBanner(world, '한방 컷 ㅋㅋ', 'beam', t.id);
+              }
+              ENGINE.damageUnit(t, 999999, caster, Math.cos(a) * 120, Math.sin(a) * 120, 0, true);
+            }
+          }
+        } else if (sid === 'chaos') {
+          // 혼돈! 파괴! 망각!: 광역 장판 4개 소환 + 모두에게 배너 출력
+          if (sfxOk) SFX.play('fire');
+          const targets = world.units.filter(t => t.alive && t.team !== caster.team);
+          const spots = [];
+          for (let i = 0; i < 4; i++) {
+            if (targets[i]) {
+              spots.push({
+                x: clamp(targets[i].x + rand(-55, 55), 140, CONFIG.W - 140),
+                y: clamp(targets[i].y + rand(-55, 55), 140, CONFIG.H - 140)
+              });
+            } else {
+              spots.push({ x: rand(160, CONFIG.W - 160), y: rand(150, CONFIG.H - 150) });
+            }
+          }
+          for (const sp of spots) {
+            world.chaosZones.push({
+              uid: NEXT_UID++, ownerId: caster.id, team: caster.team,
+              x: sp.x, y: sp.y, r: 135, dmg: 14, tick: 0.2, life: 4.5, maxLife: 4.5
+            });
+          }
+          ENGINE.emitBanner(world, '혼돈! 파괴! 망각!', 'chaos', null);
+        }
+      },
+
+      stepGoldenSkills(u, dt, world) {
+        if (!u.goldenSkills) return;
+        for (const sid of Object.keys(u.goldenSkills)) {
+          u.goldenSkills[sid] -= dt;
+          if (u.goldenSkills[sid] <= 0) {
+            u.goldenSkills[sid] = 10.0;
+            this.triggerGoldenSkill(u, sid, world);
+          }
+        }
+      },
+
       shieldSpec(u) {
-        const lv = u.magics ? (u.magics.shield || 0) : 0;
+        const lv = (u.magics && u.magics.shield) || 0;
         if (lv <= 0) return null;
-        const r = u.radius || CONFIG.HEAD_R;
         return {
-          lv, count: Math.min(4, lv),
-          orbitR: r === CONFIG.HEAD_R ? CONFIG.SHIELD_R : r + 26,
-          arcHalf: 0.40 + lv * 0.04,
+          count: Math.min(4, 1 + Math.floor(lv / 2)),
+          arcHalf: 0.42 + lv * 0.06,
+          orbitR: (u.radius || CONFIG.HEAD_R) + 26,
           rotSpd: 2.8 + lv * 0.38,
-          maxCd: Math.max(2.2, r2(4.5 - (lv - 1) * 0.46))
+          maxCd: Math.max(2.2, 4.5 - (lv - 1) * 0.45)
         };
       },
 
       syncShieldSlots(u) {
         const sp = this.shieldSpec(u);
-        if (!sp) { u.shieldCds = []; return []; }
+        if (!sp) { u.shieldCds = []; return u.shieldCds; }
         if (!Array.isArray(u.shieldCds)) u.shieldCds = [];
         while (u.shieldCds.length < sp.count) u.shieldCds.push(0);
         if (u.shieldCds.length > sp.count) u.shieldCds.length = sp.count;
         return u.shieldCds;
       },
 
-      fxShieldBreak(fx, x, y) {
-        if (!fx) return;
-        fx.explosions.push({ uid: NEXT_UID++, x, y, r: 26, col: '#38bdf8', life: 0.2, maxLife: 0.2 });
-        for (let i = 0; i < 7; i++) {
-          const a = (i / 7) * Math.PI * 2 + rand(-0.35, 0.35), spd = rand(110, 230);
-          fx.shards.push({ uid: NEXT_UID++, x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - 25, a: rand(0, 6.28), va: rand(-14, 14), sz: rand(5, 8.5), life: 0.45, maxLife: 0.45 });
-        }
-        fx.texts.push({ uid: NEXT_UID++, x, y: y - 12, vy: -46, text: '방패 파괴!', col: '#0284C7', life: 0.85, maxLife: 0.85 });
-      },
-
-      fxShieldUp(fx, x, y) {
-        if (!fx) return;
-        fx.shockwaves.push({ uid: NEXT_UID++, ownerId: '', team: -1, x, y, r: 6, maxR: 36, speed: 150, dmg: 0, kb: 0, col: '#38bdf8', hitSet: new Set() });
-      },
-
       stepShields(u, dt, fx, sfxAllowed) {
+        if (u.shieldFlash > 0) u.shieldFlash -= dt;
         const sp = this.shieldSpec(u);
-        if (!sp) { u.shieldCds = []; return; }
-        const cds = this.syncShieldSlots(u);
+        if (!sp) return;
         u.shieldAngle = ((u.shieldAngle || 0) + sp.rotSpd * dt) % (Math.PI * 2);
-        if (u.shieldFlash > 0) u.shieldFlash = Math.max(0, u.shieldFlash - dt);
+        const cds = this.syncShieldSlots(u);
         for (let i = 0; i < sp.count; i++) {
           if (cds[i] > 0) {
             cds[i] = Math.max(0, cds[i] - dt);
-            if (cds[i] === 0 && fx) {
+            if (cds[i] === 0) {
               const pa = u.shieldAngle + (i * Math.PI * 2) / sp.count;
               this.fxShieldUp(fx, u.x + Math.cos(pa) * sp.orbitR, u.y + Math.sin(pa) * sp.orbitR);
               if (sfxAllowed) SFX.play('shield_up');
             }
           }
+        }
+      },
+
+      fxShieldBreak(fx, x, y) {
+        if (!fx) return;
+        if (fx.shards) {
+          for (let i = 0; i < 6; i++) {
+            const a = rand(0, Math.PI * 2), spd = rand(80, 190);
+            fx.shards.push({ x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd - 60, a: rand(0, 6.28), va: rand(-10, 10), sz: rand(4, 7), life: 0.42, maxLife: 0.42 });
+          }
+        }
+        if (fx.texts) {
+          fx.texts.push({ uid: NEXT_UID++, x, y: y - 10, vy: -32, text: '방패 파괴!', col: '#0284C7', life: 0.85, maxLife: 0.85 });
+        }
+      },
+
+      fxShieldUp(fx, x, y) {
+        if (fx && fx.shockwaves) {
+          fx.shockwaves.push({ uid: NEXT_UID++, ownerId: '', team: -1, x, y, r: 4, maxR: 26, speed: 120, dmg: 0, kb: 0, col: '#38bdf8', hitSet: new Set() });
         }
       },
 
@@ -745,12 +906,23 @@
     const ENGINE = {
       screen: 'title', // 'title' | 'solo' | 'online'
       world: null,
-      solo: { stage: 1, kills: 0, timeScale: 1, manualMove: false, pausedLv: false, pausedManual: false, queue: [], clearDelay: 0, orbTimer: 0 },
+      solo: { stage: 1, kills: 0, timeScale: 1, manualMove: false, pausedLv: false, pausedManual: false, queue: [], rerolls: 1, clearDelay: 0, orbTimer: 0 },
       keys: new Set(),
       touchVec: { x: 0, y: 0 },
 
       newWorld(mode) {
-        return { mode, time: 0, ended: false, neutralMobs: true, units: [], orbs: [], projectiles: [], beams: [], explosions: [], shockwaves: [], puddles: [], shards: [], texts: [], killFeed: [], mobTimer: 0, orbTimer: 0 };
+        return { mode, time: 0, ended: false, neutralMobs: true, units: [], orbs: [], projectiles: [], beams: [], explosions: [], shockwaves: [], puddles: [], chaosZones: [], shards: [], texts: [], bannerEvents: [], killFeed: [], mobTimer: 0, orbTimer: 0 };
+      },
+
+      emitBanner(world, text, style, targetId = null) {
+        if (!world) return;
+        const id = NEXT_UID++;
+        world.bannerEvents.push({ id, txt: text, st: style, tid: targetId, life: 1.5 });
+        if (world.mode === 'solo') {
+          if (!targetId || targetId === 'solo_p') UI.dramaticBanner(text, style);
+        } else if (world.mode === 'online' && NET.isHost) {
+          if (!targetId || targetId === NET.myId) UI.dramaticBanner(text, style);
+        }
       },
 
       makeWizard(opts) {
@@ -762,12 +934,13 @@
           rotSpeed: opts.rotSpeed || CONFIG.ROT_SPEED, moveSpeed: opts.moveSpeed || CONFIG.SPEED,
           radius: opts.radius || CONFIG.HEAD_R, hp: opts.hp || 165, maxHp: opts.hp || 165,
           alive: true, level: 1, xp: 0, xpNext: opts.xpNext || 28, xpReward: opts.xpReward || 16,
-          kills: 0, deathOrder: 0, magics: opts.magics || { laser: 1 },
+          kills: 0, deathOrder: 0, magics: opts.magics || { laser: 1 }, goldenSkills: {},
           fireInterval: opts.fireInterval || 0.48, fireTimer: rand(0.15, 0.45),
           rangeMult: opts.rangeMult || 1.0, damageMult: opts.damageMult || 1.0, multiShot: opts.multiShot || 1,
           aiDirT: rand(0.4, 0.9), aiRotT: rand(1.2, 2.8),
-          hitFlash: 0, slowTimer: 0, shieldAngle: rand(0, Math.PI * 2), shieldFlash: 0, shieldCds: [],
-          lvQueue: [], botPickT: 0
+          hitFlash: 0, slowTimer: 0, stunTimer: 0, poopTimer: 0,
+          shieldAngle: rand(0, Math.PI * 2), shieldFlash: 0, shieldCds: [],
+          lvQueue: [], rerolled: false, botPickT: 0
         };
         SPELLS.syncShieldSlots(u);
         return u;
@@ -809,7 +982,7 @@
         const player = this.makeWizard({ id: 'solo_p', isPlayer: true, team: 1, name: getNick(), color: '#3b82f6', x: CONFIG.W * 0.5, y: CONFIG.H * 0.5, hp: 165, xpNext: 28 });
         w.units.push(player);
         this.world = w;
-        Object.assign(this.solo, { stage: 1, kills: 0, timeScale: 1, pausedLv: false, pausedManual: false, queue: [], clearDelay: 0, orbTimer: 0 });
+        Object.assign(this.solo, { stage: 1, kills: 0, timeScale: 1, pausedLv: false, pausedManual: false, queue: [], rerolls: 1, clearDelay: 0, orbTimer: 0 });
 
         ['view-title', 'view-online', 'modal-solo-lvup', 'modal-solo-pause', 'modal-solo-over', 'modal-on-over', 'hud-online', 'bot-on-lvup'].forEach(id => $(id).classList.add('hidden'));
         ['top-hud', 'hud-solo', 'bottom-bar', 'bot-idle'].forEach(id => $(id).classList.remove('hidden'));
@@ -823,6 +996,7 @@
       spawnSoloStage(st) {
         const w = this.world, p = w.units.find(u => u.id === 'solo_p');
         this.solo.stage = st;
+        this.solo.rerolls = 1;
         w.units = w.units.filter(u => u.id === 'solo_p');
         const isBoss = st % 3 === 0;
         const colors = ['#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#64748b'];
@@ -915,10 +1089,12 @@
       openSoloLvModal() {
         if (!this.solo.queue.length) return;
         this.solo.pausedLv = true;
-        const choices = this.solo.queue[0], grid = $('solo-choices'), qEl = $('solo-lvup-q');
+        const choices = this.solo.queue[0], grid = $('solo-choices'), qEl = $('solo-lvup-q'), rBtn = $('btn-solo-reroll');
         grid.innerHTML = '';
         qEl.classList.toggle('hidden', this.solo.queue.length <= 1);
         qEl.textContent = `남은 레벨업: ${this.solo.queue.length}`;
+        rBtn.textContent = `🎲 리롤 (${this.solo.rerolls})`;
+        rBtn.disabled = this.solo.rerolls <= 0;
         choices.forEach((c, idx) => {
           const btn = UI.buildCard(c, idx, true);
           btn.onclick = () => this.pickSoloChoice(idx);
@@ -926,6 +1102,16 @@
         });
         $('modal-solo-lvup').classList.remove('hidden');
         this.syncSoloHUD();
+      },
+
+      rerollSoloChoice() {
+        if (!this.solo.pausedLv || !this.solo.queue.length || this.solo.rerolls <= 0) return;
+        const p = this.world.units.find(u => u.id === 'solo_p');
+        if (!p) return;
+        this.solo.rerolls -= 1;
+        this.solo.queue[0] = SPELLS.generateChoices(p);
+        SFX.play('bounce');
+        this.openSoloLvModal();
       },
 
       pickSoloChoice(idx) {
@@ -967,11 +1153,11 @@
         $('btn-solo-pause').textContent = this.solo.pausedManual ? '재개 (P)' : '일시정지 (P)';
         $('touch-stick').classList.toggle('hidden', !(this.screen === 'solo' && this.solo.manualMove && this.world && !this.world.ended));
       },
-
-      damageUnit(t, amt, atk, kbX = 0, kbY = 0, slow = 0) {
+      damageUnit(t, amt, atk, kbX = 0, kbY = 0, slow = 0, instantKill = false) {
         const w = this.world;
         if (!w || !t || !t.alive || w.mode === 'demo') { if (t) t.hitFlash = 0.08; return; }
-        const dmg = Math.max(1, Math.round(amt * (atk ? (atk.damageMult || 1) : 1)));
+        const poopMult = (t.poopTimer > 0) ? 2 : 1;
+        const dmg = instantKill ? Math.max(999999, Math.ceil(t.hp) + 1) : Math.max(1, Math.round(amt * (atk ? (atk.damageMult || 1) : 1) * poopMult));
         t.hp -= dmg; t.hitFlash = 0.11;
         if (kbX || kbY) { t.vx += kbX; t.vy += kbY; }
         if (slow > 0) t.slowTimer = Math.max(t.slowTimer, slow);
@@ -1045,9 +1231,12 @@
           if (!u.alive) continue;
           if (u.hitFlash > 0) u.hitFlash -= dt;
           if (u.slowTimer > 0) u.slowTimer -= dt;
+          if (u.stunTimer > 0) u.stunTimer = Math.max(0, u.stunTimer - dt);
+          if (u.poopTimer > 0) u.poopTimer = Math.max(0, u.poopTimer - dt);
           const sm = u.slowTimer > 0 ? 0.6 : 1.0;
 
           if (u.kind === 'mob') {
+            if (u.stunTimer > 0) { u.vx = 0; u.vy = 0; continue; }
             u.aiDirT -= dt;
             if (u.aiDirT <= 0) { u.aiDirT = rand(0.6, 1.5); const a = rand(0, 6.28); u.vx = Math.cos(a) * 130; u.vy = Math.sin(a) * 130; }
             u.x += u.vx * sm * dt; u.y += u.vy * sm * dt;
@@ -1058,7 +1247,19 @@
           }
 
           const sfxOk = w.mode === 'solo' || (w.mode === 'online' && u.id === NET.myId);
+
+          // 스턴 또는 똥 변신 상태: 이동 불가, 회전 불가, 공격 및 스킬 발동 불가
+          if (u.stunTimer > 0 || u.poopTimer > 0) {
+            u.vx = 0; u.vy = 0;
+            if (w.mode === 'online' && u.isBot && u.lvQueue.length) {
+              u.botPickT -= dt;
+              if (u.botPickT <= 0) { SPELLS.applyChoice(u, u.lvQueue.shift()[randInt(0, 2)]); u.botPickT = rand(0.5, 1.1); }
+            }
+            continue;
+          }
+
           SPELLS.stepShields(u, dt, w, sfxOk);
+          SPELLS.stepGoldenSkills(u, dt, w);
 
           u.aiRotT -= dt;
           if (u.aiRotT <= 0) { u.aiRotT = rand(1.2, 2.8); if (Math.random() < 0.65) u.rotDir *= -1; }
@@ -1218,6 +1419,27 @@
           if (pd.life <= 0) w.puddles.splice(i, 1);
         }
 
+        // 혼돈! 파괴! 망각! 광역 장판 처리
+        for (let i = w.chaosZones.length - 1; i >= 0; i--) {
+          const cz = w.chaosZones[i];
+          cz.life -= dt; cz.tick -= dt;
+          const ow = w.units.find(u => u.id === cz.ownerId);
+          for (const t of w.units) {
+            if (t.alive && t.team !== cz.team && dist(cz.x, cz.y, t.x, t.y) <= cz.r + t.radius * 0.6) {
+              t.slowTimer = Math.max(t.slowTimer, 0.35);
+            }
+          }
+          if (cz.tick <= 0) {
+            cz.tick = 0.35;
+            for (const t of w.units) {
+              if (t.alive && t.team !== cz.team && dist(cz.x, cz.y, t.x, t.y) <= cz.r + t.radius * 0.6) {
+                this.damageUnit(t, cz.dmg, ow);
+              }
+            }
+          }
+          if (cz.life <= 0) w.chaosZones.splice(i, 1);
+        }
+
         const stepLife = (arr, fn) => {
           for (let i = arr.length - 1; i >= 0; i--) {
             arr[i].life -= dt;
@@ -1229,6 +1451,7 @@
         stepLife(w.explosions);
         stepLife(w.shards, s => { s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 260 * dt; s.a += s.va * dt; });
         stepLife(w.texts, ft => { ft.y += ft.vy * dt; });
+        stepLife(w.bannerEvents);
 
         if (w.mode === 'solo') this.syncSoloHUD();
       },
@@ -1260,10 +1483,10 @@
         $('solo-kills').textContent = `처치 ${this.solo.kills}`;
         $('solo-lv').textContent = p.level;
         $('solo-xp-bar').style.width = `${clamp((p.xp / (p.xpNext || 1)) * 100, 0, 100)}%`;
-        this.renderBottomBuild(p.hp, p.maxHp, p.fireInterval, p.rangeMult, p.multiShot, p.moveSpeed, p.magics);
+        this.renderBottomBuild(p.hp, p.maxHp, p.fireInterval, p.rangeMult, p.multiShot, p.moveSpeed, p.magics, p.goldenSkills);
       },
 
-      renderBottomBuild(hp, mhp, fi, rm, ms, spd, magics) {
+      renderBottomBuild(hp, mhp, fi, rm, ms, spd, magics, goldenSkills = {}) {
         $('hud-hp').textContent = `${Math.ceil(hp)}/${mhp}`;
         $('hud-hp-bar').style.width = `${clamp((hp / (mhp || 1)) * 100, 0, 100)}%`;
         $('st-cd').textContent = `${Math.round((0.48 / fi) * 100)}%`;
@@ -1279,6 +1502,13 @@
           chip.innerHTML = `<span>${d.icon}</span><span class="text-slate-900">${d.name}</span><span class="font-black">Lv.${lv}</span>`;
           box.appendChild(chip);
         }
+        for (const [sid, cd] of Object.entries(goldenSkills || {})) {
+          const gd = CONFIG.GOLDEN_SKILLS[sid]; if (!gd) continue;
+          const chip = document.createElement('div');
+          chip.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-md border-2 border-amber-700 text-[11px] font-black shrink-0 bg-yellow-200 text-amber-950';
+          chip.innerHTML = `<span>🃏${gd.icon}</span><span>${gd.name}</span><span class="text-amber-700">${Math.ceil(cd)}s</span>`;
+          box.appendChild(chip);
+        }
       }
     };
 
@@ -1288,8 +1518,8 @@
     const NET = {
       myId: '', createMode: '1v1', createMobs: true, code: '', isHost: false,
       peer: null, hostConn: null, guests: new Map(), room: null,
-      syncAcc: 0, shownKey: '', joinTimer: null,
-      view: { time: 0, units: new Map(), projectiles: new Map(), orbs: [], beams: [], explosions: [], shockwaves: [], puddles: [], shards: [], texts: [], killFeed: [] },
+      syncAcc: 0, shownKey: '', joinTimer: null, seenBanners: new Set(),
+      view: { time: 0, units: new Map(), projectiles: new Map(), orbs: [], beams: [], explosions: [], shockwaves: [], puddles: [], chaosZones: [], shards: [], texts: [], killFeed: [] },
 
       openLobby() {
         SFX.init(); ENGINE.screen = 'online'; getNick();
@@ -1362,6 +1592,14 @@
             const u = ENGINE.world.units.find(x => x.id === pid);
             if (u && u.lvQueue.length && m.idx >= 0 && m.idx <= 2) {
               SPELLS.applyChoice(u, u.lvQueue.shift()[m.idx]);
+              u.rerolled = false;
+              this.broadcastSnap();
+            }
+          } else if (m.type === 'reroll' && pid && ENGINE.world && ENGINE.world.mode === 'online' && !ENGINE.world.ended) {
+            const u = ENGINE.world.units.find(x => x.id === pid);
+            if (u && u.alive && u.lvQueue.length && !u.rerolled) {
+              u.rerolled = true;
+              u.lvQueue[0] = SPELLS.generateChoices(u);
               this.broadcastSnap();
             }
           } else if (m.type === 'leave' && pid) this.dropGuest(pid);
@@ -1541,8 +1779,8 @@
         ['top-hud', 'hud-online', 'bottom-bar', 'bot-idle'].forEach(id => $(id).classList.remove('hidden'));
         $('on-code').textContent = r.code;
         $('on-mode').textContent = r.mode === '1v1' ? '1:1 대전' : '배틀로얄';
-        this.view = { time: 0, units: new Map(), projectiles: new Map(), orbs: [], beams: [], explosions: [], shockwaves: [], puddles: [], shards: [], texts: [], killFeed: [] };
-        this.shownKey = ''; this.syncAcc = 0;
+        this.view = { time: 0, units: new Map(), projectiles: new Map(), orbs: [], beams: [], explosions: [], shockwaves: [], puddles: [], chaosZones: [], shards: [], texts: [], killFeed: [] };
+        this.shownKey = ''; this.syncAcc = 0; this.seenBanners.clear();
 
         if (this.isHost) {
           const w = ENGINE.newWorld('online');
@@ -1587,14 +1825,16 @@
         const snap = {
           t: r1(w.time),
           us: w.units.map(u => u.kind === 'mob'
-            ? { uid: u.uid, id: u.id, kd: 'mob', x: r1(u.x), y: r1(u.y), hp: u.hp, mhp: u.maxHp, hf: u.hitFlash > 0, sl: u.slowTimer > 0 }
-            : { id: u.id, kd: 'wiz', nm: u.name, ci: u.colorIdx, x: r1(u.x), y: r1(u.y), a: r2(u.angle), hp: Math.ceil(u.hp), mhp: u.maxHp, al: u.alive, lv: u.level, hf: u.hitFlash > 0, sl: u.slowTimer > 0, shLv: u.magics.shield || 0, shA: r2(u.shieldAngle || 0), shCd: (u.shieldCds || []).map(v => r2(v)), cd: Math.round((0.48 / u.fireInterval) * 100), rg: Math.round(u.rangeMult * 100), ms: u.multiShot, sp: Math.round((u.moveSpeed / CONFIG.SPEED) * 100), mag: Object.entries(u.magics).map(([id, lv]) => ({ id, lv })), qc: u.lvQueue.length, ch: u.lvQueue[0] || [] }),
+            ? { uid: u.uid, id: u.id, kd: 'mob', x: r1(u.x), y: r1(u.y), hp: u.hp, mhp: u.maxHp, hf: u.hitFlash > 0, sl: u.slowTimer > 0, st: r1(u.stunTimer || 0) }
+            : { id: u.id, kd: 'wiz', nm: u.name, ci: u.colorIdx, x: r1(u.x), y: r1(u.y), a: r2(u.angle), hp: Math.ceil(u.hp), mhp: u.maxHp, al: u.alive, lv: u.level, hf: u.hitFlash > 0, sl: u.slowTimer > 0, st: r1(u.stunTimer || 0), pp: r1(u.poopTimer || 0), shLv: u.magics.shield || 0, shA: r2(u.shieldAngle || 0), shCd: (u.shieldCds || []).map(v => r2(v)), cd: Math.round((0.48 / u.fireInterval) * 100), rg: Math.round(u.rangeMult * 100), ms: u.multiShot, sp: Math.round((u.moveSpeed / CONFIG.SPEED) * 100), mag: Object.entries(u.magics).map(([id, lv]) => ({ id, lv })), gs: Object.fromEntries(Object.entries(u.goldenSkills || {}).map(([k, v]) => [k, r1(v)])), qc: u.lvQueue.length, rr: !!u.rerolled, ch: u.lvQueue[0] || [] }),
           ob: w.orbs.map(o => ({ t: o.t, x: r1(o.x), y: r1(o.y), r: o.r })),
           pr: w.projectiles.map(p => ({ uid: p.uid, k: p.kind, x: r1(p.x), y: r1(p.y), vx: r1(p.vx), vy: r1(p.vy), a: r2(p.a), r: r1(p.r) })),
-          bm: w.beams.map(b => ({ x1: r1(b.x1), y1: r1(b.y1), x2: r1(b.x2), y2: r1(b.y2), w: r1(b.w), col: b.col, l: r2(b.life / b.maxLife) })),
+          bm: w.beams.map(b => ({ x1: r1(b.x1), y1: r1(b.y1), x2: r1(b.x2), y2: r1(b.y2), w: r1(b.w), col: b.col, gold: !!b.gold, l: r2(b.life / b.maxLife) })),
           ex: w.explosions.map(e => ({ x: r1(e.x), y: r1(e.y), r: r1(e.r), col: e.col, l: r2(e.life / e.maxLife) })),
           sw: w.shockwaves.map(s => ({ x: r1(s.x), y: r1(s.y), r: r1(s.r), mr: r1(s.maxR), col: s.col })),
           pd: w.puddles.map(p => ({ x: r1(p.x), y: r1(p.y), r: r1(p.r), l: r2(p.life / p.maxLife) })),
+          cz: w.chaosZones.map(z => ({ x: r1(z.x), y: r1(z.y), r: r1(z.r), l: r2(z.life / z.maxLife) })),
+          bn: w.bannerEvents.map(b => ({ id: b.id, txt: b.txt, st: b.st, tid: b.tid })),
           kf: w.killFeed.map(k => k.txt)
         };
         this.applySnap(snap, true);
@@ -1633,7 +1873,15 @@
         }
         for (const uid of this.view.projectiles.keys()) if (!seenP.has(uid)) this.view.projectiles.delete(uid);
 
-        Object.assign(this.view, { orbs: s.ob || [], beams: s.bm || [], explosions: s.ex || [], shockwaves: s.sw || [], puddles: s.pd || [], killFeed: s.kf || [] });
+        Object.assign(this.view, { orbs: s.ob || [], beams: s.bm || [], explosions: s.ex || [], shockwaves: s.sw || [], puddles: s.pd || [], chaosZones: s.cz || [], killFeed: s.kf || [] });
+        if (!isDirect) {
+          for (const b of (s.bn || [])) {
+            if (!this.seenBanners.has(b.id)) {
+              this.seenBanners.add(b.id);
+              if (!b.tid || b.tid === this.myId) UI.dramaticBanner(b.txt, b.st);
+            }
+          }
+        }
         if (isDirect && ENGINE.world) { this.view.shards = ENGINE.world.shards; this.view.texts = ENGINE.world.texts; }
         this.syncHUD();
       },
@@ -1687,13 +1935,16 @@
         if (!me) return;
         if (!me.al && ENGINE.world && !ENGINE.world.ended) UI.banner('탈락했습니다 — 관전 중...', 0);
         const magObj = Object.fromEntries((me.mag || []).map(m => [m.id, m.lv]));
-        ENGINE.renderBottomBuild(me.hp, me.mhp, 0.48 / ((me.cd || 100) / 100), (me.rg || 100) / 100, me.ms, CONFIG.SPEED * ((me.sp || 100) / 100), magObj);
+        ENGINE.renderBottomBuild(me.hp, me.mhp, 0.48 / ((me.cd || 100) / 100), (me.rg || 100) / 100, me.ms, CONFIG.SPEED * ((me.sp || 100) / 100), magObj, me.gs || {});
 
         const idle = $('bot-idle'), lvBar = $('bot-on-lvup');
         if (me.al && me.qc > 0 && me.ch && me.ch.length === 3) {
           idle.classList.add('hidden'); lvBar.classList.remove('hidden');
           $('on-lvup-q').textContent = `남은 선택: ${me.qc}`;
-          const key = `${me.lv}_${me.qc}_${me.ch.map(c => c.kind + c.id + c.nextLv).join('_')}`;
+          const rBtn = $('btn-on-reroll');
+          rBtn.textContent = `🎲 리롤 (${me.rr ? 0 : 1})`;
+          rBtn.disabled = !!me.rr;
+          const key = `${me.lv}_${me.qc}_${me.rr ? 1 : 0}_${me.ch.map(c => c.kind + c.id + c.nextLv).join('_')}`;
           if (this.shownKey !== key) {
             this.shownKey = key;
             const grid = $('on-choices'); grid.innerHTML = '';
@@ -1706,12 +1957,30 @@
         } else { lvBar.classList.add('hidden'); idle.classList.remove('hidden'); this.shownKey = ''; }
       },
 
+      rerollChoice() {
+        const me = this.view.units.get(this.myId);
+        if (!me || !me.al || me.qc <= 0 || me.rr) return;
+        if (this.isHost && ENGINE.world) {
+          const u = ENGINE.world.units.find(x => x.id === this.myId);
+          if (u && u.lvQueue.length && !u.rerolled) {
+            u.rerolled = true;
+            u.lvQueue[0] = SPELLS.generateChoices(u);
+            SFX.play('bounce');
+            this.broadcastSnap();
+          }
+        } else if (this.hostConn && this.hostConn.open) {
+          SFX.play('bounce');
+          $('btn-on-reroll').disabled = true;
+          try { this.hostConn.send({ type: 'reroll' }); } catch (e) {}
+        }
+      },
+
       pickChoice(idx) {
         const me = this.view.units.get(this.myId);
         if (!me || !me.al || me.qc <= 0) return;
         if (this.isHost && ENGINE.world) {
           const u = ENGINE.world.units.find(x => x.id === this.myId);
-          if (u && u.lvQueue.length) { SPELLS.applyChoice(u, u.lvQueue.shift()[idx]); SFX.play('pickup'); this.broadcastSnap(); }
+          if (u && u.lvQueue.length) { SPELLS.applyChoice(u, u.lvQueue.shift()[idx]); u.rerolled = false; SFX.play('pickup'); this.broadcastSnap(); }
         } else if (this.hostConn && this.hostConn.open) {
           SFX.play('pickup');
           $('bot-on-lvup').classList.add('hidden'); $('bot-idle').classList.remove('hidden');
@@ -1777,9 +2046,10 @@
         if (!w && !isGuestView) return;
 
         const puddles = isGuestView ? NET.view.puddles : w.puddles.map(p => ({ x: p.x, y: p.y, r: p.r, l: p.life / p.maxLife }));
+        const chaos   = isGuestView ? NET.view.chaosZones : w.chaosZones.map(z => ({ x: z.x, y: z.y, r: z.r, l: z.life / z.maxLife }));
         const waves   = isGuestView ? NET.view.shockwaves : w.shockwaves.map(s => ({ x: s.x, y: s.y, r: s.r, mr: s.maxR, col: s.col }));
         const orbs    = isGuestView ? NET.view.orbs : w.orbs;
-        const beams   = isGuestView ? NET.view.beams : w.beams.map(b => ({ x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2, w: b.w, col: b.col, l: b.life / b.maxLife }));
+        const beams   = isGuestView ? NET.view.beams : w.beams.map(b => ({ x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2, w: b.w, col: b.col, gold: !!b.gold, l: b.life / b.maxLife }));
         const exps    = isGuestView ? NET.view.explosions : w.explosions.map(e => ({ x: e.x, y: e.y, r: e.r, col: e.col, l: e.life / e.maxLife }));
         const shards  = isGuestView ? NET.view.shards : w.shards;
         const texts   = isGuestView ? NET.view.texts : w.texts;
@@ -1788,12 +2058,12 @@
           : w.projectiles.map(p => ({ k: p.kind, x: p.x, y: p.y, a: p.a, r: p.r }));
 
         const mobs = isGuestView
-          ? Array.from(NET.view.units.values()).filter(u => u.kd === 'mob').map(m => ({ x: m.rx, y: m.ry, hp: m.hp, mhp: m.mhp, hf: m.hf, sl: m.sl }))
-          : w.units.filter(u => u.kind === 'mob' && u.alive).map(m => ({ x: m.x, y: m.y, hp: m.hp, mhp: m.maxHp, hf: m.hitFlash > 0, sl: m.slowTimer > 0 }));
+          ? Array.from(NET.view.units.values()).filter(u => u.kd === 'mob').map(m => ({ x: m.rx, y: m.ry, hp: m.hp, mhp: m.mhp, hf: m.hf, sl: m.sl, st: m.st || 0 }))
+          : w.units.filter(u => u.kind === 'mob' && u.alive).map(m => ({ x: m.x, y: m.y, hp: m.hp, mhp: m.maxHp, hf: m.hitFlash > 0, sl: m.slowTimer > 0, st: m.stunTimer || 0 }));
 
         const wizards = isGuestView
-          ? Array.from(NET.view.units.values()).filter(u => u.kd === 'wiz' && u.al).map(u => ({ x: u.rx, y: u.ry, a: u.ra, r: CONFIG.HEAD_R, col: CONFIG.PALETTE[u.ci % 4].hex, hp: u.hp, mhp: u.mhp, lb: `${u.nm} Lv.${u.lv}`, me: u.id === NET.myId, hf: u.hf, sl: u.sl, shLv: u.shLv, shA: u.shA, shCd: u.shCd || [] }))
-          : w.units.filter(u => u.kind !== 'mob' && u.alive).map(u => ({ x: u.x, y: u.y, a: u.angle, r: u.radius, col: u.color, hp: u.hp, mhp: u.maxHp, lb: w.mode === 'demo' ? '' : (u.id === 'solo_p' ? `${u.name} Lv.${u.level}` : (u.isBoss ? u.name : (w.mode === 'online' ? `${u.name} Lv.${u.level}` : ''))), me: u.id === 'solo_p' || (w.mode === 'online' && u.id === NET.myId), hf: u.hitFlash > 0, sl: u.slowTimer > 0, shLv: u.magics.shield || 0, shA: u.shieldAngle || 0, shCd: u.shieldCds || [], boss: !!u.isBoss }));
+          ? Array.from(NET.view.units.values()).filter(u => u.kd === 'wiz' && u.al).map(u => ({ x: u.rx, y: u.ry, a: u.ra, r: CONFIG.HEAD_R, col: CONFIG.PALETTE[u.ci % 4].hex, hp: u.hp, mhp: u.mhp, lb: `${u.nm} Lv.${u.lv}`, me: u.id === NET.myId, hf: u.hf, sl: u.sl, st: u.st || 0, pp: u.pp || 0, shLv: u.shLv, shA: u.shA, shCd: u.shCd || [] }))
+          : w.units.filter(u => u.kind !== 'mob' && u.alive).map(u => ({ x: u.x, y: u.y, a: u.angle, r: u.radius, col: u.color, hp: u.hp, mhp: u.maxHp, lb: w.mode === 'demo' ? '' : (u.id === 'solo_p' ? `${u.name} Lv.${u.level}` : (u.isBoss ? u.name : (w.mode === 'online' ? `${u.name} Lv.${u.level}` : ''))), me: u.id === 'solo_p' || (w.mode === 'online' && u.id === NET.myId), hf: u.hitFlash > 0, sl: u.slowTimer > 0, st: u.stunTimer || 0, pp: u.poopTimer || 0, shLv: u.magics.shield || 0, shA: u.shieldAngle || 0, shCd: u.shieldCds || [], boss: !!u.isBoss }));
 
         // 독 장판
         for (const pd of puddles) {
@@ -1803,111 +2073,187 @@
           ctx.restore();
         }
 
+        // 혼돈! 파괴! 망각! 광역 장판
+        for (const cz of chaos) {
+          ctx.save();
+          const a = clamp(cz.l, 0, 1);
+          ctx.globalAlpha = a * 0.35; ctx.fillStyle = '#9333ea';
+          ctx.beginPath(); ctx.arc(cz.x, cz.y, cz.r, 0, 6.283); ctx.fill();
+          ctx.globalAlpha = a * 0.85; ctx.strokeStyle = '#581c87'; ctx.lineWidth = 3; ctx.setLineDash([12, 8]); ctx.stroke();
+          ctx.setLineDash([]); ctx.strokeStyle = '#e879f9'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(cz.x, cz.y, cz.r * 0.55, 0, 6.283); ctx.stroke();
+          ctx.restore();
+        }
+
         // 충격파 링
         for (const sw of waves) {
-          ctx.save(); ctx.globalAlpha = clamp(1 - sw.r / (sw.mr || 1), 0, 1) * 0.85;
-          ctx.strokeStyle = sw.col; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(sw.x, sw.y, sw.r, 0, 6.283); ctx.stroke(); ctx.restore();
+          ctx.save();
+          ctx.globalAlpha = clamp(1 - sw.r / (sw.mr || 1), 0.1, 0.85);
+          ctx.strokeStyle = sw.col; ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.arc(sw.x, sw.y, sw.r, 0, 6.283); ctx.stroke();
+          ctx.restore();
         }
 
-        // 경험치/회복 구슬
+        // 구슬 렌더링
         for (const o of orbs) {
-          ctx.save(); ctx.translate(o.x, o.y); ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
+          ctx.save();
+          ctx.fillStyle = o.t === 'heal' ? '#ffe4e6' : (o.t === 'bigxp' ? '#facc15' : '#38bdf8');
+          ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, 6.283); ctx.fill(); ctx.stroke();
           if (o.t === 'heal') {
-            ctx.fillStyle = '#fee2e2'; ctx.beginPath(); ctx.arc(0, 0, o.r, 0, 6.283); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#ef4444'; ctx.fillRect(-5, -2, 10, 4); ctx.fillRect(-2, -5, 4, 10);
+            ctx.fillStyle = '#e11d48';
+            ctx.fillRect(o.x - 2, o.y - 6, 4, 12);
+            ctx.fillRect(o.x - 6, o.y - 2, 12, 4);
           } else {
-            ctx.fillStyle = o.t === 'bigxp' ? '#f59e0b' : '#facc15';
-            ctx.beginPath(); ctx.moveTo(0, -o.r); ctx.lineTo(o.r, 0); ctx.lineTo(0, o.r); ctx.lineTo(-o.r, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(o.x - o.r * 0.3, o.y - o.r * 0.3, o.r * 0.28, 0, 6.283); ctx.fill();
           }
           ctx.restore();
         }
 
-        // 중립 잡몹
+        // 중립 잡몹 렌더링
         for (const m of mobs) {
-          ctx.save(); ctx.translate(m.x, m.y);
-          ctx.fillStyle = m.hf ? '#ffffff' : (m.sl ? '#7dd3fc' : '#64748b');
+          ctx.save();
+          ctx.fillStyle = m.hf ? '#ffffff' : (m.sl ? '#67e8f9' : '#64748b');
           ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2.5;
-          ctx.beginPath(); ctx.arc(0, 0, 15, 0, 6.283); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = '#fef08a'; ctx.beginPath(); ctx.arc(-4.5, -2, 2.5, 0, 6.283); ctx.arc(4.5, -2, 2.5, 0, 6.283); ctx.fill();
-          ctx.fillStyle = '#e2e8f0'; ctx.fillRect(-14, -23, 28, 4);
-          ctx.fillStyle = '#ef4444'; ctx.fillRect(-14, -23, 28 * clamp(m.hp / (m.mhp || 1), 0, 1), 4);
+          ctx.beginPath(); ctx.arc(m.x, m.y, 15, 0, 6.283); ctx.fill(); ctx.stroke();
+          if (m.hp < m.mhp) {
+            ctx.fillStyle = '#e2e8f0'; ctx.fillRect(m.x - 16, m.y - 24, 32, 4);
+            ctx.fillStyle = '#ef4444'; ctx.fillRect(m.x - 16, m.y - 24, 32 * clamp(m.hp / m.mhp, 0, 1), 4);
+          }
           ctx.restore();
         }
 
-        // 마법사 캐릭터 (그림판 감성: 동그라미 머리 + 꺾인 막대기 팔 + 주황 완드 + 마력 방패)
+        // 마법사 캐릭터 렌더링 (동그라미 머리 + 꺾인 막대기 팔 + 주황 완드 + 마력 방패 + 똥 변신)
         for (const u of wizards) {
-          ctx.save(); ctx.translate(u.x, u.y);
-          if (u.me) { ctx.strokeStyle = 'rgba(59,130,246,0.35)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, u.r + 9, 0, 6.283); ctx.stroke(); }
-
-          // 마력 방패 (활성 판 + 파괴 후 쿨타임 점선 호)
-          if (u.shLv > 0) {
-            const sp = SPELLS.shieldSpec({ magics: { shield: u.shLv }, radius: u.r });
-            for (let i = 0; i < sp.count; i++) {
-              const pa = u.shA + (i * Math.PI * 2) / sp.count;
-              const cd = (u.shCd || [])[i] || 0;
-              if (cd > 0) {
-                const prog = clamp(1 - cd / sp.maxCd, 0, 1);
-                ctx.save(); ctx.strokeStyle = 'rgba(14,165,233,0.25)'; ctx.lineWidth = 5; ctx.setLineDash([4, 4]);
-                ctx.beginPath(); ctx.arc(0, 0, sp.orbitR, pa - sp.arcHalf, pa + sp.arcHalf); ctx.stroke(); ctx.restore();
-                if (prog > 0.02) {
-                  ctx.save(); ctx.strokeStyle = 'rgba(56,189,248,0.75)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-                  ctx.beginPath(); ctx.arc(0, 0, sp.orbitR, pa - sp.arcHalf, pa - sp.arcHalf + sp.arcHalf * 2 * prog); ctx.stroke(); ctx.restore();
+          ctx.save();
+          if (u.pp > 0) {
+            // 똥 변신 상태
+            ctx.translate(u.x, u.y);
+            ctx.fillStyle = u.hf ? '#ffffff' : '#78350f';
+            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.ellipse(0, 12, 24, 11, 0, 0, 6.283); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(0, 1, 17, 9, 0, 0, 6.283); ctx.fill(); ctx.stroke();
+            ctx.beginPath(); ctx.ellipse(0, -9, 10, 7, 0, 0, 6.283); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath(); ctx.arc(-6, 1, 3.5, 0, 6.283); ctx.arc(6, 1, 3.5, 0, 6.283); ctx.fill();
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath(); ctx.arc(-6, 1, 1.8, 0, 6.283); ctx.arc(6, 1, 1.8, 0, 6.283); ctx.fill();
+            ctx.restore();
+          } else {
+            // 마력 방패 궤도
+            if (u.shLv > 0) {
+              const sp = SPELLS.shieldSpec({ magics: { shield: u.shLv }, radius: u.r });
+              for (let i = 0; i < sp.count; i++) {
+                const pa = u.shA + (i * Math.PI * 2) / sp.count;
+                const cd = u.shCd[i] || 0;
+                ctx.save();
+                if (cd <= 0) {
+                  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 10; ctx.lineCap = 'round';
+                  ctx.beginPath(); ctx.arc(u.x, u.y, sp.orbitR, pa - sp.arcHalf, pa + sp.arcHalf); ctx.stroke();
+                  ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 6;
+                  ctx.beginPath(); ctx.arc(u.x, u.y, sp.orbitR, pa - sp.arcHalf, pa + sp.arcHalf); ctx.stroke();
+                } else {
+                  const pct = clamp(1 - cd / sp.maxCd, 0.1, 1);
+                  ctx.globalAlpha = 0.45; ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 4; ctx.setLineDash([4, 4]);
+                  ctx.beginPath(); ctx.arc(u.x, u.y, sp.orbitR, pa - sp.arcHalf * pct, pa + sp.arcHalf * pct); ctx.stroke();
                 }
-              } else {
-                ctx.save(); ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 10; ctx.lineCap = 'round';
-                ctx.beginPath(); ctx.arc(0, 0, sp.orbitR, pa - sp.arcHalf, pa + sp.arcHalf); ctx.stroke();
-                ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 6; ctx.stroke(); ctx.restore();
+                ctx.restore();
               }
             }
-          }
 
-          // 회전 몸체 (꺾인 막대기 팔 + 주황 완드 + 동그라미 머리)
-          ctx.save(); ctx.rotate(u.a);
-          const sc = u.r / CONFIG.HEAD_R; ctx.scale(sc, sc);
-          const bodyCol = u.hf ? '#ffffff' : (u.sl ? '#38bdf8' : u.col);
-          ctx.strokeStyle = bodyCol; ctx.lineWidth = 7.5; ctx.lineCap = 'round'; ctx.lineJoin = 'miter';
-          ctx.beginPath(); ctx.moveTo(10, -20); ctx.lineTo(29, -30); ctx.lineTo(44, -6); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(22, 16); ctx.lineTo(41, 22); ctx.lineTo(46, 5); ctx.stroke();
+            // 회전하는 팔 + 완드 + 머리
+            ctx.translate(u.x, u.y);
+            ctx.save();
+            ctx.rotate(u.a);
+            const armCol = u.hf ? '#ffffff' : u.col;
+            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(u.r * 0.45, -u.r * 0.72); ctx.lineTo(u.r + 14, -u.r * 0.88); ctx.lineTo(u.r + 30, -5);
+            ctx.moveTo(u.r * 0.45, u.r * 0.72);  ctx.lineTo(u.r + 14, u.r * 0.88);  ctx.lineTo(u.r + 30, 5);
+            ctx.stroke();
+            ctx.strokeStyle = armCol; ctx.lineWidth = 7.5;
+            ctx.stroke();
 
-          ctx.fillStyle = u.hf ? '#ffffff' : '#f97316'; ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
-          ctx.fillRect(38, -5.5, 36, 11); ctx.strokeRect(38, -5.5, 36, 11);
+            // 주황색 완드
+            ctx.fillStyle = '#f97316'; ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2.5;
+            ctx.fillRect(u.r + 22, -6.5, 36, 13);
+            ctx.strokeRect(u.r + 22, -6.5, 36, 13);
+            ctx.restore();
 
-          ctx.fillStyle = bodyCol; ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2.5;
-          ctx.beginPath(); ctx.arc(0, 0, CONFIG.HEAD_R, 0, 6.283); ctx.fill(); ctx.stroke();
-          ctx.restore();
+            // 동그라미 머리
+            ctx.fillStyle = u.hf ? '#ffffff' : u.col;
+            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(0, 0, u.r, 0, 6.283); ctx.fill(); ctx.stroke();
 
-          // 체력바 & 이름표
-          if (u.mhp < 5000) {
-            const bw = u.boss ? 84 : 52, by = -u.r - 15;
-            ctx.fillStyle = '#e2e8f0'; ctx.fillRect(-bw / 2, by, bw, 6);
-            ctx.fillStyle = u.me ? '#3b82f6' : '#ef4444'; ctx.fillRect(-bw / 2, by, bw * clamp(u.hp / (u.mhp || 1), 0, 1), 6);
-            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1.3; ctx.strokeRect(-bw / 2, by, bw, 6);
-            if (u.lb) {
-              ctx.font = `900 ${u.boss ? 13 : 11}px "Noto Sans KR",sans-serif`; ctx.textAlign = 'center';
-              ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.strokeText(u.lb, 0, by - 4);
-              ctx.fillStyle = u.boss ? '#b91c1c' : '#0f172a'; ctx.fillText(u.lb, 0, by - 4);
+            if (u.sl > 0) {
+              ctx.strokeStyle = '#06b6d4'; ctx.lineWidth = 3;
+              ctx.beginPath(); ctx.arc(0, 0, u.r + 4, 0, 6.283); ctx.stroke();
             }
+            if (u.boss) {
+              ctx.fillStyle = '#facc15'; ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(-14, -u.r + 2); ctx.lineTo(-16, -u.r - 14); ctx.lineTo(-5, -u.r - 6);
+              ctx.lineTo(0, -u.r - 17); ctx.lineTo(5, -u.r - 6); ctx.lineTo(16, -u.r - 14); ctx.lineTo(14, -u.r + 2);
+              ctx.closePath(); ctx.fill(); ctx.stroke();
+            }
+            ctx.restore();
+          }
+
+          // 스턴 표시 & 이름표 + HP 바
+          if (u.st > 0) {
+            ctx.save(); ctx.font = '900 13px "Noto Sans KR",sans-serif'; ctx.textAlign = 'center';
+            ctx.fillStyle = '#ca8a04'; ctx.fillText('💫 기절!', u.x, u.y - u.r - 24); ctx.restore();
+          }
+          const barW = u.boss ? 76 : 48, barY = u.y - u.r - (u.boss ? 24 : 13);
+          ctx.save();
+          ctx.fillStyle = '#e2e8f0'; ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1.8;
+          ctx.fillRect(u.x - barW / 2, barY, barW, 6);
+          ctx.fillStyle = u.me ? '#22c55e' : '#ef4444';
+          ctx.fillRect(u.x - barW / 2, barY, barW * clamp(u.hp / (u.mhp || 1), 0, 1), 6);
+          ctx.strokeRect(u.x - barW / 2, barY, barW, 6);
+          if (u.lb) {
+            ctx.font = '900 12px "Noto Sans KR",sans-serif'; ctx.textAlign = 'center';
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.strokeText(u.lb, u.x, barY - 4);
+            ctx.fillStyle = '#0f172a'; ctx.fillText(u.lb, u.x, barY - 4);
           }
           ctx.restore();
         }
 
-        // 투사체
+        // 투사체 렌더링
         for (const p of projs) {
-          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a || 0); ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
-          if (p.k === 'fireball') { ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, 6.283); ctx.fill(); ctx.stroke(); }
-          else if (p.k === 'icespear') { ctx.fillStyle = '#22d3ee'; ctx.beginPath(); ctx.moveTo(p.r + 7, 0); ctx.lineTo(-p.r, -6); ctx.lineTo(-p.r * 0.4, 0); ctx.lineTo(-p.r, 6); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-          else if (p.k === 'ricochet') { ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, 6.283); ctx.fill(); ctx.stroke(); }
-          else if (p.k === 'poison') { ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, 6.283); ctx.fill(); ctx.stroke(); }
-          else if (p.k === 'boomerang') { ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 5.5; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-p.r, -p.r); ctx.lineTo(p.r, p.r); ctx.moveTo(p.r, -p.r); ctx.lineTo(-p.r, p.r); ctx.stroke(); }
-          else { ctx.fillStyle = '#78716c'; ctx.beginPath(); ctx.moveTo(p.r + 3, 0); ctx.lineTo(-p.r, -p.r * 0.8); ctx.lineTo(-p.r, p.r * 0.8); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+          ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.a || 0);
+          ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
+          if (p.k === 'fireball') {
+            ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, 6.283); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#fde047'; ctx.beginPath(); ctx.arc(0, 0, p.r * 0.45, 0, 6.283); ctx.fill();
+          } else if (p.k === 'icespear') {
+            ctx.fillStyle = '#06b6d4'; ctx.beginPath(); ctx.moveTo(p.r * 1.5, 0); ctx.lineTo(0, -p.r * 0.65); ctx.lineTo(-p.r * 1.2, 0); ctx.lineTo(0, p.r * 0.65); ctx.closePath(); ctx.fill(); ctx.stroke();
+          } else if (p.k === 'ricochet') {
+            ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, 6.283); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(-p.r * 0.25, -p.r * 0.25, p.r * 0.3, 0, 6.283); ctx.fill();
+          } else if (p.k === 'poison') {
+            ctx.fillStyle = '#16a34a'; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, 6.283); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#86efac'; ctx.beginPath(); ctx.arc(0, 0, p.r * 0.42, 0, 6.283); ctx.fill();
+          } else if (p.k === 'boomerang') {
+            ctx.fillStyle = '#8b5cf6';
+            for (let i = 0; i < 2; i++) { ctx.rotate(Math.PI / 2); ctx.fillRect(-p.r * 1.15, -3.5, p.r * 2.3, 7); ctx.strokeRect(-p.r * 1.15, -3.5, p.r * 2.3, 7); }
+          } else {
+            ctx.fillStyle = '#57534e'; ctx.beginPath(); ctx.moveTo(p.r * 1.3, 0); ctx.lineTo(-p.r, -p.r * 0.85); ctx.lineTo(-p.r, p.r * 0.85); ctx.closePath(); ctx.fill(); ctx.stroke();
+          }
           ctx.restore();
         }
 
-        // 레이저 빔
+        // 레이저 빔 & 파괴 광선
         for (const b of beams) {
           ctx.save(); ctx.globalAlpha = clamp(b.l, 0, 1); ctx.lineCap = 'round';
-          ctx.strokeStyle = b.col; ctx.lineWidth = b.w; ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
-          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(2, b.w * 0.36); ctx.stroke();
+          if (b.gold) {
+            ctx.strokeStyle = '#dc2626'; ctx.lineWidth = b.w + 5; ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+            ctx.strokeStyle = '#fef08a'; ctx.lineWidth = Math.max(2.5, b.w * 0.55); ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+          } else {
+            ctx.strokeStyle = b.col; ctx.lineWidth = b.w; ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(2, b.w * 0.36); ctx.stroke();
+          }
           ctx.restore();
         }
 
@@ -1980,6 +2326,8 @@
       $('btn-solo-move').onclick = () => { ENGINE.solo.manualMove = !ENGINE.solo.manualMove; ENGINE.updateSoloButtons(); };
       $('btn-solo-speed').onclick = () => { ENGINE.solo.timeScale = ENGINE.solo.timeScale === 1 ? 2 : 1; ENGINE.updateSoloButtons(); };
       $('btn-solo-pause').onclick = () => ENGINE.toggleSoloPause();
+      $('btn-solo-reroll').onclick = () => ENGINE.rerollSoloChoice();
+      $('btn-on-reroll').onclick = () => NET.rerollChoice();
       $('btn-resume').onclick = () => ENGINE.toggleSoloPause(false);
       $('btn-restart').onclick = () => ENGINE.startSolo();
       $('btn-retry').onclick = () => ENGINE.startSolo();
@@ -2018,11 +2366,7 @@
       $('wait-royale').onclick = () => NET.setWaitMode('royale');
       $('wait-mobs').onclick = () => { if (NET.isHost && NET.room) { NET.room.mobs = !NET.room.mobs; NET.broadcastRoom(); NET.renderWaiting(); } };
       $('btn-add-bot').onclick = () => NET.addBot();
-      $('btn-del-bot').onclick = () => NET.delBot();
-      $('btn-start-match').onclick = () => NET.startMatch();
-      $('btn-on-lobby').onclick = () => NET.returnLobby();
-
-      // 키보드 단축키 (1/2/3 선택, P/ESC 일시정지, WASD 이동)
+      // 키보드 단축키 (1/2/3 선택, R 리롤, P/ESC 일시정지, WASD 이동)
       window.addEventListener('keydown', (e) => {
         if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
         ENGINE.keys.add(e.code);
@@ -2030,6 +2374,10 @@
         if (idx !== -1) {
           if (ENGINE.screen === 'solo' && ENGINE.solo.pausedLv) ENGINE.pickSoloChoice(idx);
           else if (ENGINE.screen === 'online' && !$('bot-on-lvup').classList.contains('hidden')) NET.pickChoice(idx);
+        }
+        if (e.code === 'KeyR') {
+          if (ENGINE.screen === 'solo' && ENGINE.solo.pausedLv) ENGINE.rerollSoloChoice();
+          else if (ENGINE.screen === 'online' && !$('bot-on-lvup').classList.contains('hidden')) NET.rerollChoice();
         }
         if ((e.code === 'KeyP' || e.code === 'Escape') && ENGINE.screen === 'solo') ENGINE.toggleSoloPause();
       });
