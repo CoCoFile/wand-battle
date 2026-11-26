@@ -104,7 +104,7 @@ const CONFIG = {
 
   // ── 계정 & 유물 ────────────────────────────
   // 계정 서버 = TELEMETRY_URL 의 Apps Script (tools/sheets-collector.gs 최신 버전 배포 필요)
-  ACCOUNTS_ENABLED: false,   // 서버 스크립트 업데이트 확인 후 true
+  ACCOUNTS_ENABLED: true,    // 서버 스크립트(계정 기능 버전) 배포됨 (11/26)
   RELIC_SLOTS: 3,            // 장착 가능 개수
   RELIC_MAX_LV: 3,
   // 심장 조각: 엔딩(만용은 30스테이지 돌파 + 이후 10스테이지마다) 때 1개. perTicket개 = 뽑기권 1장
