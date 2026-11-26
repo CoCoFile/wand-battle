@@ -1,0 +1,156 @@
+// 온라인 경기 진행: 게임 시작(캐릭터 배치), 대기실 복귀, 방장→참가자 상태 스냅샷 전송/적용
+
+Object.assign(NET, {
+  startGame() {
+    if (!this.isHost) return;
+    if (this.players.length < 2) {
+      UI.toast('2명 이상 필요 (봇 추가 가능)');
+      return;
+    }
+    ENGINE.mode = 'online';
+    ENGINE.paused = false;
+    const w = ENGINE.createEmptyWorld();
+
+    this.players.forEach((p, idx) => {
+      const ang = (Math.PI * 2 * idx) / this.players.length;
+      const c = ENGINE.makeChar({
+        id: p.id,
+        name: p.name,
+        color: CONFIG.COLORS[idx % CONFIG.COLORS.length],
+        team: idx + 1,
+        isLocal: p.id === ENGINE.localId,
+        isBot: p.isBot,
+        x: CONFIG.W * 0.5 + Math.cos(ang) * 280,
+        y: CONFIG.H * 0.5 + Math.sin(ang) * 200,
+        maxHp: CONFIG.HP.online,
+        magics: {},
+        initialDrafts: p.isBot ? 0 : 3
+      });
+      if (p.isBot) {
+        c.magics = { laser: 1, fireball: 1 };
+      } else {
+        c.choiceQueue.push({
+          isInitial: true,
+          rerolls: 1,
+          choices: SPELLS.generateInitialSpellChoices(c)
+        });
+      }
+      w.chars.push(c);
+    });
+
+    if ($('#chk-neutral-mobs')?.checked) {
+      for (let s = 0; s < 4; s++) {
+        w.chars.push(ENGINE.makeChar({
+          id: `on_slime_${s}_${Date.now()}`,
+          name: '작은 슬라임',
+          color: '#22C55E',
+          team: 99,
+          isBot: true,
+          isSmallMob: true,
+          noAttack: true,
+          x: rand(120, CONFIG.W - 120),
+          y: rand(120, CONFIG.H - 120),
+          maxHp: 22,
+          xpReward: 26
+        }));
+      }
+    }
+
+    ENGINE.world = w;
+    $('#modal-on-over').classList.add('hidden');
+    this.broadcast({ type: 'start' });
+    UI.showScreen('game');
+    $('#online-bottom-dock').classList.remove('hidden');
+    $('#btn-manual-toggle').classList.add('hidden');
+    $('#hud-mode-badge').textContent = 'ONLINE';
+    $('#hud-mode-badge').className = 'px-2 py-0.5 rounded-lg bg-sky-500 text-white text-[11px] font-black shrink-0';
+    RENDER.resize();
+    UI.renderOnlineChoiceSlot();
+    UI.updateHUD();
+  },
+
+  returnToLobby() {
+    $('#modal-on-over').classList.add('hidden');
+    if (this.isHost) {
+      this.broadcast({ type: 'back_lobby' });
+      UI.openLobby();
+    }
+  },
+
+  tickSync(dt) {
+    if (!this.active || !this.isHost || !ENGINE.world) return;
+    this.syncTimer += dt;
+    if (this.syncTimer < 0.05) return;
+    this.syncTimer = 0;
+
+    const w = ENGINE.world;
+    const baseSnap = {
+      time: w.time,
+      chars: w.chars.map((c) => ({
+        id: c.id, name: c.name, color: c.color, team: c.team,
+        isSmallMob: c.isSmallMob, isBoss: c.isBoss,
+        x: Math.round(c.x), y: Math.round(c.y), r: c.r,
+        hp: Math.round(c.hp), maxHp: Math.round(c.maxHp),
+        lv: c.lv, xp: Math.round(c.xp), nextXp: Math.round(c.nextXp),
+        angle: Number(c.angle.toFixed(2)), alive: c.alive,
+        magics: c.magics,
+        shieldAngle: Number((c.shieldAngle || 0).toFixed(2)),
+        shieldCooldowns: c.shieldCooldowns,
+        stunTimer: Number((c.stunTimer || 0).toFixed(1)),
+        slowTimer: Number((c.slowTimer || 0).toFixed(1)),
+        poopTimer: Number((c.poopTimer || 0).toFixed(1)),
+        hurtTimer: c.hurtTimer
+      })),
+      projs: w.projs.map((p) => ({
+        kind: p.kind, x: Math.round(p.x), y: Math.round(p.y),
+        vx: Math.round(p.vx), vy: Math.round(p.vy),
+        r: p.r, color: p.color, spin: p.spin || 0
+      })),
+      beams: w.beams,
+      waves: w.waves.map((wv) => ({ x: wv.x, y: wv.y, r: wv.r, color: wv.color })),
+      zones: w.zones.map((z) => ({ kind: z.kind, x: z.x, y: z.y, r: z.r, color: z.color })),
+      rings: w.rings,
+      orbs: w.orbs,
+      texts: w.texts
+    };
+
+    for (const [peerId, conn] of this.conns.entries()) {
+      if (!conn.open) continue;
+      const ch = w.chars.find((c) => c.id === peerId);
+      conn.send({
+        type: 'state',
+        snap: {
+          ...baseSnap,
+          myQueue: ch ? ch.choiceQueue : []
+        }
+      });
+    }
+  },
+
+  applySnapshot(snap) {
+    if (!snap) return;
+    const w = ENGINE.world || ENGINE.createEmptyWorld();
+    w.time = snap.time;
+    w.chars = (snap.chars || []).map((c) => ({
+      ...c,
+      isLocal: c.id === ENGINE.localId
+    }));
+    w.projs = snap.projs || [];
+    w.beams = snap.beams || [];
+    w.waves = snap.waves || [];
+    w.zones = snap.zones || [];
+    w.rings = snap.rings || [];
+    w.orbs = snap.orbs || [];
+    w.particles = w.particles || [];
+    w.texts = snap.texts || [];
+    ENGINE.world = w;
+
+    const prevQ = JSON.stringify(this.clientChoiceQueue[0]?.choices?.map((x) => x.id + x.badge) || []);
+    this.clientChoiceQueue = snap.myQueue || [];
+    const nextQ = JSON.stringify(this.clientChoiceQueue[0]?.choices?.map((x) => x.id + x.badge) || []);
+    if (prevQ !== nextQ || this.clientChoiceQueue.length === 0) {
+      UI.renderOnlineChoiceSlot();
+    }
+    UI.updateHUD();
+  }
+});
