@@ -55,7 +55,7 @@ Object.assign(SPELLS, {
     }
 
     // 10% 확률로 마지막 슬롯을 황금 카드로 교체
-    if (Math.random() < 0.10 + (c.goldenBonus || 0) && choices.length === 3) { // goldenBonus: 행운의 동전 유물
+    if (Math.random() < 0.10 + (c.goldenBonus || 0) && choices.length === 3) { // goldenBonus: 운명의 금화 유물
       choices[2] = {
         type: 'golden', id: 'golden', isGolden: true,
         name: '황금 카드', icon: '🃏', color: '#B45309', bg: '#FEF3C7',

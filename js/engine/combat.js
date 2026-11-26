@@ -4,7 +4,7 @@ Object.assign(ENGINE, {
   grantXp(c, amount, world) {
     if (!c || !c.alive || c.isSmallMob) return;
     if (this.isStageMode() && c.team !== 1) return; // 솔로·파티의 적은 레벨업(=풀회복) 안 함
-    c.xp += amount * (c.xpMult || 1); // xpMult: 경험의 책 유물
+    c.xp += amount * (c.xpMult || 1); // xpMult: 고대 마도서 유물
     while (c.xp >= c.nextXp) {
       c.xp -= c.nextXp;
       c.lv++;

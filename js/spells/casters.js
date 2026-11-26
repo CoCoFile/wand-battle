@@ -33,7 +33,7 @@ const SPELL_CASTERS = {
     const spd = 410 + lv * 15;
     const r = (9 + lv * 0.7) * c.areaMult;
     const expR = (62 + lv * 9) * c.areaMult;
-    const dmg = (14 + lv * 4) * c.atkMult; // 근접 신관으로 명중률이 높아서 직격형보다 낮게
+    const dmg = (12.5 + lv * 3.5) * c.atkMult; // 근접 신관이라 명중률 높음 → 낮게 (11/26 2차: 14+4lv → 12.5+3.5lv)
     const step = spreadStep(shots, 0.16, Math.PI * 1.4);
     for (let i = 0; i < shots; i++) {
       const ang = c.angle + (i - (shots - 1) / 2) * step;
@@ -107,7 +107,7 @@ const SPELL_CASTERS = {
     const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
     const maxR = (150 + lv * 22) * c.areaMult;
     const speed = 340 + lv * 20;
-    const dmg = (11 + lv * 3) * c.atkMult;     // 밸런스(11/26): 14+3.8lv → 너프
+    const dmg = (9.5 + lv * 2.6) * c.atkMult;  // 밸런스(11/26): 14+3.8lv → 11+3lv → 9.5+2.6lv
     for (let i = 0; i < shots; i++) {
       world.waves.push({
         skillUid, ownerId: c.id, team: c.team,

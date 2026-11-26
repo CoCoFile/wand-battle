@@ -2,7 +2,7 @@
 // 크기·속도·체력·이름은 여기서 조정. ※ 마법별 피해·속도 등 수치는 js/spells/casters.js, 쿨타임은 js/spells/spells.js(baseCooldown)에 있음
 
 const CONFIG = {
-  GAME_VERSION: '2026.11.26',  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
+  GAME_VERSION: '2026.11.26b', // b: 충격파·화염구 너프  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
   // 플레이 기록 수집 주소 (구글 Apps Script 웹 앱 /exec URL). 비워두면 수집 안 함
   TELEMETRY_URL: 'https://script.google.com/macros/s/AKfycbyCRCqR5cZPodxsXFBUpEwNUSXvQBr1qMMGUGpo5E41HJxSlZWXWgDIqgjhjf8iHdieVQ/exec',
 
@@ -117,16 +117,16 @@ const CONFIG = {
   },
   // 유물: 솔로·파티에만 적용 (대전 X). v = Lv.1/2/3 수치
   RELICS: {
-    staff:  { name: '낡은 지팡이 끝',  icon: '🪄', v: [4, 7, 10],    desc: (x) => `공격력 +${x}%` },
-    cloak:  { name: '두꺼운 망토',     icon: '🧥', v: [3, 5, 7],     desc: (x) => `받는 피해 -${x}%` },
-    herb:   { name: '할머니 약초',     icon: '🌿', v: [0.5, 1, 1.5], desc: (x) => `초당 HP +${x}` },
-    coffee: { name: '커피 세 잔',      icon: '☕', v: [3, 5, 7],     desc: (x) => `쿨타임 -${x}%` },
-    lens:   { name: '돋보기',          icon: '🔍', v: [4, 7, 10],    desc: (x) => `범위 +${x}%` },
-    heart:  { name: '튼튼한 심장',     icon: '🫀', v: [15, 30, 45],  desc: (x) => `최대 HP +${x}` },
-    coin:   { name: '행운의 동전',     icon: '🪙', v: [1, 2, 3],     desc: (x) => `리롤 +${x >= 3 ? 2 : 1}${x >= 2 ? ', 황금카드 +5%p' : ''}` },
-    shoes:  { name: '가벼운 신발',     icon: '👟', v: [5, 10, 15],   desc: (x) => `이동속도 +${x}%` },
-    book:   { name: '경험의 책',       icon: '📖', v: [8, 14, 20],   desc: (x) => `경험치 +${x}%` },
-    magnet: { name: '말발굽 자석',     icon: '🧲', v: [20, 40, 60],  desc: (x) => `구슬 흡수 범위 +${x}` }
+    staff:  { name: '파멸의 지팡이',     icon: '🪄', v: [4, 7, 10],    desc: (x) => `공격력 +${x}%` },
+    cloak:  { name: '불멸의 망토',       icon: '🧥', v: [3, 5, 7],     desc: (x) => `받는 피해 -${x}%` },
+    herb:   { name: '세계수의 잎',       icon: '🍃', v: [0.5, 1, 1.5], desc: (x) => `초당 HP +${x}` },
+    coffee: { name: '시간술사의 모래시계', icon: '⏳', v: [3, 5, 7],     desc: (x) => `쿨타임 -${x}%` },
+    lens:   { name: '현자의 눈',         icon: '👁️', v: [4, 7, 10],    desc: (x) => `범위 +${x}%` },
+    heart:  { name: '거인의 심장',       icon: '🫀', v: [15, 30, 45],  desc: (x) => `최대 HP +${x}` },
+    coin:   { name: '운명의 금화',       icon: '🪙', v: [1, 2, 3],     desc: (x) => `리롤 +${x >= 3 ? 2 : 1}${x >= 2 ? ', 황금카드 +5%p' : ''}` },
+    shoes:  { name: '질풍의 장화',       icon: '🌪️', v: [5, 10, 15],   desc: (x) => `이동속도 +${x}%` },
+    book:   { name: '고대 마도서',       icon: '📜', v: [8, 14, 20],   desc: (x) => `경험치 +${x}%` },
+    magnet: { name: '탐욕의 손아귀',     icon: '✋', v: [20, 40, 60],  desc: (x) => `구슬 흡수 범위 +${x}` }
   },
 
   // ── 파티 모드 (온라인 협동) ─────────────────
