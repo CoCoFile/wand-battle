@@ -58,7 +58,9 @@ Object.assign(ENGINE, {
     const D = CONFIG.DIFFICULTY[this.difficulty] || CONFIG.DIFFICULTY.normal;
     const at = ([base, inc]) => base + inc * (stage - 1);
     // 후반 완화된 '체감 스테이지': lateFrom 이후는 lateMult 배속으로만 증가 (HP·공격력·쿨타임에만 사용)
-    const eff = stage <= B.lateFrom ? stage : B.lateFrom + (stage - B.lateFrom) * B.lateMult;
+    const lateFrom = D.lateFrom ?? B.lateFrom;
+    const lateMult = D.lateMult ?? B.lateMult; // 난이도별로 덮어쓸 수 있음 (만용은 완화 덜 함)
+    const eff = stage <= lateFrom ? stage : lateFrom + (stage - lateFrom) * lateMult;
     const atP = ([base, inc]) => base + inc * (eff - 1);
     const allies = w.chars.filter((c) => c.alive && c.team === 1 && !c.isSmallMob);
     const extra = Math.max(0, allies.length - 1); // 파티 인원 추가분

@@ -2,7 +2,7 @@
 // 크기·속도·체력·이름은 여기서 조정. ※ 마법별 피해·속도 등 수치는 js/spells/casters.js, 쿨타임은 js/spells/spells.js(baseCooldown)에 있음
 
 const CONFIG = {
-  GAME_VERSION: '2026.11.26b', // b: 충격파·화염구 너프  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
+  GAME_VERSION: '2026.11.26c', // b: 충격파·화염구 너프, c: 만용 후반 완화 축소  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
   // 플레이 기록 수집 주소 (구글 Apps Script 웹 앱 /exec URL). 비워두면 수집 안 함
   TELEMETRY_URL: 'https://script.google.com/macros/s/AKfycbyCRCqR5cZPodxsXFBUpEwNUSXvQBr1qMMGUGpo5E41HJxSlZWXWgDIqgjhjf8iHdieVQ/exec',
 
@@ -66,13 +66,14 @@ const CONFIG = {
   // healOrbLife: 회복 구슬 유지 시간(초). null = 안 사라짐, 0 = 회복 구슬 없음(경험치 구슬만)
   // enemyHp / enemyAtk: 일반 적 HP·공격력 배율, enemyCdr: 쿨타임 배율(작을수록 자주 쏨, 보스에도 적용)
   // bossHp / bossAtk: 보스 전용 배율 (보스엔 약하게 — 어려움 첫 보스가 벽이던 문제 11/26)
+  // lateMult/lateFrom: 이 난이도만 후반 성장 완화를 따로 (없으면 SOLO 값)
   // ending: true면 ENDING_STAGE 클리어 시 엔딩 (만용은 끝없음 — 30 넘기면 winText 배너만 뜨고 계속)
   // winText: 엔딩(만용은 30 돌파) 문구, loseText: 게임오버·전멸 문구
   ENDING_STAGE: 30,
   DIFFICULTY: {
     easy:   { label: '겁쟁이들의 쉼터', short: '쉼터', ending: true,  winText: '겁쟁이들의 왕',        loseText: '이걸?ㅋㅋㅋㅋㅋㅋ',           healOrbLife: null, enemyHp: 1.0, enemyAtk: 1.0, enemyCdr: 1.0,  bossHp: 1.0,  bossAtk: 1.0 },
     normal: { label: '현실에 타협',     short: '타협', ending: true,  winText: '현실에 안주한놈',      loseText: '걍 쉼터 가셈',               healOrbLife: 6,    enemyHp: 1.15, enemyAtk: 1.12, enemyCdr: 0.95, bossHp: 1.1,  bossAtk: 1.05 },
-    hard:   { label: '만용 그자체',     short: '만용', ending: false, winText: '인정 무한모드 ㄱ?',    loseText: '용기와 만용은 한끗차이다',   healOrbLife: 0,    enemyHp: 1.5, enemyAtk: 1.45, enemyCdr: 0.85, bossHp: 1.25, bossAtk: 1.15 }
+    hard:   { label: '만용 그자체',     short: '만용', ending: false, winText: '인정 무한모드 ㄱ?',    loseText: '용기와 만용은 한끗차이다',   healOrbLife: 0,    enemyHp: 1.5, enemyAtk: 1.45, enemyCdr: 0.85, bossHp: 1.25, bossAtk: 1.15, lateMult: 0.75 }
   },
 
   // ── 화염구 ─────────────────────────────────
