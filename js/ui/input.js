@@ -4,6 +4,8 @@ Object.assign(UI, {
   bindEvents() {
     // 아이디: 마지막 아이디 복원, 입력할 때마다 기록 표시 갱신
     PROFILE.load();
+    TELEMETRY.flush(); // 오프라인 때 밀린 기록 전송
+    $('#telemetry-note')?.classList.toggle('hidden', !TELEMETRY.enabled());
     if (PROFILE.data.lastId) $('#input-name').value = PROFILE.data.lastId;
     $('#input-name').addEventListener('input', () => UI.renderProfile());
     UI.renderProfile();

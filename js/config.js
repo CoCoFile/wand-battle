@@ -2,6 +2,10 @@
 // 크기·속도·체력·이름은 여기서 조정. ※ 마법별 피해·속도 등 수치는 js/spells/casters.js, 쿨타임은 js/spells/spells.js(baseCooldown)에 있음
 
 const CONFIG = {
+  GAME_VERSION: '2026.11.26',  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
+  // 플레이 기록 수집 주소 (구글 Apps Script 웹 앱 /exec URL). 비워두면 수집 안 함
+  TELEMETRY_URL: '',
+
   W: 1200,
   H: 800,
 

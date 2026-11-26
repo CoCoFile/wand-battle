@@ -4,6 +4,7 @@ Object.assign(ENGINE, {
   startSolo() {
     SFX.init();
     PROFILE.touch(PROFILE.currentId());
+    this.matchStartedAt = Date.now();
     this.mode = 'solo';
     this.stage = 1;
     this.paused = false;
@@ -181,6 +182,7 @@ Object.assign(ENGINE, {
     if (D.ending && this.stage >= CONFIG.ENDING_STAGE) { // 🎉 엔딩
       const me = this.getLocalChar();
       const r = PROFILE.submit(PROFILE.currentId(), 'solo', this.difficulty, CONFIG.ENDING_STAGE + 1, me.lv);
+      TELEMETRY.record(me, { mode: 'solo', cleared: true });
       $('#solo-ending-title').textContent = D.winText || '대마왕 심규형 토벌!';
       $('#solo-ending-desc').textContent = `${D.label} · 대마왕 심규형 토벌 · Lv.${me.lv}${r.isNew ? '  🏆 신기록!' : ''}`;
       UI.renderBuildSummary($('#solo-ending-build'), me);

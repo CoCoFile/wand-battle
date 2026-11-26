@@ -87,6 +87,7 @@ Object.assign(ENGINE, {
           UI.renderBuildSummary($('#solo-over-build'), target);
           {
             const r = PROFILE.submit(PROFILE.currentId(), 'solo', this.difficulty, this.stage, target.lv);
+            TELEMETRY.record(target, { mode: 'solo', cleared: false });
             const D = CONFIG.DIFFICULTY[this.difficulty] || {};
             $('#solo-over-title').textContent = D.loseText || '전투 불능!';
             if (r.isNew) $('#solo-over-desc').textContent += '  🏆 신기록!';

@@ -325,10 +325,13 @@ const UI = {
       ENGINE.recordSubmitted = true;
       const me = ENGINE.getLocalChar();
       const id = PROFILE.currentId();
+      const players = (ENGINE.world?.chars || []).filter((c) => !c.isSmallMob && (!ENGINE.isParty() || c.team === 1)).length || 1;
       if (ENGINE.isParty()) {
         ENGINE.recordIsNew = PROFILE.submit(id, 'party', ENGINE.difficulty, cleared ? CONFIG.ENDING_STAGE + 1 : Math.max(1, ENGINE.stage), me?.lv || 1).isNew;
-      } else if (me && me.alive) {
-        PROFILE.addWin(id);
+        TELEMETRY.record(me, { mode: 'party', cleared, players });
+      } else {
+        if (me && me.alive) PROFILE.addWin(id);
+        TELEMETRY.record(me, { mode: 'versus', result: me && me.alive ? 'win' : 'lose', players });
       }
     }
     if (ENGINE.isParty() && ENGINE.recordIsNew) $('#on-over-title').textContent += '  🏆 신기록!';

@@ -77,6 +77,7 @@ Object.assign(NET, {
     ENGINE.recordSubmitted = false;
     ENGINE.recordIsNew = false;
     PROFILE.touch(PROFILE.currentId());
+    ENGINE.matchStartedAt = Date.now();
     ENGINE.mode = 'online';
     ENGINE.paused = false;
     const party = this.matchType === 'party';
