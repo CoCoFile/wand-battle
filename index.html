@@ -46,6 +46,11 @@
               <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-lg bg-orange-200 text-orange-900">스테이지 돌파</span>
             </div>
           </div>
+          <div id="difficulty-picker" class="grid grid-cols-3 gap-1.5">
+            <button data-diff="easy" class="diff-btn arcade-btn py-1.5 rounded-lg text-xs font-black cursor-pointer">쉬움</button>
+            <button data-diff="normal" class="diff-btn arcade-btn py-1.5 rounded-lg text-xs font-black cursor-pointer">중간</button>
+            <button data-diff="hard" class="diff-btn arcade-btn py-1.5 rounded-lg text-xs font-black cursor-pointer">어려움</button>
+          </div>
           <button id="btn-solo" class="arcade-btn w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-black text-sm sm:text-base cursor-pointer">
             시작
           </button>
@@ -55,8 +60,8 @@
         <div class="rounded-xl border-2 border-slate-900 bg-sky-50/70 p-3.5 flex flex-col justify-between gap-3">
           <div>
             <div class="flex items-center justify-between">
-              <span class="text-base font-black text-slate-900">🌐 실시간 온라인 대전</span>
-              <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-lg bg-sky-200 text-sky-900">P2P 멀티</span>
+              <span class="text-base font-black text-slate-900">🌐 온라인</span>
+              <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-lg bg-sky-200 text-sky-900">대전 · 파티</span>
             </div>
           </div>
           <div class="flex flex-col gap-2">
@@ -103,6 +108,19 @@
         </div>
       </div>
 
+      <!-- 모드 선택 (방장만 변경, 참가자는 보기만) -->
+      <div id="lobby-mode-row" class="flex flex-col sm:flex-row gap-2">
+        <div id="lobby-mode-picker" class="grid grid-cols-2 gap-1.5 flex-1">
+          <button data-mode="versus" class="mode-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">⚔️ 대전</button>
+          <button data-mode="party" class="mode-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">🤝 파티</button>
+        </div>
+        <div id="lobby-diff-picker" class="grid grid-cols-3 gap-1.5 flex-1">
+          <button data-diff="easy" class="diff-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">쉬움</button>
+          <button data-diff="normal" class="diff-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">중간</button>
+          <button data-diff="hard" class="diff-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">어려움</button>
+        </div>
+      </div>
+
       <!-- 방장 전용 옵션 -->
       <div id="lobby-host-controls" class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 border-2 border-slate-900 rounded-xl p-3">
         <div class="flex items-center gap-2">
@@ -113,7 +131,7 @@
             - 봇 제거
           </button>
         </div>
-        <label class="inline-flex items-center gap-2 text-xs font-extrabold text-slate-700 cursor-pointer">
+        <label id="lbl-neutral-mobs" class="inline-flex items-center gap-2 text-xs font-extrabold text-slate-700 cursor-pointer">
           <input id="chk-neutral-mobs" type="checkbox" checked class="w-4 h-4 accent-slate-900 rounded" />
           슬라임 등장
         </label>
@@ -153,6 +171,9 @@
         <span id="hud-alive-info" class="text-xs font-extrabold text-slate-600 shrink-0">생존 5</span>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
+        <button id="btn-speed" class="hidden arcade-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black cursor-pointer" title="배속 (F)">
+          ⏩ x1
+        </button>
         <button id="btn-manual-toggle" class="hidden arcade-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black cursor-pointer" title="솔로 수동조작 전환 (WASD/방향키 + 마우스)">
           🕹️ 수동 OFF
         </button>
@@ -274,6 +295,7 @@
       <div class="text-3xl">💀</div>
       <h3 id="solo-over-title" class="text-xl font-black text-slate-900">전투 불능!</h3>
       <p id="solo-over-desc" class="text-xs sm:text-sm font-bold text-slate-600">STAGE 1</p>
+      <div id="solo-over-build" class="bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5"></div>
       <div class="flex gap-2 pt-1">
         <button id="btn-solo-home" class="arcade-btn flex-1 py-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-900 font-black text-sm cursor-pointer">
           메인으로
@@ -290,7 +312,8 @@
     <div class="arcade-card rounded-2xl w-full max-w-md p-5 text-center flex flex-col gap-3 animate-pop">
       <div class="text-3xl">👑</div>
       <h3 id="on-over-title" class="text-xl font-black text-slate-900">경기 종료!</h3>
-            <p id="on-over-hint" class="text-[11px] font-bold text-slate-400">재경기는 방장이 시작해요</p>
+      <div id="on-over-build" class="bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5"></div>
+      <p id="on-over-hint" class="text-[11px] font-bold text-slate-400">재경기는 방장이 시작해요</p>
       <div class="flex gap-2 pt-1">
         <button id="btn-on-exit" class="arcade-btn flex-1 py-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-900 font-black text-sm cursor-pointer">
           나가기
@@ -314,6 +337,7 @@
   <script src="js/engine/engine.js"></script>
   <script src="js/engine/combat.js"></script>
   <script src="js/engine/solo.js"></script>
+  <script src="js/engine/party.js"></script>
   <script src="js/engine/online.js"></script>
   <script src="js/engine/update.js"></script>
   <script src="js/net/net.js"></script>

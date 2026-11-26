@@ -67,6 +67,10 @@ const RENDER = {
 
     // 1. 장판(독 / 혼돈)
     for (const z of w.zones) {
+      if (z.kind === 'blackhole' || z.kind === 'mine') {
+        this.drawArtZone(ctx, z, w.time);
+        continue;
+      }
       ctx.save();
       ctx.beginPath();
       ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
@@ -82,6 +86,9 @@ const RENDER = {
     // 2. 경험치 & HP 구슬
     for (const o of w.orbs) {
       ctx.save();
+      if (o.life !== undefined && o.life < 2) {
+        ctx.globalAlpha = Math.sin(w.time * 18) > 0 ? 1 : 0.25; // 곧 사라짐 → 깜빡
+      }
       ctx.beginPath();
       ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
       ctx.fillStyle = o.isHeal ? '#10b981' : '#f59e0b';
@@ -181,10 +188,11 @@ const RENDER = {
       ctx.restore();
     }
 
+    const myTeam = ENGINE.getLocalChar()?.team;
     // 7. 캐릭터 & 마력 방패
     for (const c of w.chars) {
       if (!c.alive) continue;
-      this.drawChar(ctx, c, w.time);
+      this.drawChar(ctx, c, w.time, myTeam);
     }
 
     // 8. 파티클
@@ -227,5 +235,48 @@ const RENDER = {
       ctx.stroke();
       ctx.restore();
     }
+  },
+
+  // 💥 블랙홀(소용돌이) / 💣 지뢰(깜빡이는 빨간 점)
+  drawArtZone(ctx, z, t) {
+    ctx.save();
+    if (z.kind === 'blackhole') {
+      const g = ctx.createRadialGradient(z.x, z.y, 4, z.x, z.y, z.r);
+      g.addColorStop(0, 'rgba(15, 23, 42, 0.95)');
+      g.addColorStop(0.22, 'rgba(76, 29, 149, 0.6)');
+      g.addColorStop(1, 'rgba(76, 29, 149, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(167, 139, 250, 0.9)';
+      ctx.lineWidth = 3;
+      for (let k = 0; k < 3; k++) {
+        const a = t * 5 + (k * Math.PI * 2) / 3;
+        ctx.beginPath();
+        ctx.arc(z.x, z.y, z.r * 0.45, a, a + 1.4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(z.x, z.y, z.r * 0.75, -a * 0.7, -a * 0.7 + 0.9);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(z.x, z.y, 16, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#1f2937';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = Math.sin(t * 22) > 0 ? '#ef4444' : '#7f1d1d';
+      ctx.beginPath();
+      ctx.arc(z.x, z.y, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 };

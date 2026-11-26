@@ -78,6 +78,8 @@ Object.assign(SPELLS, {
         if (!c.cooldowns[choice.id]) c.cooldowns[choice.id] = 0.08;
       }
     } else if (choice.type === 'stat') {
+      if (!c.statCounts) c.statCounts = {};
+      c.statCounts[choice.id] = (c.statCounts[choice.id] || 0) + 1;
       if (choice.id === 'atk') {
         c.atkMult *= 1.25;
       } else if (choice.id === 'armor') {

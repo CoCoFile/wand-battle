@@ -11,6 +11,7 @@ const NET = {
   players: [],
   clientChoiceQueue: [],
   syncTimer: 0,
+  matchType: 'versus', // 'versus'(대전) | 'party'(파티 협동)
 
   genCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -117,7 +118,8 @@ const NET = {
 
   broadcastLobby() {
     UI.renderLobbyPlayers();
-    this.broadcast({ type: 'lobby', players: this.players });
+    UI.renderLobbyMode();
+    this.broadcast({ type: 'lobby', players: this.players, matchType: this.matchType, difficulty: ENGINE.difficulty });
   },
 
   broadcast(msg) {
@@ -161,19 +163,16 @@ const NET = {
       this.leaveRoom();
     } else if (msg.type === 'lobby') {
       this.players = Array.isArray(msg.players) ? msg.players : [];
+      if (msg.matchType === 'party' || msg.matchType === 'versus') this.matchType = msg.matchType;
+      if (CONFIG.DIFFICULTY[msg.difficulty]) ENGINE.difficulty = msg.difficulty;
       UI.renderLobbyPlayers();
+      UI.renderLobbyMode();
     } else if (msg.type === 'start') {
-      ENGINE.mode = 'online';
-      ENGINE.paused = false;
+      if (msg.matchType === 'party' || msg.matchType === 'versus') this.matchType = msg.matchType;
+      if (CONFIG.DIFFICULTY[msg.difficulty]) ENGINE.difficulty = msg.difficulty;
       this.clientChoiceQueue = [];
-      $('#modal-on-over').classList.add('hidden');
-      UI.showScreen('game');
-      $('#online-bottom-dock').classList.remove('hidden');
-      $('#btn-manual-toggle').classList.add('hidden');
-      $('#hud-mode-badge').textContent = 'ONLINE';
-      $('#hud-mode-badge').className = 'px-2 py-0.5 rounded-lg bg-sky-500 text-white text-[11px] font-black shrink-0';
-      RENDER.resize();
-      UI.renderOnlineChoiceSlot();
+      ENGINE.world = null;
+      this.enterMatchScreen();
     } else if (msg.type === 'state') {
       this.applySnapshot(msg.snap);
     } else if (msg.type === 'dramatic') {

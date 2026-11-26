@@ -7,7 +7,8 @@ function gameLoop(ts) {
   lastTime = ts;
 
   if (ENGINE.mode === 'solo') {
-    ENGINE.update(dt);
+    // 배속: 같은 dt로 여러 번 돌림 (한 번에 큰 dt를 쓰면 충돌이 뚫림)
+    for (let i = 0; i < ENGINE.soloSpeed; i++) ENGINE.update(dt);
     UI.updateHUD();
   } else if (ENGINE.mode === 'online' && NET.isHost) {
     ENGINE.update(dt);

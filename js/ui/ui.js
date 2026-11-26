@@ -35,6 +35,7 @@ const UI = {
       ? '코드를 공유하거나 봇을 추가하세요'
       : '방장 대기 중...';
     this.renderLobbyPlayers();
+    this.renderLobbyMode();
   },
 
   renderLobbyPlayers() {
@@ -91,7 +92,7 @@ const UI = {
     const sub = $('#roulette-sub');
     if (!ov || !reel) return;
 
-    const samples = ['⏱ 멈춰!', '💩 똥!똥!똥!', '⚡ 파괴 광선', '💩 똥!똥!똥!', '🌀 혼돈! 파괴! 망각!'];
+    const samples = ['⏱ 멈춰!', '💩 똥!똥!똥!', '⚡ 파괴 광선', '💩 똥!똥!똥!', '🌀 혼돈! 파괴! 망각!', '💩 똥!똥!똥!', '💥 폭발은 예술이다!'];
     let tick = 0;
     ov.classList.remove('hidden');
     sub.textContent = '대박? 똥?';
@@ -183,8 +184,14 @@ const UI = {
     if (!w || !me) return;
 
     const aliveCount = w.chars.filter((c) => c.alive && !c.isSmallMob).length;
-    $('#hud-stage-info').textContent = ENGINE.mode === 'solo' ? `STAGE ${ENGINE.stage}` : `ROOM ${NET.roomCode}`;
-    $('#hud-alive-info').textContent = `생존 ${aliveCount}`;
+    const stageMode = ENGINE.mode === 'solo' || ENGINE.isParty();
+    $('#hud-stage-info').textContent = stageMode ? `STAGE ${Math.max(1, ENGINE.stage)}` : `ROOM ${NET.roomCode}`;
+    if (ENGINE.isParty()) {
+      const enemies = w.chars.filter((c) => c.alive && c.team !== 1 && !c.isSmallMob).length;
+      $('#hud-alive-info').textContent = `적 ${enemies}`;
+    } else {
+      $('#hud-alive-info').textContent = `생존 ${aliveCount}`;
+    }
 
     $('#hud-lv-text').textContent = `Lv.${me.lv}`;
     $('#hud-hp-text').textContent = `${Math.ceil(me.hp)} / ${Math.ceil(me.maxHp)}`;
@@ -193,35 +200,79 @@ const UI = {
 
     const skillsBar = $('#hud-skills-bar');
     if (skillsBar) {
-      const badges = [];
-      for (const [mid, lv] of Object.entries(me.magics || {})) {
-        if (lv <= 0) continue;
-        const info = CONFIG.MAGICS[mid];
-        if (!info) continue;
-        badges.push(`
-          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-slate-900 text-[11px] font-black shrink-0"
-                style="background:${info.bg}; color:${info.color}">
-            ${info.icon} ${info.name} Lv.${lv}
-          </span>
-        `);
+      const html = this.buildBadgesHtml(me, false);
+      if (skillsBar.dataset.html !== html) { // 바뀔 때만 다시 그림
+        skillsBar.innerHTML = html;
+        skillsBar.dataset.html = html;
       }
-      for (const uid of (me.ultimates || [])) {
-        const u = CONFIG.ULTIMATES[uid];
-        if (!u) continue;
-        badges.push(`
-          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-amber-500 bg-amber-100 text-amber-900 text-[11px] font-black shrink-0">
-            ${u.icon} ${u.name}
-          </span>
-        `);
-      }
-      skillsBar.innerHTML = badges.join('');
     }
   },
 
+  // 보유 마법(Lv) · 궁극기 · (withStats면) 스탯 선택 횟수 뱃지 HTML. 데이터는 CONFIG 기준이라 이스케이프 불필요
+  buildBadgesHtml(c, withStats) {
+    const base = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] font-black shrink-0';
+    const badges = [];
+    for (const [mid, lv] of Object.entries(c.magics || {})) {
+      const info = CONFIG.MAGICS[mid];
+      if (!info || !(lv > 0)) continue;
+      badges.push(`<span class="${base} border-slate-900" style="background:${info.bg}; color:${info.color}">${info.icon} ${info.name} Lv.${Number(lv)}</span>`);
+    }
+    for (const uid of (c.ultimates || [])) {
+      const u = CONFIG.ULTIMATES[uid];
+      if (!u) continue;
+      badges.push(`<span class="${base} border-amber-500 bg-amber-100 text-amber-900">${u.icon} ${u.name}</span>`);
+    }
+    if (withStats) {
+      for (const [sid, n] of Object.entries(c.statCounts || {})) {
+        const st = CONFIG.STATS[sid];
+        if (!st || !(n > 0)) continue;
+        badges.push(`<span class="${base} border-slate-400" style="background:${st.bg}; color:${st.color}">${st.icon} ${st.name} ×${Number(n)}</span>`);
+      }
+    }
+    return badges.join('');
+  },
+
+  // 사망/종료 결산: 레벨 + 획득한 기술 목록
+  renderBuildSummary(container, c) {
+    if (!container) return;
+    if (!c) { container.innerHTML = ''; return; }
+    container.innerHTML = `
+      <div class="text-[11px] font-black text-slate-500 mb-1.5">내 빌드 · Lv.${Number(c.lv) || 1}</div>
+      <div class="flex flex-wrap justify-center gap-1.5">${this.buildBadgesHtml(c, true) || '<span class="text-xs text-slate-400">없음</span>'}</div>
+    `;
+  },
+
+  renderDifficulty() {
+    document.querySelectorAll('.diff-btn').forEach((btn) => {
+      const on = btn.dataset.diff === ENGINE.difficulty;
+      btn.classList.toggle('bg-slate-900', on);
+      btn.classList.toggle('text-white', on);
+      btn.classList.toggle('bg-white', !on);
+      btn.classList.toggle('text-slate-700', !on);
+    });
+  },
+
+  // 대기실 모드/난이도 표시 (참가자는 보기만)
+  renderLobbyMode() {
+    const party = NET.matchType === 'party';
+    document.querySelectorAll('#lobby-mode-picker .mode-btn').forEach((btn) => {
+      const on = btn.dataset.mode === NET.matchType;
+      btn.classList.toggle('bg-slate-900', on);
+      btn.classList.toggle('text-white', on);
+      btn.classList.toggle('bg-white', !on);
+      btn.classList.toggle('text-slate-700', !on);
+    });
+    $('#lobby-diff-picker').classList.toggle('hidden', !party);
+    $('#lbl-neutral-mobs').classList.toggle('hidden', party);
+    $('#lobby-mode-row').classList.toggle('pointer-events-none', !NET.isHost);
+    this.renderDifficulty();
+  },
+
   showOnlineGameOver(title, desc) {
-    $('#on-over-title').textContent = title;
+    $('#on-over-title').textContent = desc ? `${title} ${desc}` : title;
     $('#btn-on-rematch').classList.toggle('hidden', !NET.isHost);
     $('#on-over-hint').classList.toggle('hidden', NET.isHost);
+    this.renderBuildSummary($('#on-over-build'), ENGINE.getLocalChar());
     $('#modal-on-over').classList.remove('hidden');
   }
 };

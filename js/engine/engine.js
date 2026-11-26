@@ -20,10 +20,26 @@ const ENGINE = {
     touchX: 0,
     touchY: 0
   },
+  soloSpeed: 1,         // 솔로 배속 (CONFIG.SOLO_SPEEDS 중 하나)
+  difficulty: 'normal', // 솔로 난이도: easy | normal | hard
   soloRerolls: 1,
   soloInitialDrafts: 0,
   soloPendingLevels: 0,
   soloCurrentChoices: [],
+
+  // 솔로 배속 순환 (x1 → x2 → x3 → x1)
+  cycleSoloSpeed(force) {
+    const list = CONFIG.SOLO_SPEEDS;
+    this.soloSpeed = force ?? list[(list.indexOf(this.soloSpeed) + 1) % list.length];
+    if (!list.includes(this.soloSpeed)) this.soloSpeed = 1;
+    try { localStorage.setItem('wb-speed', String(this.soloSpeed)); } catch (_) {}
+    const btn = $('#btn-speed');
+    if (btn) {
+      btn.textContent = `⏩ x${this.soloSpeed}`;
+      btn.classList.toggle('bg-amber-300', this.soloSpeed > 1);
+      btn.classList.toggle('bg-slate-100', this.soloSpeed === 1);
+    }
+  },
 
   toggleManualControl(forceState) {
     this.manualControl = typeof forceState === 'boolean' ? forceState : !this.manualControl;
@@ -111,6 +127,7 @@ const ENGINE = {
       poopTimer: 0,
       hurtTimer: 0,
       initialDrafts: opts.initialDrafts || 0,
+      statCounts: {},   // 스탯 카드 선택 횟수 (결산용)
       choiceQueue: []
     };
   },

@@ -37,7 +37,7 @@ const SPELLS = {
   cast(c, mid, lv, world) {
     const caster = SPELL_CASTERS[mid];
     if (!caster) return;
-    const wandLen = (c.r || CONFIG.HEAD_R) + 28;
+    const wandLen = wandTipDist(c);
     const ox = c.x + Math.cos(c.angle) * wandLen;
     const oy = c.y + Math.sin(c.angle) * wandLen;
     const shots = spellShotCount(lv);

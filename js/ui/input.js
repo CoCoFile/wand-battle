@@ -13,6 +13,31 @@ Object.assign(UI, {
       `).join('');
     }
 
+    // 솔로 난이도 선택 (마지막 선택 기억)
+    try {
+      const saved = localStorage.getItem('wb-difficulty');
+      if (saved && CONFIG.DIFFICULTY[saved]) ENGINE.difficulty = saved;
+    } catch (_) {}
+    document.querySelectorAll('.diff-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const inLobby = !!btn.closest('#lobby-diff-picker');
+        if (inLobby && !NET.isHost) return;
+        ENGINE.difficulty = btn.dataset.diff;
+        try { localStorage.setItem('wb-difficulty', ENGINE.difficulty); } catch (_) {}
+        UI.renderDifficulty();
+        if (inLobby) NET.broadcastLobby();
+      });
+    });
+    // 대기실 모드 선택 (방장만)
+    document.querySelectorAll('#lobby-mode-picker .mode-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!NET.isHost) return;
+        NET.matchType = btn.dataset.mode;
+        NET.broadcastLobby();
+      });
+    });
+    UI.renderDifficulty();
+
     $('#btn-solo').addEventListener('click', () => ENGINE.startSolo());
     $('#btn-create-room').addEventListener('click', () => NET.createRoom());
     $('#btn-join-room').addEventListener('click', () => NET.joinRoom());
@@ -35,6 +60,14 @@ Object.assign(UI, {
     $('#btn-sound').addEventListener('click', () => {
       SFX.enabled = !SFX.enabled;
       $('#btn-sound').textContent = SFX.enabled ? '🔊 ON' : '🔇 OFF';
+    });
+
+    try {
+      const sp = Number(localStorage.getItem('wb-speed'));
+      if (CONFIG.SOLO_SPEEDS.includes(sp)) ENGINE.soloSpeed = sp;
+    } catch (_) {}
+    $('#btn-speed').addEventListener('click', () => {
+      if (ENGINE.mode === 'solo') ENGINE.cycleSoloSpeed();
     });
 
     $('#btn-manual-toggle').addEventListener('click', () => {
@@ -104,6 +137,10 @@ Object.assign(UI, {
             }
           }
         }
+      }
+
+      if (lower === 'f' && ENGINE.mode === 'solo') {
+        ENGINE.cycleSoloSpeed();
       }
 
       if (lower === 'r') {

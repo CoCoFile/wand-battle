@@ -11,6 +11,10 @@ const CONFIG = {
   BOSS_R: 46,          // 보스
   BASE_SPEED: 460,     // 이동 속도(px/s)
   SHIELD_R: [50, 68],  // 마력 방패 궤도 반지름 [안쪽(Lv1~3), 바깥(Lv4~6)]
+  // 완드 모양 (머리 반지름 r의 배수). tip = 마법이 나가는 위치
+  SOLO_SPEEDS: [1, 2, 3], // 솔로 배속 단계 (⏩ 버튼 / F키로 순환)
+  NAME_FONT_PX: 18,    // 머리 위 이름 글자 크기 (아레나 1200px 기준)
+  WAND: { base: 1.25, tip: 2.45, width: 0.22, tipSize: 0.36, tipColor: '#F07F2E' },
 
   // ── 체력 ──────────────────────────────────────
   HP: {
@@ -40,10 +44,41 @@ const CONFIG = {
   ULTIMATES: {
     stop:    { id: 'stop',    name: '멈춰!',             icon: '⏱', color: '#F59E0B', desc: '적 전체 3초 스턴' },
     killray: { id: 'killray', name: '파괴 광선',         icon: '⚡', color: '#EF4444', desc: '맞으면 즉사' },
-    chaos:   { id: 'chaos',   name: '혼돈! 파괴! 망각!', icon: '🌀', color: '#9333EA', desc: '혼돈 장판 4개' }
+    chaos:   { id: 'chaos',   name: '혼돈! 파괴! 망각!', icon: '🌀', color: '#9333EA', desc: '혼돈 장판 4개' },
+    art:     { id: 'art',     name: '폭발은 예술이다!',   icon: '💥', color: '#EA580C', desc: '블랙홀 + 지뢰밭' }
   },
 
-  // ── 솔로 스테이지 밸런스 ─────────────────────
+  // ── 솔로 난이도 ─────────────────────────────
+  // healOrbLife: 회복 구슬 유지 시간(초). null = 안 사라짐, 0 = 회복 구슬 없음(경험치 구슬만)
+  // enemyHp / enemyAtk: 적(마법사·보스) HP·공격력 배율, enemyCdr: 쿨타임 배율(작을수록 자주 쏨)
+  DIFFICULTY: {
+    easy:   { label: '쉬움',   healOrbLife: null, enemyHp: 1.0, enemyAtk: 1.0, enemyCdr: 1.0 },
+    normal: { label: '중간',   healOrbLife: 6,    enemyHp: 1.15, enemyAtk: 1.12, enemyCdr: 0.95 },
+    hard:   { label: '어려움', healOrbLife: 0,    enemyHp: 1.5, enemyAtk: 1.45, enemyCdr: 0.85 }
+  },
+
+  // ── 궁극기 '폭발은 예술이다!' (블랙홀 + 지뢰) ──
+  // 피해 = (기본 + 레벨당 × 시전자Lv) × 공격력 배율
+  ART: {
+    holeR: 180,        // 블랙홀 끌어당김 반경
+    holeLife: 2.6,     // 블랙홀 유지 시간 → 끝나면 붕괴 대폭발
+    pull: 300,         // 끌어당기는 속도(px/s, 가운데 가까울수록 셈)
+    collapseR: 150, collapseDmg: [28, 4],
+    mines: 8, mineRing: 110,          // 지뢰 개수, 블랙홀 중심에서 거리
+    mineR: 85, mineDmg: [18, 3],      // 지뢰 폭발 반경/피해
+    mineArm: 0.35                     // 지뢰 설치 후 작동까지(초)
+  },
+
+  // ── 파티 모드 (온라인 협동) ─────────────────
+  PARTY: {
+    prepTime: 5,       // 시작 후 첫 스테이지까지 준비 시간(초) — 시작 마법 고르기
+    clearDelay: 3,     // 클리어 후 다음 스테이지까지(초)
+    reviveHp: 0.5,     // 쓰러진 동료 부활 시 HP 비율
+    enemyCountPer: 0.5, // 인원 1명 늘 때마다 적 마법사 수 +50%
+    bossHpPer: 0.6      // 인원 1명 늘 때마다 보스 HP +60%
+  },
+
+  // ── 솔로 스테이지 밸런스 (= 쉬움 기준, 난이도 배율이 위에 곱해짐) ──
   // [기본값, 스테이지당 증가] → 스테이지 n 값 = 기본값 + 증가 × (n−1)
   SOLO: {
     mage: {

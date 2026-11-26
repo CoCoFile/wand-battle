@@ -67,3 +67,8 @@ function pickName(pool, used = []) {
   const src = free.length ? free : pool;
   return src[randInt(0, src.length - 1)];
 }
+
+// 머리 중심 → 완드 끝(마법 발사 위치) 거리
+function wandTipDist(c) {
+  return (c.r || CONFIG.HEAD_R) * CONFIG.WAND.tip;
+}

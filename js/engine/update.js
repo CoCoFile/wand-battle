@@ -7,6 +7,7 @@ Object.assign(ENGINE, {
     if (!w || this.paused) return;
     w.time += dt;
 
+    this.updatePartyFlow(w, dt);
     this.spawnOnlineOrbs(w, dt);
     this.updateCharacters(w, dt);
     this.updateProjectiles(w, dt);
@@ -17,7 +18,7 @@ Object.assign(ENGINE, {
 
   spawnOnlineOrbs(w, dt) {
     // 온라인 대전 시 맵 경험치 구슬 주기적 생성 (2배 스폰)
-    if (this.mode === 'online') {
+    if (this.mode === 'online' && !this.isParty()) {
       w.orbTimer += dt;
       if (w.orbTimer >= 1.1 && w.orbs.length < 36) {
         w.orbTimer = 0;
@@ -104,8 +105,8 @@ Object.assign(ENGINE, {
         }
       }
 
-      // 구슬 흡수 (슬라임 제외, 솔로에선 플레이어만)
-      if (!c.isSmallMob && (this.mode !== 'solo' || c.isLocal)) {
+      // 구슬 흡수 (슬라임 제외, 솔로·파티에선 플레이어 팀만)
+      if (!c.isSmallMob && (!this.isStageMode() || c.team === 1)) {
         for (let i = w.orbs.length - 1; i >= 0; i--) {
           const o = w.orbs[i];
           if (dist(c.x, c.y, o.x, o.y) <= c.r + o.r + 10) {
@@ -332,6 +333,31 @@ Object.assign(ENGINE, {
     for (let i = w.zones.length - 1; i >= 0; i--) {
       const z = w.zones[i];
       z.life -= dt;
+
+      // 💥 블랙홀: 끌어당기다 시간이 끝나면 붕괴 폭발 + 같은 시전의 지뢰 일제 폭발
+      if (z.kind === 'blackhole') {
+        SPELLS.pullBlackhole(z, w, dt);
+        if (z.life <= 0) {
+          SPELLS.explodeAt(z.x, z.y, CONFIG.ART.collapseR * (z.r / CONFIG.ART.holeR), z.dmg, z.ownerId, z.team, z.skillUid, w, '#7c3aed');
+          for (const m of w.zones) if (m.kind === 'mine' && m.holeUid === z.skillUid) m.detonate = true;
+          w.zones.splice(i, 1);
+        }
+        continue;
+      }
+      // 💣 지뢰: 작동 후 적이 밟거나, 블랙홀 붕괴 신호/시간 끝이면 폭발
+      if (z.kind === 'mine') {
+        z.arm -= dt;
+        let boom = z.detonate || z.life <= 0;
+        if (!boom && z.arm <= 0) {
+          boom = w.chars.some((t) => t.alive && t.team !== z.team && t.id !== z.ownerId && dist(z.x, z.y, t.x, t.y) <= t.r + z.r + 14);
+        }
+        if (boom) {
+          SPELLS.explodeAt(z.x, z.y, CONFIG.ART.mineR, z.dmg, z.ownerId, z.team, z.skillUid, w, '#f97316');
+          w.zones.splice(i, 1);
+        }
+        continue;
+      }
+
       if (z.life <= 0) {
         w.zones.splice(i, 1);
         continue;
@@ -358,6 +384,13 @@ Object.assign(ENGINE, {
   },
 
   updateEffects(w, dt) {
+    // 수명 있는 구슬(중간 난이도 회복 구슬) 소멸
+    for (let i = w.orbs.length - 1; i >= 0; i--) {
+      const o = w.orbs[i];
+      if (o.life === undefined) continue;
+      o.life -= dt;
+      if (o.life <= 0) w.orbs.splice(i, 1);
+    }
     // 5. 단발 이펙트(레이저 빔, 링, 파티클, 플로팅 텍스트) 감쇠
     for (let i = w.beams.length - 1; i >= 0; i--) {
       w.beams[i].life -= dt;

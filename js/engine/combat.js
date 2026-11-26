@@ -3,7 +3,7 @@
 Object.assign(ENGINE, {
   grantXp(c, amount, world) {
     if (!c || !c.alive || c.isSmallMob) return;
-    if (this.mode === 'solo' && !c.isLocal) return; // 솔로 적은 레벨업(=풀회복) 안 함
+    if (this.isStageMode() && c.team !== 1) return; // 솔로·파티의 적은 레벨업(=풀회복) 안 함
     c.xp += amount;
     while (c.xp >= c.nextXp) {
       c.xp -= c.nextXp;
@@ -61,17 +61,19 @@ Object.assign(ENGINE, {
       target.alive = false;
       SPELLS.spawnParticles(world, target.x, target.y, target.color, 18, 210);
 
-      // 작은 슬라임 처치 시 HP + XP 구슬 드랍
+      // 작은 슬라임 처치 시 구슬 드랍 (솔로는 난이도에 따라 회복 구슬 유지시간/없음)
       if (target.isSmallMob && world) {
-        world.orbs.push({
-          x: target.x,
-          y: target.y,
-          r: 13,
-          xp: 24,
-          hp: 18,
-          isHeal: true,
-          color: '#10b981'
-        });
+        const healLife = this.isStageMode()
+          ? (CONFIG.DIFFICULTY[this.difficulty] || CONFIG.DIFFICULTY.normal).healOrbLife
+          : null;
+        if (healLife === 0) {
+          world.orbs.push({ x: target.x, y: target.y, r: 11, xp: 24, hp: 0, isHeal: false, color: '#f59e0b' });
+        } else {
+          world.orbs.push({
+            x: target.x, y: target.y, r: 13, xp: 24, hp: 18, isHeal: true, color: '#10b981',
+            life: healLife ?? undefined, maxLife: healLife ?? undefined
+          });
+        }
       }
 
       if (attacker && attacker.alive) {
@@ -81,7 +83,8 @@ Object.assign(ENGINE, {
       if (this.mode === 'solo') {
         if (target.isLocal) {
           this.paused = true;
-          $('#solo-over-desc').textContent = `STAGE ${this.stage} · Lv.${target.lv}`;
+          $('#solo-over-desc').textContent = `${(CONFIG.DIFFICULTY[this.difficulty] || {}).label || ''} · STAGE ${this.stage} · Lv.${target.lv}`;
+          UI.renderBuildSummary($('#solo-over-build'), target);
           $('#modal-solo-over').classList.remove('hidden');
         } else {
           const remainEnemies = world.chars.filter((ch) => ch.alive && ch.team !== 1);
@@ -91,6 +94,8 @@ Object.assign(ENGINE, {
             $('#modal-solo-stage').classList.remove('hidden');
           }
         }
+      } else if (this.isParty() && NET.isHost) {
+        this.onPartyDeath(target, world);
       } else if (this.mode === 'online' && NET.isHost) {
         const alivePlayers = world.chars.filter((ch) => ch.alive && !ch.isSmallMob);
         if (alivePlayers.length <= 1) {

@@ -3,10 +3,22 @@
 Object.assign(NET, {
   startGame() {
     if (!this.isHost) return;
-    if (this.players.length < 2) {
+    const party = this.matchType === 'party';
+    if (this.players.length < (party ? 1 : 2)) {
       UI.toast('2명 이상 필요 (봇 추가 가능)');
       return;
     }
+    this.broadcast({ type: 'start', matchType: this.matchType, difficulty: ENGINE.difficulty });
+    if (party) {
+      ENGINE.startParty(this.players);
+    } else {
+      this.startVersusWorld();
+    }
+    this.enterMatchScreen();
+  },
+
+  // 대전(개인전) 월드 구성
+  startVersusWorld() {
     ENGINE.mode = 'online';
     ENGINE.paused = false;
     const w = ENGINE.createEmptyWorld();
@@ -57,13 +69,22 @@ Object.assign(NET, {
     }
 
     ENGINE.world = w;
+  },
+
+  // 경기 화면 진입 (방장·참가자 공통)
+  enterMatchScreen() {
+    ENGINE.mode = 'online';
+    ENGINE.paused = false;
+    const party = this.matchType === 'party';
     $('#modal-on-over').classList.add('hidden');
-    this.broadcast({ type: 'start' });
     UI.showScreen('game');
     $('#online-bottom-dock').classList.remove('hidden');
     $('#btn-manual-toggle').classList.add('hidden');
-    $('#hud-mode-badge').textContent = 'ONLINE';
-    $('#hud-mode-badge').className = 'px-2 py-0.5 rounded-lg bg-sky-500 text-white text-[11px] font-black shrink-0';
+    $('#btn-speed').classList.add('hidden');
+    $('#hud-mode-badge').textContent = party
+      ? `파티 · ${(CONFIG.DIFFICULTY[ENGINE.difficulty] || {}).label || ''}`
+      : '대전';
+    $('#hud-mode-badge').className = `px-2 py-0.5 rounded-lg ${party ? 'bg-emerald-500' : 'bg-sky-500'} text-white text-[11px] font-black shrink-0`;
     RENDER.resize();
     UI.renderOnlineChoiceSlot();
     UI.updateHUD();
@@ -86,6 +107,8 @@ Object.assign(NET, {
     const w = ENGINE.world;
     const baseSnap = {
       time: w.time,
+      stage: ENGINE.stage,
+      matchType: this.matchType,
       chars: w.chars.map((c) => ({
         id: c.id, name: c.name, color: c.color, team: c.team,
         isSmallMob: c.isSmallMob, isBoss: c.isBoss,
@@ -94,6 +117,8 @@ Object.assign(NET, {
         lv: c.lv, xp: Math.round(c.xp), nextXp: Math.round(c.nextXp),
         angle: Number(c.angle.toFixed(2)), alive: c.alive,
         magics: c.magics,
+        ultimates: c.ultimates,
+        statCounts: c.statCounts,
         shieldAngle: Number((c.shieldAngle || 0).toFixed(2)),
         shieldCooldowns: c.shieldCooldowns,
         stunTimer: Number((c.stunTimer || 0).toFixed(1)),
@@ -131,6 +156,8 @@ Object.assign(NET, {
     if (!snap) return;
     const w = ENGINE.world || ENGINE.createEmptyWorld();
     w.time = snap.time;
+    if (Number.isInteger(snap.stage)) ENGINE.stage = snap.stage;
+    if (snap.matchType === 'party' || snap.matchType === 'versus') this.matchType = snap.matchType;
     w.chars = (snap.chars || []).map((c) => ({
       ...c,
       isLocal: c.id === ENGINE.localId

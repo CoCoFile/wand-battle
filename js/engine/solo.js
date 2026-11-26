@@ -34,8 +34,10 @@ Object.assign(ENGINE, {
     UI.showScreen('game');
     $('#online-bottom-dock').classList.add('hidden');
     $('#btn-manual-toggle').classList.remove('hidden');
+    $('#btn-speed').classList.remove('hidden');
+    this.cycleSoloSpeed(this.soloSpeed);
     this.toggleManualControl(this.manualControl);
-    $('#hud-mode-badge').textContent = 'SOLO';
+    $('#hud-mode-badge').textContent = `SOLO · ${(CONFIG.DIFFICULTY[this.difficulty] || {}).label || ''}`;
     $('#hud-mode-badge').className = 'px-2 py-0.5 rounded-lg bg-orange-500 text-white text-[11px] font-black shrink-0';
     RENDER.resize();
     UI.updateHUD();
@@ -46,21 +48,28 @@ Object.assign(ENGINE, {
     const w = this.world;
     if (!w) return;
     const B = CONFIG.SOLO;
+    const D = CONFIG.DIFFICULTY[this.difficulty] || CONFIG.DIFFICULTY.normal;
     const at = ([base, inc]) => base + inc * (stage - 1);
-    const player = this.getLocalChar();
+    const allies = w.chars.filter((c) => c.alive && c.team === 1 && !c.isSmallMob);
+    const extra = Math.max(0, allies.length - 1); // 파티 인원 추가분
     const isBossStage = stage % B.boss.every === 0;
-    const enemyCount = isBossStage
+    const baseCount = isBossStage
       ? Math.floor(at(B.mage.bossStageCount))
       : Math.min(B.mage.countMax, Math.floor(at(B.mage.count)));
+    const enemyCount = Math.round(baseCount * (1 + CONFIG.PARTY.enemyCountPer * extra));
+    const farFromAllies = () => {
+      for (let tries = 0; tries < 12; tries++) {
+        const x = rand(120, CONFIG.W - 120);
+        const y = rand(120, CONFIG.H - 120);
+        if (allies.every((a) => dist(x, y, a.x, a.y) >= 220)) return [x, y];
+      }
+      return [rand(120, CONFIG.W - 120), rand(120, CONFIG.H - 120)];
+    };
     const allMagicIds = Object.keys(CONFIG.MAGICS);
     const usedNames = [];
 
     for (let i = 0; i < enemyCount; i++) {
-      let ex = rand(120, CONFIG.W - 120);
-      let ey = rand(120, CONFIG.H - 120);
-      if (player && dist(ex, ey, player.x, player.y) < 220) {
-        ex = player.x < CONFIG.W * 0.5 ? CONFIG.W - 140 : 140;
-      }
+      const [ex, ey] = farFromAllies();
       const magics = { laser: 1 };
       if (stage >= B.mage.extraMagicFrom) {
         const extraCnt = Math.min(B.mage.extraMagicMax, Math.floor((stage - 1) / 2));
@@ -79,9 +88,9 @@ Object.assign(ENGINE, {
         isBot: true,
         x: ex,
         y: ey,
-        maxHp: Math.round(at(B.mage.hp)),
-        atkMult: at(B.mage.atk),
-        cdrMult: Math.max(B.mage.cdrMin, at(B.mage.cdr)),
+        maxHp: Math.round(at(B.mage.hp) * D.enemyHp),
+        atkMult: at(B.mage.atk) * D.enemyAtk,
+        cdrMult: Math.max(B.mage.cdrMin, at(B.mage.cdr)) * D.enemyCdr,
         xpReward: Math.round(at(B.mage.xp)),
         magics
       });
@@ -99,9 +108,9 @@ Object.assign(ENGINE, {
         isBoss: true,
         x: CONFIG.W * 0.5,
         y: 130,
-        maxHp: Math.round(B.boss.hp[0] + B.boss.hp[1] * (stage - B.boss.every)),
-        atkMult: B.boss.atk[0] + B.boss.atk[1] * (stage - B.boss.every),
-        cdrMult: B.boss.cdr,
+        maxHp: Math.round((B.boss.hp[0] + B.boss.hp[1] * (stage - B.boss.every)) * D.enemyHp * (1 + CONFIG.PARTY.bossHpPer * extra)),
+        atkMult: (B.boss.atk[0] + B.boss.atk[1] * (stage - B.boss.every)) * D.enemyAtk,
+        cdrMult: B.boss.cdr * D.enemyCdr,
         xpReward: B.boss.xp,
         magics: { ...B.boss.magics }
       });
