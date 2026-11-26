@@ -8,6 +8,11 @@ Object.assign(ENGINE, {
     w.time += dt;
 
     this.updatePartyFlow(w, dt);
+    // 솔로: 스테이지 클리어 후 자동 진행 카운트 (게임 시간 기준 → 배속·일시정지 반영)
+    if (this.mode === 'solo' && this.soloNextStageTimer > 0) {
+      this.soloNextStageTimer -= dt;
+      if (this.soloNextStageTimer <= 0) { this.soloNextStageTimer = 0; this.nextSoloStage(); return; }
+    }
     this.spawnOnlineOrbs(w, dt);
     this.updateCharacters(w, dt);
     this.resolveCollisions(w);

@@ -13,6 +13,7 @@ Object.assign(ENGINE, {
     this.soloInitialDrafts = 3;
     this.soloPendingLevels = 0;
     this.soloStageCleared = false;
+    this.soloNextStageTimer = 0;
     this.soloCurrentChoices = [];
 
     const w = this.createEmptyWorld();
@@ -183,9 +184,10 @@ Object.assign(ENGINE, {
   showSoloStageClearIfReady() {
     if (!this.soloStageCleared) return;
     if (this.soloInitialDrafts > 0 || this.soloPendingLevels > 0) return;
-    this.paused = true;
+    if (this.soloNextStageTimer > 0) return; // 이미 넘어가는 중
     const D = CONFIG.DIFFICULTY[this.difficulty] || {};
     if (D.ending && this.stage >= CONFIG.ENDING_STAGE) { // 🎉 엔딩
+      this.paused = true;
       const me = this.getLocalChar();
       const r = PROFILE.submit(PROFILE.currentId(), 'solo', this.difficulty, CONFIG.ENDING_STAGE + 1, me.lv);
       TELEMETRY.record(me, { mode: 'solo', cleared: true });
@@ -205,8 +207,10 @@ Object.assign(ENGINE, {
       const frag = ACCOUNT.addFragment(this.difficulty); // ❤️‍🔥 만용: 30 돌파 + 10스테이지마다
       if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);
     }
-    $('#stage-clear-title').textContent = `STAGE ${this.stage} 클리어!`;
-    $('#modal-solo-stage').classList.remove('hidden');
+    // 클리어 창 대신 위쪽 작은 알림 → CONFIG.SOLO_NEXT_DELAY초 뒤 자동으로 다음 스테이지 (update.js에서 카운트)
+    this.paused = false;
+    UI.toast(`✅ STAGE ${this.stage} 클리어 · 리롤 +1`);
+    this.soloNextStageTimer = CONFIG.SOLO_NEXT_DELAY;
   },
 
   renderSoloChoiceModal() {
@@ -252,6 +256,7 @@ Object.assign(ENGINE, {
     if (!player || !player.alive) return;
     if (this.soloPendingLevels > 0) { this.openNextSoloChoice(); return; } // 안전장치: 선택 먼저
     this.soloStageCleared = false;
+    this.soloNextStageTimer = 0;
     this.stage++;
     this.soloRerolls++;
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.35);
@@ -264,6 +269,5 @@ Object.assign(ENGINE, {
     $('#modal-solo-stage').classList.add('hidden');
     this.paused = false;
     UI.updateHUD();
-    UI.toast(`STAGE ${this.stage}`);
   }
 });
