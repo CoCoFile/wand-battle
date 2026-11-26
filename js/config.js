@@ -4,7 +4,7 @@
 const CONFIG = {
   GAME_VERSION: '2026.11.26',  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
   // 플레이 기록 수집 주소 (구글 Apps Script 웹 앱 /exec URL). 비워두면 수집 안 함
-  TELEMETRY_URL: '',
+  TELEMETRY_URL: 'https://script.google.com/macros/s/AKfycbyCRCqR5cZPodxsXFBUpEwNUSXvQBr1qMMGUGpo5E41HJxSlZWXWgDIqgjhjf8iHdieVQ/exec',
 
   W: 1200,
   H: 800,
