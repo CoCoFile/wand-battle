@@ -12,6 +12,13 @@ Object.assign(UI, {
     $('#input-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') UI.authFlow('login'); });
     $('#btn-logout').addEventListener('click', () => { ACCOUNT.logout(); UI.renderAccount(); });
     $('#btn-relics').addEventListener('click', () => UI.openRelics());
+    $('#btn-ranking').addEventListener('click', () => UI.openRanking());
+    $('#btn-ranking-close').addEventListener('click', () => $('#modal-ranking').classList.add('hidden'));
+    $('#ranking-tabs').addEventListener('click', (e) => {
+      const t = e.target.closest('[data-rank-diff]');
+      if (t) UI.loadRanking(t.dataset.rankDiff);
+    });
+    RANKING.flush(); // 밀린 랭킹 기록 전송
     $('#btn-relics-close').addEventListener('click', () => $('#modal-relics').classList.add('hidden'));
     $('#btn-relic-draw').addEventListener('click', () => UI.playRelicDraw());
     $('#modal-relics').addEventListener('click', (e) => {
@@ -95,7 +102,7 @@ Object.assign(UI, {
     });
 
     $('#btn-manual-toggle').addEventListener('click', () => {
-      if (ENGINE.mode === 'solo') ENGINE.toggleManualControl();
+      if (ENGINE.manualAllowed()) ENGINE.toggleManualControl();
     });
 
     $('#btn-quit-game').addEventListener('click', () => {

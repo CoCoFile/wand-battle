@@ -68,11 +68,12 @@ const CONFIG = {
   // enemyHp / enemyAtk: 일반 적 HP·공격력 배율, enemyCdr: 쿨타임 배율(작을수록 자주 쏨, 보스에도 적용)
   // bossHp / bossAtk: 보스 전용 배율 (보스엔 약하게 — 어려움 첫 보스가 벽이던 문제 11/26)
   // lateMult/lateFrom: 이 난이도만 후반 성장 완화를 따로 (없으면 SOLO 값)
+  // manual: true인 난이도만 수동 조작(🕹️) 가능 (11/26: 쉼터만)
   // ending: true면 ENDING_STAGE 클리어 시 엔딩 (만용은 끝없음 — 30 넘기면 winText 배너만 뜨고 계속)
   // winText: 엔딩(만용은 30 돌파) 문구, loseText: 게임오버·전멸 문구
   ENDING_STAGE: 30,
   DIFFICULTY: {
-    easy:   { label: '겁쟁이들의 쉼터', short: '쉼터', ending: true,  winText: '겁쟁이들의 왕',        loseText: '이걸?ㅋㅋㅋㅋㅋㅋ',           healOrbLife: null, enemyHp: 1.0, enemyAtk: 1.0, enemyCdr: 1.0,  bossHp: 1.0,  bossAtk: 1.0,  lateMult: 0.5 },
+    easy:   { label: '겁쟁이들의 쉼터', short: '쉼터', manual: true, ending: true,  winText: '겁쟁이들의 왕',        loseText: '이걸?ㅋㅋㅋㅋㅋㅋ',           healOrbLife: null, enemyHp: 1.0, enemyAtk: 1.0, enemyCdr: 1.0,  bossHp: 1.0,  bossAtk: 1.0,  lateMult: 0.5 },
     normal: { label: '현실에 타협',     short: '타협', ending: true,  winText: '현실에 안주한놈',      loseText: '걍 쉼터 가셈',               healOrbLife: 6,    enemyHp: 1.15, enemyAtk: 1.12, enemyCdr: 0.95, bossHp: 1.1,  bossAtk: 1.05, lateMult: 0.75 },
     hard:   { label: '만용 그자체',     short: '만용', ending: false, winText: '인정 무한모드 ㄱ?',    loseText: '용기와 만용은 한끗차이다',   healOrbLife: 0,    enemyHp: 1.5, enemyAtk: 1.45, enemyCdr: 0.85, bossHp: 1.25, bossAtk: 1.15, lateMult: 1.0 }
   },
@@ -106,6 +107,7 @@ const CONFIG = {
 
   // ── 계정 & 유물 ────────────────────────────
   // 계정 서버 = TELEMETRY_URL 의 Apps Script (tools/sheets-collector.gs 최신 버전 배포 필요)
+  RANKING_ENABLED: false,    // 서버 스크립트(랭킹 버전) 배포 확인 후 true
   ACCOUNTS_ENABLED: true,    // 서버 스크립트(계정 기능 버전) 배포됨 (11/26)
   RELIC_SLOTS: 3,            // 장착 가능 개수
   RELIC_MAX_LV: 3,

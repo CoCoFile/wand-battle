@@ -41,14 +41,21 @@ const ENGINE = {
     }
   },
 
+  manualAllowed() {
+    return this.mode === 'solo' && !!(CONFIG.DIFFICULTY[this.difficulty] || {}).manual; // 쉼터만
+  },
+
   toggleManualControl(forceState) {
     this.manualControl = typeof forceState === 'boolean' ? forceState : !this.manualControl;
+    if (!this.manualAllowed()) this.manualControl = false;
+    if (this.manualControl) this.usedManual = true; // 이번 판에 수동 조작을 한 번이라도 켰는지 (랭킹 표시)
     const btn = $('#btn-manual-toggle');
     if (btn) {
       btn.textContent = this.manualControl ? '🕹️ 수동 ON' : '🕹️ 수동 OFF';
       btn.className = this.manualControl
         ? 'arcade-btn px-2.5 py-1 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-black cursor-pointer'
         : 'arcade-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black cursor-pointer';
+      btn.classList.toggle('hidden', !this.manualAllowed()); // 쉼터 아니면 버튼 숨김
     }
     if (typeof forceState !== 'boolean' && this.mode === 'solo') {
       UI.toast(this.manualControl

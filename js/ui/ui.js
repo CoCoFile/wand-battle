@@ -21,7 +21,7 @@ const UI = {
   },
 
   hideAllModals() {
-    ['#modal-solo-choice', '#modal-solo-stage', '#modal-solo-over', '#modal-solo-ending', '#modal-on-over', '#modal-relics'].forEach((sel) => {
+    ['#modal-solo-choice', '#modal-solo-stage', '#modal-solo-over', '#modal-solo-ending', '#modal-on-over', '#modal-relics', '#modal-ranking'].forEach((sel) => {
       $(sel).classList.add('hidden');
     });
   },
@@ -293,6 +293,7 @@ const UI = {
     $('#id-hint').textContent = en ? '' : '(비번 없음)';
     $('#acc-out').classList.toggle('hidden', inn);
     $('#acc-in').classList.toggle('hidden', !inn);
+    $('#btn-ranking').classList.toggle('hidden', !RANKING.enabled());
     if (inn) {
       $('#acc-name').textContent = ACCOUNT.state.id;
       $('#input-name').value = ACCOUNT.state.id;
@@ -313,6 +314,46 @@ const UI = {
     $('#input-pw').value = '';
     this.toast(action === 'register' ? `가입 완료! 뽑기권 1장 선물 🎟` : `어서 와요, ${ACCOUNT.state.id}!`);
     this.renderAccount();
+  },
+
+  // ── 랭킹 모달 ──
+  openRanking(diff) {
+    this.rankingDiff = diff || this.rankingDiff || ENGINE.difficulty;
+    $('#modal-ranking').classList.remove('hidden');
+    this.loadRanking(this.rankingDiff);
+  },
+
+  async loadRanking(diff) {
+    this.rankingDiff = diff;
+    $('#ranking-tabs').innerHTML = Object.entries(CONFIG.DIFFICULTY).map(([k, d]) =>
+      `<button data-rank-diff="${k}" class="arcade-btn py-1.5 rounded-lg text-[11px] font-black cursor-pointer ${k === diff ? 'bg-slate-900 text-white' : 'bg-white text-slate-700'}">${d.label}</button>`
+    ).join('');
+    const box = $('#ranking-list');
+    box.innerHTML = '<div class="text-center text-xs font-bold text-slate-400 py-8">불러오는 중…</div>';
+    $('#ranking-hint').textContent = ACCOUNT.loggedIn() ? '아이디·난이도별 최고 기록 1개 · 🕹️ = 수동 조작 기록' : '로그인하면 내 기록도 랭킹에 올라가요';
+    let list;
+    try {
+      list = await RANKING.top(diff);
+    } catch (_) {
+      if (this.rankingDiff === diff) box.innerHTML = '<div class="text-center text-xs font-bold text-rose-500 py-8">랭킹을 불러오지 못했어요 (인터넷 확인)</div>';
+      return;
+    }
+    if (this.rankingDiff !== diff) return; // 그 사이 탭 바뀜
+    if (!list.length) { box.innerHTML = '<div class="text-center text-xs font-bold text-slate-400 py-8">아직 기록이 없어요. 1등 해보세요!</div>'; return; }
+    const myId = ACCOUNT.loggedIn() ? ACCOUNT.state.id : null;
+    const medal = ['🥇', '🥈', '🥉'];
+    const fmtTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+    box.innerHTML = list.map((r, i) => {
+      const me = r.id === myId;
+      const stage = r.cleared ? '👑 클리어' : `STAGE ${Number(r.stage)}`;
+      return `<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border ${me ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}">
+        <span class="w-7 text-center text-sm font-black">${medal[i] || i + 1}</span>
+        <span class="flex-1 min-w-0 truncate text-xs font-black text-slate-900">${escapeHtml(r.id)}${r.manual ? ' 🕹️' : ''}</span>
+        <span class="text-xs font-black ${r.cleared ? 'text-amber-700' : 'text-slate-700'}">${stage}</span>
+        <span class="w-12 text-right text-[11px] font-bold text-slate-500">Lv.${Number(r.lv)}</span>
+        <span class="w-12 text-right text-[11px] font-bold text-slate-400">${fmtTime(Number(r.playSec) || 0)}</span>
+      </div>`;
+    }).join('');
   },
 
   // ── 유물 모달 ──

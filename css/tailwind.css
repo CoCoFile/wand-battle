@@ -45,6 +45,7 @@
     --color-rose-100: oklch(94.1% 0.03 12.58);
     --color-rose-200: oklch(89.2% 0.058 10.001);
     --color-rose-300: oklch(81% 0.117 11.638);
+    --color-rose-500: oklch(64.5% 0.246 16.439);
     --color-rose-900: oklch(41% 0.159 10.272);
     --color-slate-50: oklch(98.4% 0.003 247.858);
     --color-slate-100: oklch(96.8% 0.007 247.896);
@@ -412,6 +413,9 @@
   .min-h-0 {
     min-height: 0px;
   }
+  .min-h-\[200px\] {
+    min-height: 200px;
+  }
   .w-3\.5 {
     width: calc(var(--spacing) * 3.5);
   }
@@ -420,6 +424,12 @@
   }
   .w-5 {
     width: calc(var(--spacing) * 5);
+  }
+  .w-7 {
+    width: calc(var(--spacing) * 7);
+  }
+  .w-12 {
+    width: calc(var(--spacing) * 12);
   }
   .w-24 {
     width: calc(var(--spacing) * 24);
@@ -765,6 +775,9 @@
   .py-3 {
     padding-block: calc(var(--spacing) * 3);
   }
+  .py-8 {
+    padding-block: calc(var(--spacing) * 8);
+  }
   .pt-1 {
     padding-top: var(--spacing);
   }
@@ -776,6 +789,9 @@
   }
   .text-left {
     text-align: left;
+  }
+  .text-right {
+    text-align: right;
   }
   .text-2xl {
     font-size: var(--text-2xl);
@@ -872,6 +888,9 @@
   .text-purple-200 {
     color: var(--color-purple-200);
   }
+  .text-rose-500 {
+    color: var(--color-rose-500);
+  }
   .text-rose-900 {
     color: var(--color-rose-900);
   }
@@ -955,6 +974,9 @@
     transition-duration: 150ms;
   }
   @media (hover: hover) {
+    .hover\:bg-amber-50:hover {
+      background-color: var(--color-amber-50);
+    }
     .hover\:bg-amber-200:hover {
       background-color: var(--color-amber-200);
     }

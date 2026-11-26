@@ -74,6 +74,7 @@
             시작
           </button>
           <div id="solo-records" class="text-[11px] font-extrabold text-slate-600 text-center"></div>
+          <button id="btn-ranking" class="hidden arcade-btn w-full py-1.5 rounded-lg bg-white hover:bg-amber-50 text-slate-900 text-xs font-black cursor-pointer">🏆 랭킹</button>
         </div>
 
         <!-- 실시간 온라인 배틀 -->
@@ -361,6 +362,19 @@
     </div>
   </div>
 
+  <!-- 🏆 랭킹 모달 -->
+  <div id="modal-ranking" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3">
+    <div class="arcade-card rounded-2xl w-full max-w-lg p-4 sm:p-5 flex flex-col gap-3 animate-pop max-h-[92dvh]">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-black text-slate-900">🏆 솔로 랭킹</h3>
+        <button id="btn-ranking-close" class="arcade-btn px-3 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-black cursor-pointer">닫기</button>
+      </div>
+      <div id="ranking-tabs" class="grid grid-cols-3 gap-1.5"></div>
+      <div id="ranking-list" class="flex flex-col gap-1 overflow-y-auto min-h-[200px]"></div>
+      <div id="ranking-hint" class="text-[10px] font-bold text-slate-400 text-center"></div>
+    </div>
+  </div>
+
   <!-- 🎒 유물 모달 (타이틀에서 열림) -->
   <div id="modal-relics" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3">
     <div class="arcade-card rounded-2xl w-full max-w-lg p-4 sm:p-5 flex flex-col gap-3 animate-pop max-h-[92dvh] overflow-y-auto">
@@ -403,6 +417,7 @@
   <script src="js/core/telemetry.js"></script>
   <script src="js/core/relics.js"></script>
   <script src="js/core/account.js"></script>
+  <script src="js/core/ranking.js"></script>
   <script src="js/config.js"></script>
   <script src="js/spells/spells.js"></script>
   <script src="js/spells/casters.js"></script>

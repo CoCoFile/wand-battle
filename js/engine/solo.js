@@ -5,6 +5,7 @@ Object.assign(ENGINE, {
     SFX.init();
     PROFILE.touch(PROFILE.currentId());
     this.matchStartedAt = Date.now();
+    this.usedManual = false;
     this.mode = 'solo';
     this.stage = 1;
     this.paused = false;
@@ -41,7 +42,7 @@ Object.assign(ENGINE, {
     UI.hideAllModals();
     UI.showScreen('game');
     $('#online-bottom-dock').classList.add('hidden');
-    $('#btn-manual-toggle').classList.remove('hidden');
+    $('#btn-manual-toggle').classList.toggle('hidden', !this.manualAllowed()); // 수동 조작은 쉼터만
     $('#btn-speed').classList.remove('hidden');
     this.cycleSoloSpeed(this.soloSpeed);
     this.toggleManualControl(this.manualControl);
@@ -191,6 +192,7 @@ Object.assign(ENGINE, {
       const me = this.getLocalChar();
       const r = PROFILE.submit(PROFILE.currentId(), 'solo', this.difficulty, CONFIG.ENDING_STAGE + 1, me.lv);
       TELEMETRY.record(me, { mode: 'solo', cleared: true });
+      RANKING.submit({ difficulty: this.difficulty, stage: CONFIG.ENDING_STAGE + 1, lv: me.lv, cleared: true });
       const frag = ACCOUNT.addFragment(this.difficulty); // 💛 심장 조각
       $('#solo-ending-title').textContent = D.winText || '대마왕 심규형 토벌!';
       $('#solo-ending-desc').textContent = `${D.label} · 대마왕 심규형 토벌 · Lv.${me.lv}${r.isNew ? '  🏆 신기록!' : ''}`;
