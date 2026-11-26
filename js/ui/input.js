@@ -19,6 +19,7 @@ Object.assign(UI, {
       if (t) UI.loadRanking(t.dataset.rankDiff);
     });
     RANKING.flush(); // 밀린 랭킹 기록 전송
+    UI.renderHardChampion();
     $('#btn-relics-close').addEventListener('click', () => $('#modal-relics').classList.add('hidden'));
     $('#btn-relic-draw').addEventListener('click', () => UI.playRelicDraw());
     $('#modal-relics').addEventListener('click', (e) => {

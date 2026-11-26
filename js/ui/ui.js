@@ -14,7 +14,7 @@ const UI = {
   },
 
   showScreen(name) {
-    if (name === 'title') this.renderProfile();
+    if (name === 'title') { this.renderProfile(); this.renderHardChampion(); }
     ['title', 'lobby', 'game'].forEach((sc) => {
       $(`#screen-${sc}`).classList.toggle('hidden', sc !== name);
     });
@@ -314,6 +314,22 @@ const UI = {
     $('#input-pw').value = '';
     this.toast(action === 'register' ? `가입 완료! 뽑기권 1장 선물 🎟` : `어서 와요, ${ACCOUNT.state.id}!`);
     this.renderAccount();
+  },
+
+  // 타이틀: 만용 그자체 1위 공개 (1분에 한 번만 새로 불러옴)
+  async renderHardChampion() {
+    const el = $('#hard-champion');
+    if (!el || !RANKING.enabled()) return;
+    if (this.championAt && Date.now() - this.championAt < 60000) return;
+    this.championAt = Date.now();
+    try {
+      const top = (await RANKING.top('hard'))[0];
+      if (!top) { el.classList.add('hidden'); return; }
+      el.textContent = `🔥 ${CONFIG.DIFFICULTY.hard.label} 1위 · ${top.id}${top.manual ? ' 🕹️' : ''} · STAGE ${Number(top.stage)} · Lv.${Number(top.lv)}`;
+      el.classList.remove('hidden');
+    } catch (_) {
+      this.championAt = 0; // 실패하면 다음에 다시
+    }
   },
 
   // ── 랭킹 모달 ──
