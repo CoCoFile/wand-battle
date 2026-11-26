@@ -9,7 +9,7 @@ const CONFIG = {
   HEAD_R: 30,          // 마법사 몸 반지름
   SLIME_R: 18,         // 작은 슬라임
   BOSS_R: 46,          // 보스
-  BASE_SPEED: 460,     // 이동 속도(px/s)
+  BASE_SPEED: 240,     // 이동 속도(px/s) — 아레나 가로 1200을 약 5초에 횡단 (빠르게 하고 싶으면 배속 사용)
   SHIELD_R: [50, 68],  // 마력 방패 궤도 반지름 [안쪽(Lv1~3), 바깥(Lv4~6)]
   // 완드 모양 (머리 반지름 r의 배수). tip = 마법이 나가는 위치
   SOLO_SPEEDS: [1, 2, 3], // 솔로 배속 단계 (⏩ 버튼 / F키로 순환)
@@ -23,7 +23,9 @@ const CONFIG = {
     perLevel: 12       // 레벨업마다 최대 HP 증가 (레벨업 시 HP 전부 회복)
   },
 
+  PLAYER_COLOR: '#FACC15', // 내 캐릭터 전용 색 (내 화면에서 나만 이 색). 아래 COLORS에 노란 계열 넣지 말 것
   COLORS: ['#2563EB', '#DC2626', '#16A34A', '#9333EA', '#EA580C', '#0891B2'],
+  CHAR_COLLISION: true,    // 캐릭터끼리 겹치면 밀어내기 (무거울수록 덜 밀림: 반지름²)
   MAGICS: {
     laser:     { id: 'laser',     name: '레이저',      color: '#0EA5E9', bg: '#E0F2FE', icon: '⚡', desc: '즉발 관통 빔',          up: '굵기·피해·빔 수 ↑' },
     fireball:  { id: 'fireball',  name: '화염구',      color: '#F97316', bg: '#FFEDD5', icon: '🔥', desc: '튕기다 터지는 불덩이',  up: '폭발·피해·발사 수 ↑' },
@@ -34,11 +36,19 @@ const CONFIG = {
     scatter:   { id: 'scatter',   name: '산탄 파편',   color: '#57534E', bg: '#F5F5F4', icon: '▲', desc: '튕기는 산탄',           up: '파편·피해 ↑' },
     shield:    { id: 'shield',    name: '마력 방패',   color: '#0284C7', bg: '#E0F2FE', icon: '🛡', desc: '공격을 막는 회전 방패', up: '방패 +1' }
   },
+  // 스탯 카드 1장당 효과 (밸런스 조정은 여기서. 카드 설명 문구 STATS.desc도 같이 맞출 것)
+  STAT_VALUES: {
+    atk: 1.25,     // 피해 ×
+    armor: 0.13,   // 받는 피해 -비율 (곱연산 누적)
+    regen: 2.5,    // 초당 HP 회복 +
+    area: 1.22,   // 범위 ×
+    cdr: 0.86      // 쿨타임 × (작을수록 빠름)
+  },
   STATS: {
     atk:   { id: 'atk',   name: '공격력',     icon: '⚔️', color: '#DC2626', bg: '#FEE2E2', desc: '피해 +25%' },
-    armor: { id: 'armor', name: '방어력',     icon: '🛡️', color: '#2563EB', bg: '#DBEAFE', desc: '받는 피해 -10%' },
-    regen: { id: 'regen', name: '체력 재생',  icon: '💚', color: '#059669', bg: '#D1FAE5', desc: '초당 HP +4' },
-    area:  { id: 'area',  name: '마법 크기',  icon: '🔮', color: '#7C3AED', bg: '#EDE9FE', desc: '범위 +18%' },
+    armor: { id: 'armor', name: '방어력',     icon: '🛡️', color: '#2563EB', bg: '#DBEAFE', desc: '받는 피해 -13%' },
+    regen: { id: 'regen', name: '체력 재생',  icon: '💚', color: '#059669', bg: '#D1FAE5', desc: '초당 HP +2.5' },
+    area:  { id: 'area',  name: '마법 크기',  icon: '🔮', color: '#7C3AED', bg: '#EDE9FE', desc: '범위 +22%' },
     cdr:   { id: 'cdr',   name: '쿨타임',     icon: '⏱️', color: '#D97706', bg: '#FEF3C7', desc: '시전 속도 +14%' }
   },
   ULTIMATES: {
@@ -55,6 +65,21 @@ const CONFIG = {
     easy:   { label: '쉬움',   healOrbLife: null, enemyHp: 1.0, enemyAtk: 1.0, enemyCdr: 1.0 },
     normal: { label: '중간',   healOrbLife: 6,    enemyHp: 1.15, enemyAtk: 1.12, enemyCdr: 0.95 },
     hard:   { label: '어려움', healOrbLife: 0,    enemyHp: 1.5, enemyAtk: 1.45, enemyCdr: 0.85 }
+  },
+
+  // ── 화염구 ─────────────────────────────────
+  FIREBALL: {
+    life: 1.0,         // 비행 시간(초) → 사거리 ≈ 속도(410+15lv) × life. 끝나면 그 자리에서 폭발
+    fuse: 36           // 근접 신관: 적 몸에서 이 거리(px) 안에 들어오면 폭발
+  },
+
+  // ── 바운스 지뢰 (맵 곳곳, 피해 없음, 밟으면 튕겨나감, 1회용) ──
+  // 솔로·파티: 스테이지마다 새로 깔림 / 대전: 경기 시작 때 깔림
+  BOUNCE_MINES: {
+    count: 7,
+    r: 14,
+    power: 950,        // 튕겨나가는 초기 속도(px/s)
+    decay: 5           // 감속 (클수록 빨리 멈춤). 이동 거리 ≈ power / decay
   },
 
   // ── 궁극기 '폭발은 예술이다!' (블랙홀 + 지뢰) ──

@@ -89,9 +89,8 @@ Object.assign(ENGINE, {
         } else {
           const remainEnemies = world.chars.filter((ch) => ch.alive && ch.team !== 1);
           if (remainEnemies.length === 0) {
-            this.paused = true;
-            $('#stage-clear-title').textContent = `STAGE ${this.stage} 클리어!`;
-            $('#modal-solo-stage').classList.remove('hidden');
+            this.soloStageCleared = true;
+            this.showSoloStageClearIfReady(); // 레벨업 선택 중이면 선택 끝난 뒤에 뜸
           }
         }
       } else if (this.isParty() && NET.isHost) {

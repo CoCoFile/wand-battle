@@ -33,7 +33,18 @@ Object.assign(RENDER, {
       ctx.textBaseline = 'middle';
       ctx.fillText('💩', c.x, c.y);
     } else {
-      const bodyColor = c.hurtTimer > 0 ? '#fca5a5' : c.color;
+      const baseColor = c.isLocal ? CONFIG.PLAYER_COLOR : c.color; // 내 화면에선 나만 노란색
+      const bodyColor = c.hurtTimer > 0 ? '#fca5a5' : baseColor;
+
+      // 내 캐릭터 후광
+      if (c.isLocal) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.28)';
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r + 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
 
       // 팔 + 완드 (머리 밑에 깔리도록 먼저 그림)
       if (!c.isSmallMob) this.drawArmsAndWand(ctx, c, bodyColor);

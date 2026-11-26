@@ -83,6 +83,29 @@ const RENDER = {
       ctx.restore();
     }
 
+    // 1.5 바운스 지뢰 (청록 원 + 스프링 무늬)
+    for (const m of (w.bouncers || [])) {
+      ctx.save();
+      ctx.fillStyle = '#a5f3fc';
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = '#0891b2';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const s = m.r * 0.55;
+      ctx.moveTo(m.x - s, m.y + s * 0.6);
+      ctx.lineTo(m.x - s * 0.5, m.y - s * 0.6);
+      ctx.lineTo(m.x, m.y + s * 0.6);
+      ctx.lineTo(m.x + s * 0.5, m.y - s * 0.6);
+      ctx.lineTo(m.x + s, m.y + s * 0.6);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // 2. 경험치 & HP 구슬
     for (const o of w.orbs) {
       ctx.save();

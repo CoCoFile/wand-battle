@@ -10,6 +10,7 @@ Object.assign(ENGINE, {
     this.soloRerolls = 1;
     this.soloInitialDrafts = 3;
     this.soloPendingLevels = 0;
+    this.soloStageCleared = false;
     this.soloCurrentChoices = [];
 
     const w = this.createEmptyWorld();
@@ -17,7 +18,7 @@ Object.assign(ENGINE, {
     const player = this.makeChar({
       id: 'player',
       name: playerName,
-      color: CONFIG.COLORS[0],
+      color: CONFIG.PLAYER_COLOR,
       team: 1,
       isLocal: true,
       x: CONFIG.W * 0.5,
@@ -134,6 +135,8 @@ Object.assign(ENGINE, {
         xpReward: B.slime.xp
       }));
     }
+
+    this.spawnBouncers(w); // 바운스 지뢰 새로 깔기
   },
 
   openNextSoloChoice() {
@@ -160,8 +163,18 @@ Object.assign(ENGINE, {
       return;
     }
 
-    this.paused = false;
     $('#modal-solo-choice')?.classList.add('hidden');
+    this.paused = false;
+    this.showSoloStageClearIfReady();
+  },
+
+  // 스테이지 클리어 창: 레벨업 선택이 남아 있으면 미뤘다가, 선택이 다 끝나면 띄움
+  showSoloStageClearIfReady() {
+    if (!this.soloStageCleared) return;
+    if (this.soloInitialDrafts > 0 || this.soloPendingLevels > 0) return;
+    this.paused = true;
+    $('#stage-clear-title').textContent = `STAGE ${this.stage} 클리어!`;
+    $('#modal-solo-stage').classList.remove('hidden');
   },
 
   renderSoloChoiceModal() {
@@ -205,6 +218,8 @@ Object.assign(ENGINE, {
   nextSoloStage() {
     const player = this.getLocalChar();
     if (!player || !player.alive) return;
+    if (this.soloPendingLevels > 0) { this.openNextSoloChoice(); return; } // 안전장치: 선택 먼저
+    this.soloStageCleared = false;
     this.stage++;
     this.soloRerolls++;
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.35);

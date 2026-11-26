@@ -70,7 +70,8 @@ const ENGINE = {
       rings: [],
       orbs: [],
       particles: [],
-      texts: []
+      texts: [],
+      bouncers: []       // 바운스 지뢰
     };
   },
 

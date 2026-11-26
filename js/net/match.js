@@ -69,6 +69,7 @@ Object.assign(NET, {
     }
 
     ENGINE.world = w;
+    ENGINE.spawnBouncers(w);
   },
 
   // 경기 화면 진입 (방장·참가자 공통)
@@ -136,7 +137,8 @@ Object.assign(NET, {
       zones: w.zones.map((z) => ({ kind: z.kind, x: z.x, y: z.y, r: z.r, color: z.color })),
       rings: w.rings,
       orbs: w.orbs,
-      texts: w.texts
+      texts: w.texts,
+      bouncers: w.bouncers
     };
 
     for (const [peerId, conn] of this.conns.entries()) {
@@ -170,6 +172,7 @@ Object.assign(NET, {
     w.orbs = snap.orbs || [];
     w.particles = w.particles || [];
     w.texts = snap.texts || [];
+    w.bouncers = snap.bouncers || [];
     ENGINE.world = w;
 
     const prevQ = JSON.stringify(this.clientChoiceQueue[0]?.choices?.map((x) => x.id + x.badge) || []);

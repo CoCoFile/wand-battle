@@ -81,15 +81,15 @@ Object.assign(SPELLS, {
       if (!c.statCounts) c.statCounts = {};
       c.statCounts[choice.id] = (c.statCounts[choice.id] || 0) + 1;
       if (choice.id === 'atk') {
-        c.atkMult *= 1.25;
+        c.atkMult *= CONFIG.STAT_VALUES.atk;
       } else if (choice.id === 'armor') {
-        c.armor = 1 - (1 - (c.armor || 0)) * 0.9;
+        c.armor = 1 - (1 - (c.armor || 0)) * (1 - CONFIG.STAT_VALUES.armor);
       } else if (choice.id === 'regen') {
-        c.regen = (c.regen || 0) + 4;
+        c.regen = (c.regen || 0) + CONFIG.STAT_VALUES.regen;
       } else if (choice.id === 'area') {
-        c.areaMult *= 1.18;
+        c.areaMult *= CONFIG.STAT_VALUES.area;
       } else if (choice.id === 'cdr') {
-        c.cdrMult *= 0.86;
+        c.cdrMult *= CONFIG.STAT_VALUES.cdr;
       }
     } else if (choice.type === 'golden') {
       this.resolveGoldenCard(c, world);

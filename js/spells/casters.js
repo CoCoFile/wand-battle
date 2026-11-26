@@ -33,7 +33,7 @@ const SPELL_CASTERS = {
     const spd = 410 + lv * 15;
     const r = (9 + lv * 0.7) * c.areaMult;
     const expR = (62 + lv * 9) * c.areaMult;
-    const dmg = (18 + lv * 5) * c.atkMult;
+    const dmg = (14 + lv * 4) * c.atkMult; // 근접 신관으로 명중률이 높아서 직격형보다 낮게
     const step = spreadStep(shots, 0.16, Math.PI * 1.4);
     for (let i = 0; i < shots; i++) {
       const ang = c.angle + (i - (shots - 1) / 2) * step;
@@ -41,7 +41,7 @@ const SPELL_CASTERS = {
         kind: 'fireball', skillUid, ownerId: c.id, team: c.team,
         x: clamp(ox, r + 4, CONFIG.W - r - 4), y: clamp(oy, r + 4, CONFIG.H - r - 4),
         vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
-        r, expR, dmg, bounces: 2, color: '#F97316', life: 2.4, hitIds: []
+        r, expR, dmg, bounces: 2, color: '#F97316', life: CONFIG.FIREBALL.life, hitIds: []
       });
     }
     if (c.isLocal) SFX.play('fire');

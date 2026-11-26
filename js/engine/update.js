@@ -10,6 +10,8 @@ Object.assign(ENGINE, {
     this.updatePartyFlow(w, dt);
     this.spawnOnlineOrbs(w, dt);
     this.updateCharacters(w, dt);
+    this.resolveCollisions(w);
+    this.updateBouncers(w);
     this.updateProjectiles(w, dt);
     this.updateWaves(w, dt);
     this.updateZones(w, dt);
@@ -49,6 +51,18 @@ Object.assign(ENGINE, {
 
       if (c.regen > 0 && c.hp < c.maxHp) {
         c.hp = Math.min(c.maxHp, c.hp + c.regen * dt);
+      }
+
+      // 튕겨나가는 중 (바운스 지뢰): 속도만큼 밀리고 점점 감속, 벽에 닿으면 반사
+      if (c.kbVx || c.kbVy) {
+        const pad = c.r + 12;
+        c.x += c.kbVx * dt;
+        c.y += c.kbVy * dt;
+        if (c.x < pad || c.x > CONFIG.W - pad) { c.kbVx = -c.kbVx; c.x = clamp(c.x, pad, CONFIG.W - pad); }
+        if (c.y < pad || c.y > CONFIG.H - pad) { c.kbVy = -c.kbVy; c.y = clamp(c.y, pad, CONFIG.H - pad); }
+        const f = Math.exp(-CONFIG.BOUNCE_MINES.decay * dt);
+        c.kbVx *= f; c.kbVy *= f;
+        if (Math.hypot(c.kbVx, c.kbVy) < 25) { c.kbVx = 0; c.kbVy = 0; }
       }
 
       SPELLS.updateShields(c, dt, w);
@@ -165,12 +179,92 @@ Object.assign(ENGINE, {
     }
   },
 
+  // 캐릭터끼리 겹침 해소: 겹친 만큼 서로 밀어냄 (반지름² 비율로 무거운 쪽이 덜 밀림)
+  // 자동 이동 중인 캐릭터는 부딪힌 반대 방향으로 진행 방향을 틀어줌
+  resolveCollisions(w) {
+    if (!CONFIG.CHAR_COLLISION) return;
+    const cs = w.chars.filter((c) => c.alive);
+    for (let i = 0; i < cs.length; i++) {
+      const a = cs[i];
+      for (let j = i + 1; j < cs.length; j++) {
+        const b = cs[j];
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let d = Math.hypot(dx, dy);
+        const minD = a.r + b.r;
+        if (d >= minD) continue;
+        if (d < 0.01) { const ang = rand(0, Math.PI * 2); dx = Math.cos(ang); dy = Math.sin(ang); d = 1; }
+        const nx = dx / d, ny = dy / d;
+        const overlap = minD - d;
+        const ma = a.r * a.r, mb = b.r * b.r;
+        const pa = overlap * (mb / (ma + mb));
+        const pb = overlap * (ma / (ma + mb));
+        a.x = clamp(a.x - nx * pa, a.r + 12, CONFIG.W - a.r - 12);
+        a.y = clamp(a.y - ny * pa, a.r + 12, CONFIG.H - a.r - 12);
+        b.x = clamp(b.x + nx * pb, b.r + 12, CONFIG.W - b.r - 12);
+        b.y = clamp(b.y + ny * pb, b.r + 12, CONFIG.H - b.r - 12);
+        const away = Math.atan2(ny, nx);
+        const manual = this.mode === 'solo' && this.manualControl;
+        if (!(manual && a.isLocal)) a.moveAng = away + Math.PI + rand(-0.6, 0.6);
+        if (!(manual && b.isLocal)) b.moveAng = away + rand(-0.6, 0.6);
+      }
+    }
+  },
+
+  // 바운스 지뢰: 아무나(적·아군·슬라임) 밟으면 반대 방향으로 튕겨나가고 지뢰는 사라짐
+  updateBouncers(w) {
+    const B = CONFIG.BOUNCE_MINES;
+    for (let i = w.bouncers.length - 1; i >= 0; i--) {
+      const m = w.bouncers[i];
+      const c = w.chars.find((ch) => ch.alive && dist(ch.x, ch.y, m.x, m.y) <= ch.r + m.r);
+      if (!c) continue;
+      const d = dist(c.x, c.y, m.x, m.y);
+      const ang = d > 2 ? Math.atan2(c.y - m.y, c.x - m.x) : rand(0, Math.PI * 2);
+      c.kbVx = Math.cos(ang) * B.power;
+      c.kbVy = Math.sin(ang) * B.power;
+      c.moveAng = ang;
+      w.bouncers.splice(i, 1);
+      w.rings.push({ x: m.x, y: m.y, r: m.r, maxR: m.r + 40, life: 0.3, maxLife: 0.3, color: '#06b6d4' });
+      SPELLS.spawnParticles(w, m.x, m.y, '#22d3ee', 10, 200);
+      w.texts.push({ x: m.x, y: m.y - 20, text: '뿅!', color: '#0891b2', life: 0.6 });
+      if (c.isLocal) SFX.play('ricochet');
+    }
+  },
+
+  // 맵 곳곳에 바운스 지뢰 새로 깔기 (기존 것은 지움). 캐릭터·다른 지뢰와 떨어진 곳에
+  spawnBouncers(w) {
+    const B = CONFIG.BOUNCE_MINES;
+    w.bouncers = [];
+    for (let k = 0; k < B.count; k++) {
+      for (let tries = 0; tries < 20; tries++) {
+        const x = rand(80, CONFIG.W - 80);
+        const y = rand(80, CONFIG.H - 80);
+        if (w.chars.some((c) => c.alive && dist(x, y, c.x, c.y) < c.r + 90)) continue;
+        if (w.bouncers.some((m) => dist(x, y, m.x, m.y) < 120)) continue;
+        w.bouncers.push({ x, y, r: B.r });
+        break;
+      }
+    }
+  },
+
+  // 화염구 폭발 (사거리 끝에서) — 반경 안 적 전원에게 65% 피해
+  explodeFireball(p, w) {
+    const attacker = w.chars.find((ch) => ch.id === p.ownerId);
+    w.rings.push({ x: p.x, y: p.y, r: 12, maxR: p.expR, life: 0.28, maxLife: 0.28, color: '#f97316' });
+    SPELLS.spawnParticles(w, p.x, p.y, '#f97316', 12, 180);
+    for (const t of w.chars) {
+      if (!t.alive || t.id === p.ownerId || t.team === p.team) continue;
+      if (dist(p.x, p.y, t.x, t.y) <= p.expR + t.r) this.damageChar(t, p.dmg * 0.65, attacker, w);
+    }
+  },
+
   updateProjectiles(w, dt) {
     // 2. 투사체 업데이트 (벽 도탄 · 마력 방패 차단 · 적중)
     for (let i = w.projs.length - 1; i >= 0; i--) {
       const p = w.projs[i];
       p.life -= dt;
       if (p.life <= 0) {
+        if (p.kind === 'fireball') this.explodeFireball(p, w); // 사거리 끝 → 그 자리 폭발
         if (p.kind === 'poison') {
           w.zones.push({
             kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
@@ -247,7 +341,8 @@ Object.assign(ENGINE, {
         }
 
         if (p.hitIds.includes(t.id)) continue;
-        if (dist(p.x, p.y, t.x, t.y) <= t.r + p.r) {
+        const fuse = p.kind === 'fireball' ? CONFIG.FIREBALL.fuse : 0; // 화염구는 근처만 와도 터짐
+        if (dist(p.x, p.y, t.x, t.y) <= t.r + p.r + fuse) {
           p.hitIds.push(t.id);
           this.damageChar(t, p.dmg, attacker, w);
 
