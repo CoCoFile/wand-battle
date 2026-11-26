@@ -60,11 +60,15 @@ const CONFIG = {
 
   // ── 솔로 난이도 ─────────────────────────────
   // healOrbLife: 회복 구슬 유지 시간(초). null = 안 사라짐, 0 = 회복 구슬 없음(경험치 구슬만)
-  // enemyHp / enemyAtk: 적(마법사·보스) HP·공격력 배율, enemyCdr: 쿨타임 배율(작을수록 자주 쏨)
+  // enemyHp / enemyAtk: 일반 적 HP·공격력 배율, enemyCdr: 쿨타임 배율(작을수록 자주 쏨, 보스에도 적용)
+  // bossHp / bossAtk: 보스 전용 배율 (보스엔 약하게 — 어려움 첫 보스가 벽이던 문제 11/26)
+  // ending: true면 ENDING_STAGE 클리어 시 엔딩 (만용은 끝없음 — 30 넘기면 winText 배너만 뜨고 계속)
+  // winText: 엔딩(만용은 30 돌파) 문구, loseText: 게임오버·전멸 문구
+  ENDING_STAGE: 30,
   DIFFICULTY: {
-    easy:   { label: '쉬움',   healOrbLife: null, enemyHp: 1.0, enemyAtk: 1.0, enemyCdr: 1.0 },
-    normal: { label: '중간',   healOrbLife: 6,    enemyHp: 1.15, enemyAtk: 1.12, enemyCdr: 0.95 },
-    hard:   { label: '어려움', healOrbLife: 0,    enemyHp: 1.5, enemyAtk: 1.45, enemyCdr: 0.85 }
+    easy:   { label: '겁쟁이들의 쉼터', short: '쉼터', ending: true,  winText: '겁쟁이들의 왕',        loseText: '이걸?ㅋㅋㅋㅋㅋㅋ',           healOrbLife: null, enemyHp: 1.0, enemyAtk: 1.0, enemyCdr: 1.0,  bossHp: 1.0,  bossAtk: 1.0 },
+    normal: { label: '현실에 타협',     short: '타협', ending: true,  winText: '현실에 안주한놈',      loseText: '걍 쉼터 가셈',               healOrbLife: 6,    enemyHp: 1.15, enemyAtk: 1.12, enemyCdr: 0.95, bossHp: 1.1,  bossAtk: 1.05 },
+    hard:   { label: '만용 그자체',     short: '만용', ending: false, winText: '인정 무한모드 ㄱ?',    loseText: '용기와 만용은 한끗차이다',   healOrbLife: 0,    enemyHp: 1.5, enemyAtk: 1.45, enemyCdr: 0.85, bossHp: 1.25, bossAtk: 1.15 }
   },
 
   // ── 화염구 ─────────────────────────────────
@@ -103,9 +107,15 @@ const CONFIG = {
     bossHpPer: 0.6      // 인원 1명 늘 때마다 보스 HP +60%
   },
 
+  // ── 경험치 곡선 ─────────────────────────────
+  // 다음 레벨 필요 경험치 = 이전 × mult + add (Lv.1→2는 start)
+  XP: { start: 60, mult: 1.1, add: 25 },   // 11/26: 1.24+18 → 후반 성장이 멈춰서 완화
+
   // ── 솔로 스테이지 밸런스 (= 쉬움 기준, 난이도 배율이 위에 곱해짐) ──
   // [기본값, 스테이지당 증가] → 스테이지 n 값 = 기본값 + 증가 × (n−1)
   SOLO: {
+    // 후반 성장 완화: lateFrom 스테이지 이후엔 적 HP·공격력·쿨타임의 스테이지당 증가폭 × lateMult (경험치·마리 수는 그대로)
+    lateFrom: 7, lateMult: 0.5,
     mage: {
       count: [2, 1], countMax: 7,     // 일반 스테이지 마법사 수
       bossStageCount: [2, 0.34],      // 보스 스테이지 마법사 수 (보스와 함께)
@@ -118,7 +128,7 @@ const CONFIG = {
     boss: {
       every: 3,
       hp: [420, 110],                  // n = 스테이지 번호 그대로 (3, 6, 9...)에 적용
-      atk: [0.6, 0.05],
+      atk: [0.42, 0.06],              // 밸런스(11/26): 0.6+0.05 → 첫 보스 약하게, 후반 보스는 비슷
       cdr: 1.15,
       xp: 130,
       magics: { laser: 2, fireball: 2, shockwave: 1, shield: 2 }

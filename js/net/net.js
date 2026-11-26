@@ -178,7 +178,7 @@ const NET = {
     } else if (msg.type === 'dramatic') {
       UI.showDramatic(msg.text, msg.color, msg.sub || '');
     } else if (msg.type === 'gameover') {
-      UI.showOnlineGameOver(msg.title, msg.desc);
+      UI.showOnlineGameOver(msg.title, msg.desc, msg.cleared === true);
     } else if (msg.type === 'back_lobby') {
       $('#modal-on-over').classList.add('hidden');
       UI.openLobby();

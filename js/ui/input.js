@@ -2,6 +2,11 @@
 
 Object.assign(UI, {
   bindEvents() {
+    // 아이디: 마지막 아이디 복원, 입력할 때마다 기록 표시 갱신
+    PROFILE.load();
+    if (PROFILE.data.lastId) $('#input-name').value = PROFILE.data.lastId;
+    $('#input-name').addEventListener('input', () => UI.renderProfile());
+    UI.renderProfile();
     // 타이틀 마법 도감 렌더링
     const spellList = $('#title-spell-list');
     if (spellList) {
@@ -204,6 +209,13 @@ Object.assign(UI, {
 
     $('#btn-next-stage').addEventListener('click', () => ENGINE.nextSoloStage());
     $('#btn-solo-retry').addEventListener('click', () => ENGINE.startSolo());
+    $('#btn-ending-retry').addEventListener('click', () => ENGINE.startSolo());
+    $('#btn-ending-home').addEventListener('click', () => {
+      ENGINE.mode = 'idle';
+      ENGINE.world = null;
+      UI.hideAllModals();
+      UI.showScreen('title');
+    });
     $('#btn-solo-home').addEventListener('click', () => {
       ENGINE.mode = 'idle';
       ENGINE.world = null;

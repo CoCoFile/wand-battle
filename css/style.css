@@ -1,4 +1,5 @@
-/* 전역 스타일: 아케이드 카드/버튼, 팝 애니메이션, 황금카드 반짝임 (나머지는 Tailwind CDN 클래스) */
+/* 레이어: base(html/body) < components(아케이드 카드·버튼) < utilities(Tailwind 클래스) — Tailwind 클래스가 항상 우선 */
+@layer components {
 
 * {
   box-sizing: border-box;
@@ -57,4 +58,5 @@ html, body {
     -3px -3px 0 #0f172a, 3px -3px 0 #0f172a, -3px 3px 0 #0f172a, 3px 3px 0 #0f172a,
     0 -3px 0 #0f172a, 0 3px 0 #0f172a, -3px 0 0 #0f172a, 3px 0 0 #0f172a,
     0 6px 0 #0f172a;
+}
 }

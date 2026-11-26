@@ -83,7 +83,7 @@ Object.assign(ENGINE, {
     if (target.team === 1 && !target.isSmallMob) {
       const aliveAllies = world.chars.filter((c) => c.alive && c.team === 1 && !c.isSmallMob);
       if (aliveAllies.length === 0) {
-        const title = '💀 전멸!';
+        const title = `💀 ${(CONFIG.DIFFICULTY[this.difficulty] || {}).loseText || '전멸!'}`;
         const desc = `${(CONFIG.DIFFICULTY[this.difficulty] || {}).label || ''} · STAGE ${this.stage}`;
         world.nextStageTimer = 0;
         NET.broadcast({ type: 'gameover', title, desc });
@@ -100,9 +100,21 @@ Object.assign(ENGINE, {
     if (world.nextStageTimer > 0) return; // 이미 클리어 처리됨
     const remain = world.chars.filter((c) => c.alive && c.team !== 1);
     if (remain.length === 0) {
+      const D = CONFIG.DIFFICULTY[this.difficulty] || {};
+      if (D.ending && this.stage >= CONFIG.ENDING_STAGE) { // 🎉 파티 엔딩
+        const title = `🎉 ${D.winText || '대마왕 심규형 토벌!'}`;
+        const desc = `${D.label} · 대마왕 심규형 토벌`;
+        NET.broadcast({ type: 'gameover', title, desc, cleared: true });
+        UI.showOnlineGameOver(title, desc, true);
+        return;
+      }
+      if (!D.ending && this.stage === CONFIG.ENDING_STAGE && D.winText) {
+        UI.broadcastDramatic(D.winText, '#dc2626', `${CONFIG.ENDING_STAGE}스테이지 돌파`); // 만용: 배너만
+      } else {
+        UI.broadcastDramatic(`STAGE ${this.stage} 클리어!`, '#16a34a', '쓰러진 동료 부활');
+      }
       world.nextStage = this.stage + 1;
       world.nextStageTimer = CONFIG.PARTY.clearDelay;
-      UI.broadcastDramatic(`STAGE ${this.stage} 클리어!`, '#16a34a', '쓰러진 동료 부활');
     }
   }
 });

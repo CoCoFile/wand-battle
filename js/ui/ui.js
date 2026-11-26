@@ -14,13 +14,14 @@ const UI = {
   },
 
   showScreen(name) {
+    if (name === 'title') this.renderProfile();
     ['title', 'lobby', 'game'].forEach((sc) => {
       $(`#screen-${sc}`).classList.toggle('hidden', sc !== name);
     });
   },
 
   hideAllModals() {
-    ['#modal-solo-choice', '#modal-solo-stage', '#modal-solo-over', '#modal-on-over'].forEach((sel) => {
+    ['#modal-solo-choice', '#modal-solo-stage', '#modal-solo-over', '#modal-solo-ending', '#modal-on-over'].forEach((sel) => {
       $(sel).classList.add('hidden');
     });
   },
@@ -198,6 +199,19 @@ const UI = {
     $('#hud-hp-bar').style.width = `${clamp((me.hp / me.maxHp) * 100, 0, 100)}%`;
     $('#hud-xp-bar').style.width = `${clamp((me.xp / me.nextXp) * 100, 0, 100)}%`;
 
+    // 보스 HP바
+    const boss = w.chars.find((c) => c.isBoss && c.alive);
+    const bossBar = $('#boss-bar');
+    if (bossBar) {
+      bossBar.classList.toggle('hidden', !boss);
+      if (boss) {
+        const pct = clamp(boss.hp / boss.maxHp, 0, 1);
+        $('#boss-bar-name').textContent = boss.name;
+        $('#boss-bar-hp').textContent = `${Math.ceil(pct * 100)}%`;
+        $('#boss-bar-fill').style.width = `${pct * 100}%`;
+      }
+    }
+
     const skillsBar = $('#hud-skills-bar');
     if (skillsBar) {
       const html = this.buildBadgesHtml(me, false);
@@ -245,6 +259,8 @@ const UI = {
   renderDifficulty() {
     document.querySelectorAll('.diff-btn').forEach((btn) => {
       const on = btn.dataset.diff === ENGINE.difficulty;
+      const label = CONFIG.DIFFICULTY[btn.dataset.diff]?.label;
+      if (label && btn.textContent !== label) btn.textContent = label;
       btn.classList.toggle('bg-slate-900', on);
       btn.classList.toggle('text-white', on);
       btn.classList.toggle('bg-white', !on);
@@ -268,11 +284,54 @@ const UI = {
     this.renderDifficulty();
   },
 
-  showOnlineGameOver(title, desc) {
+  // 타이틀: 현재 아이디의 최고 기록 + 최근 아이디 버튼
+  renderProfile() {
+    const id = PROFILE.currentId();
+    const diffs = Object.entries(CONFIG.DIFFICULTY);
+    const fmt = (mode) => diffs.map(([k, d]) => {
+      const b = PROFILE.best(id, mode, k);
+      if (!b) return `${d.short} -`;
+      return `${d.short} ${b.stage > CONFIG.ENDING_STAGE ? '👑' : b.stage}`; // 👑 = 엔딩 클리어
+    }).join(' · ');
+    const soloEl = $('#solo-records');
+    if (soloEl) soloEl.textContent = `🏆 최고 스테이지  ${fmt('solo')}`;
+    const onEl = $('#online-records');
+    if (onEl) onEl.textContent = `🤝 파티 ${fmt('party')}  |  ⚔️ 우승 ${PROFILE.data.profiles[id]?.wins || 0}회`;
+
+    const box = $('#recent-ids');
+    if (box) {
+      box.innerHTML = '';
+      for (const rid of PROFILE.recentIds()) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `px-2 py-0.5 rounded-md border text-[10px] font-black cursor-pointer ${rid === id ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300'}`;
+        chip.textContent = rid;
+        chip.addEventListener('click', () => {
+          $('#input-name').value = rid;
+          this.renderProfile();
+        });
+        box.appendChild(chip);
+      }
+    }
+  },
+
+  showOnlineGameOver(title, desc, cleared = false) {
     $('#on-over-title').textContent = desc ? `${title} ${desc}` : title;
     $('#btn-on-rematch').classList.toggle('hidden', !NET.isHost);
     $('#on-over-hint').classList.toggle('hidden', NET.isHost);
     this.renderBuildSummary($('#on-over-build'), ENGINE.getLocalChar());
+    // 기록 저장 (경기당 1번)
+    if (!ENGINE.recordSubmitted) {
+      ENGINE.recordSubmitted = true;
+      const me = ENGINE.getLocalChar();
+      const id = PROFILE.currentId();
+      if (ENGINE.isParty()) {
+        ENGINE.recordIsNew = PROFILE.submit(id, 'party', ENGINE.difficulty, cleared ? CONFIG.ENDING_STAGE + 1 : Math.max(1, ENGINE.stage), me?.lv || 1).isNew;
+      } else if (me && me.alive) {
+        PROFILE.addWin(id);
+      }
+    }
+    if (ENGINE.isParty() && ENGINE.recordIsNew) $('#on-over-title').textContent += '  🏆 신기록!';
     $('#modal-on-over').classList.remove('hidden');
   }
 };

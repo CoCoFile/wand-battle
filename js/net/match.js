@@ -74,6 +74,9 @@ Object.assign(NET, {
 
   // 경기 화면 진입 (방장·참가자 공통)
   enterMatchScreen() {
+    ENGINE.recordSubmitted = false;
+    ENGINE.recordIsNew = false;
+    PROFILE.touch(PROFILE.currentId());
     ENGINE.mode = 'online';
     ENGINE.paused = false;
     const party = this.matchType === 'party';

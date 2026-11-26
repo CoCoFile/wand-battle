@@ -8,7 +8,7 @@ Object.assign(ENGINE, {
     while (c.xp >= c.nextXp) {
       c.xp -= c.nextXp;
       c.lv++;
-      c.nextXp = Math.round(c.nextXp * 1.24 + 18);
+      c.nextXp = Math.round(c.nextXp * CONFIG.XP.mult + CONFIG.XP.add);
       c.maxHp += CONFIG.HP.perLevel;
       c.hp = c.maxHp; // 레벨업 시 최대 HP 증가 + 풀회복
 
@@ -85,6 +85,13 @@ Object.assign(ENGINE, {
           this.paused = true;
           $('#solo-over-desc').textContent = `${(CONFIG.DIFFICULTY[this.difficulty] || {}).label || ''} · STAGE ${this.stage} · Lv.${target.lv}`;
           UI.renderBuildSummary($('#solo-over-build'), target);
+          {
+            const r = PROFILE.submit(PROFILE.currentId(), 'solo', this.difficulty, this.stage, target.lv);
+            const D = CONFIG.DIFFICULTY[this.difficulty] || {};
+            $('#solo-over-title').textContent = D.loseText || '전투 불능!';
+            if (r.isNew) $('#solo-over-desc').textContent += '  🏆 신기록!';
+            else if (r.prev) $('#solo-over-desc').textContent += ` (최고 ${r.prev.stage > CONFIG.ENDING_STAGE ? '👑' : 'STAGE ' + r.prev.stage})`;
+          }
           $('#modal-solo-over').classList.remove('hidden');
         } else {
           const remainEnemies = world.chars.filter((ch) => ch.alive && ch.team !== 1);

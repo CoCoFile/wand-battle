@@ -3,6 +3,7 @@
 Object.assign(ENGINE, {
   startSolo() {
     SFX.init();
+    PROFILE.touch(PROFILE.currentId());
     this.mode = 'solo';
     this.stage = 1;
     this.paused = false;
@@ -51,6 +52,9 @@ Object.assign(ENGINE, {
     const B = CONFIG.SOLO;
     const D = CONFIG.DIFFICULTY[this.difficulty] || CONFIG.DIFFICULTY.normal;
     const at = ([base, inc]) => base + inc * (stage - 1);
+    // 후반 완화된 '체감 스테이지': lateFrom 이후는 lateMult 배속으로만 증가 (HP·공격력·쿨타임에만 사용)
+    const eff = stage <= B.lateFrom ? stage : B.lateFrom + (stage - B.lateFrom) * B.lateMult;
+    const atP = ([base, inc]) => base + inc * (eff - 1);
     const allies = w.chars.filter((c) => c.alive && c.team === 1 && !c.isSmallMob);
     const extra = Math.max(0, allies.length - 1); // 파티 인원 추가분
     const isBossStage = stage % B.boss.every === 0;
@@ -89,9 +93,9 @@ Object.assign(ENGINE, {
         isBot: true,
         x: ex,
         y: ey,
-        maxHp: Math.round(at(B.mage.hp) * D.enemyHp),
-        atkMult: at(B.mage.atk) * D.enemyAtk,
-        cdrMult: Math.max(B.mage.cdrMin, at(B.mage.cdr)) * D.enemyCdr,
+        maxHp: Math.round(atP(B.mage.hp) * D.enemyHp),
+        atkMult: atP(B.mage.atk) * D.enemyAtk,
+        cdrMult: Math.max(B.mage.cdrMin, atP(B.mage.cdr)) * D.enemyCdr,
         xpReward: Math.round(at(B.mage.xp)),
         magics
       });
@@ -109,8 +113,8 @@ Object.assign(ENGINE, {
         isBoss: true,
         x: CONFIG.W * 0.5,
         y: 130,
-        maxHp: Math.round((B.boss.hp[0] + B.boss.hp[1] * (stage - B.boss.every)) * D.enemyHp * (1 + CONFIG.PARTY.bossHpPer * extra)),
-        atkMult: (B.boss.atk[0] + B.boss.atk[1] * (stage - B.boss.every)) * D.enemyAtk,
+        maxHp: Math.round((B.boss.hp[0] + B.boss.hp[1] * (eff - B.boss.every)) * (D.bossHp ?? D.enemyHp) * (1 + CONFIG.PARTY.bossHpPer * extra)),
+        atkMult: (B.boss.atk[0] + B.boss.atk[1] * (eff - B.boss.every)) * (D.bossAtk ?? D.enemyAtk),
         cdrMult: B.boss.cdr * D.enemyCdr,
         xpReward: B.boss.xp,
         magics: { ...B.boss.magics }
@@ -173,6 +177,20 @@ Object.assign(ENGINE, {
     if (!this.soloStageCleared) return;
     if (this.soloInitialDrafts > 0 || this.soloPendingLevels > 0) return;
     this.paused = true;
+    const D = CONFIG.DIFFICULTY[this.difficulty] || {};
+    if (D.ending && this.stage >= CONFIG.ENDING_STAGE) { // 🎉 엔딩
+      const me = this.getLocalChar();
+      const r = PROFILE.submit(PROFILE.currentId(), 'solo', this.difficulty, CONFIG.ENDING_STAGE + 1, me.lv);
+      $('#solo-ending-title').textContent = D.winText || '대마왕 심규형 토벌!';
+      $('#solo-ending-desc').textContent = `${D.label} · 대마왕 심규형 토벌 · Lv.${me.lv}${r.isNew ? '  🏆 신기록!' : ''}`;
+      UI.renderBuildSummary($('#solo-ending-build'), me);
+      $('#modal-solo-ending').classList.remove('hidden');
+      SFX.play('golden');
+      return;
+    }
+    if (!D.ending && this.stage === CONFIG.ENDING_STAGE && D.winText) {
+      UI.showDramatic(D.winText, '#dc2626', `${CONFIG.ENDING_STAGE}스테이지 돌파`); // 만용: 배너만, 계속 진행
+    }
     $('#stage-clear-title').textContent = `STAGE ${this.stage} 클리어!`;
     $('#modal-solo-stage').classList.remove('hidden');
   },

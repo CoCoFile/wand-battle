@@ -268,7 +268,7 @@ Object.assign(ENGINE, {
         if (p.kind === 'poison') {
           w.zones.push({
             kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
-            x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.4, maxLife: 3.4, color: '#16A34A'
+            x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.0, maxLife: 3.0, color: '#16A34A'
           });
         }
         w.projs.splice(i, 1);
@@ -332,7 +332,7 @@ Object.assign(ENGINE, {
           } else if (p.kind === 'poison') {
             w.zones.push({
               kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
-              x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.4, maxLife: 3.4, color: '#16A34A'
+              x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.0, maxLife: 3.0, color: '#16A34A'
             });
           }
           w.projs.splice(i, 1);
@@ -370,7 +370,7 @@ Object.assign(ENGINE, {
           } else if (p.kind === 'poison') {
             w.zones.push({
               kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
-              x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.4, maxLife: 3.4, color: '#16A34A'
+              x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.0, maxLife: 3.0, color: '#16A34A'
             });
             w.projs.splice(i, 1);
             removed = true;

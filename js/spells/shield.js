@@ -7,7 +7,7 @@ Object.assign(SPELLS, {
     return {
       count: capped,
       omega: 2.3 + capped * 0.25,
-      cooldown: Math.max(2.2, 4.7 - capped * 0.38)
+      cooldown: Math.max(1.5, 3.6 - capped * 0.35) // 밸런스(11/26): 재생 빨라짐 (Lv3 3.56초 → 2.55초)
     };
   },
 
@@ -22,7 +22,7 @@ Object.assign(SPELLS, {
       const radius = CONFIG.SHIELD_R[layer];
       const layerCount = layer === 0 ? Math.min(3, lv) : (lv - 3);
       const layerIdx = layer === 0 ? i : (i - 3);
-      const arc = Math.min(0.88, (Math.PI * 1.25) / layerCount);
+      const arc = Math.min(1.2, (Math.PI * 1.6) / layerCount); // 밸런스(11/26): 방패 폭 넓힘 (Lv3 기준 원의 ~57% 커버)
       const angle = layer === 0
         ? baseAng + (Math.PI * 2 * layerIdx) / layerCount
         : -baseAng * 0.85 + Math.PI / 3 + (Math.PI * 2 * layerIdx) / layerCount;
@@ -81,6 +81,16 @@ Object.assign(SPELLS, {
     if (skillUid) target.recentShieldSkills[skillUid] = 5.0;
 
     this.spawnParticles(world, px, py, '#38bdf8', 10, 150);
+    // 반격 충격: 방패가 깨질 때 주변 적에게 피해 (밸런스 11/26 — 막기만 하던 방패가 너무 약해서)
+    if (world) {
+      const burstR = 110;
+      const burstDmg = (14 + lv * 4) * (target.atkMult || 1);
+      world.rings.push({ x: target.x, y: target.y, r: target.r, maxR: burstR, life: 0.25, maxLife: 0.25, color: '#38bdf8' });
+      for (const e of world.chars) {
+        if (!e.alive || e.team === target.team || e.id === target.id) continue;
+        if (dist(e.x, e.y, target.x, target.y) <= burstR + e.r) ENGINE.damageChar(e, burstDmg, target, world);
+      }
+    }
     if (world) {
       world.texts.push({ x: target.x, y: target.y - target.r - 16, text: '방패!', color: '#0284c7', life: 0.75 });
     }

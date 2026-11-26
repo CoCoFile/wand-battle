@@ -102,7 +102,7 @@ const ENGINE = {
       maxHp,
       lv: opts.lv || 1,
       xp: 0,
-      nextXp: opts.nextXp || 60,
+      nextXp: opts.nextXp || CONFIG.XP.start,
       xpReward: opts.xpReward || 45,
       speed: opts.speed || CONFIG.BASE_SPEED,
       atkMult: opts.atkMult || 1.0,

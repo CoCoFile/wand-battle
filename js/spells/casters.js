@@ -70,7 +70,7 @@ const SPELL_CASTERS = {
     const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
     const spd = 360 + lv * 12;
     const zoneR = (58 + lv * 8) * c.areaMult;
-    const dmg = (10 + lv * 2.5) * c.atkMult;
+    const dmg = (8 + lv * 1.9) * c.atkMult;     // 밸런스(11/26): 10+2.5lv → 너프
     const r = 8 * c.areaMult;
     const step = spreadStep(shots, 0.22, Math.PI * 1.45);
     for (let i = 0; i < shots; i++) {
@@ -89,7 +89,7 @@ const SPELL_CASTERS = {
     const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
     const spd = 500 + lv * 15;
     const r = (11 + lv * 0.7) * c.areaMult;
-    const dmg = (15 + lv * 4) * c.atkMult;
+    const dmg = (17 + lv * 4.5) * c.atkMult;   // 밸런스(11/26): 15+4lv → 버프
     const maxLife = (1.25 + lv * 0.12) * Math.sqrt(c.areaMult);
     const step = spreadStep(shots, 0.22, Math.PI * 1.45);
     for (let i = 0; i < shots; i++) {
@@ -107,7 +107,7 @@ const SPELL_CASTERS = {
     const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
     const maxR = (150 + lv * 22) * c.areaMult;
     const speed = 340 + lv * 20;
-    const dmg = (14 + lv * 3.8) * c.atkMult;
+    const dmg = (11 + lv * 3) * c.atkMult;     // 밸런스(11/26): 14+3.8lv → 너프
     for (let i = 0; i < shots; i++) {
       world.waves.push({
         skillUid, ownerId: c.id, team: c.team,
@@ -120,9 +120,9 @@ const SPELL_CASTERS = {
 
   scatter(c, lv, world, k) {
     const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
-    const pellets = 2 + shots;
+    const pellets = 3 + shots;                  // 밸런스(11/26): 2+shots → 3+shots
     const totalSpread = Math.min(Math.PI * 1.35, 0.65 + shots * 0.08);
-    const dmg = (7 + lv * 2.1) * c.atkMult;
+    const dmg = (10 + lv * 3) * c.atkMult;     // 밸런스(11/26): 7+2.1lv → 버프
     const life = (0.95 + lv * 0.04) * c.areaMult;
     const r = 6.5 * c.areaMult;
     for (let i = 0; i < pellets; i++) {
