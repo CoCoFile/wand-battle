@@ -17,7 +17,7 @@ Object.assign(ENGINE, {
       if (c.initialDrafts > 0) {
         c.choiceQueue.unshift({
           isInitial: true,
-          rerolls: 1,
+          rerolls: 1 + (c.extraRerolls || 0),
           choices: SPELLS.generateInitialSpellChoices(c)
         });
       }

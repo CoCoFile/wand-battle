@@ -29,6 +29,10 @@ Object.assign(ENGINE, {
       magics: {}
     });
     w.chars.push(player);
+    if (ACCOUNT.loggedIn()) {
+      RELICS.apply(player, ACCOUNT.equippedList()); // 🎒 유물
+      this.soloRerolls += player.extraRerolls || 0;
+    }
     this.world = w;
 
     this.spawnSoloStageEnemies(1);
@@ -183,15 +187,21 @@ Object.assign(ENGINE, {
       const me = this.getLocalChar();
       const r = PROFILE.submit(PROFILE.currentId(), 'solo', this.difficulty, CONFIG.ENDING_STAGE + 1, me.lv);
       TELEMETRY.record(me, { mode: 'solo', cleared: true });
+      const frag = ACCOUNT.addFragment(this.difficulty); // 💛 심장 조각
       $('#solo-ending-title').textContent = D.winText || '대마왕 심규형 토벌!';
       $('#solo-ending-desc').textContent = `${D.label} · 대마왕 심규형 토벌 · Lv.${me.lv}${r.isNew ? '  🏆 신기록!' : ''}`;
       UI.renderBuildSummary($('#solo-ending-build'), me);
+      $('#solo-ending-reward').textContent = frag ? `+1 ${frag.icon} ${frag.name}` : (ACCOUNT.enabled() ? '로그인하면 심장 조각을 모아 유물을 뽑을 수 있어요' : '');
       $('#modal-solo-ending').classList.remove('hidden');
       SFX.play('golden');
       return;
     }
     if (!D.ending && this.stage === CONFIG.ENDING_STAGE && D.winText) {
       UI.showDramatic(D.winText, '#dc2626', `${CONFIG.ENDING_STAGE}스테이지 돌파`); // 만용: 배너만, 계속 진행
+    }
+    if (!D.ending && this.stage >= CONFIG.ENDING_STAGE && (this.stage - CONFIG.ENDING_STAGE) % 10 === 0) {
+      const frag = ACCOUNT.addFragment(this.difficulty); // ❤️‍🔥 만용: 30 돌파 + 10스테이지마다
+      if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);
     }
     $('#stage-clear-title').textContent = `STAGE ${this.stage} 클리어!`;
     $('#modal-solo-stage').classList.remove('hidden');

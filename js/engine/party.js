@@ -35,7 +35,8 @@ Object.assign(ENGINE, {
       if (p.isBot) {
         c.magics = { laser: 1, fireball: 1 };
       } else {
-        c.choiceQueue.push({ isInitial: true, rerolls: 1, choices: SPELLS.generateInitialSpellChoices(c) });
+        RELICS.apply(c, p.relics); // 🎒 각자 보낸 장착 유물
+        c.choiceQueue.push({ isInitial: true, rerolls: 1 + (c.extraRerolls || 0), choices: SPELLS.generateInitialSpellChoices(c) });
       }
       w.chars.push(c);
     });
@@ -112,6 +113,11 @@ Object.assign(ENGINE, {
         UI.broadcastDramatic(D.winText, '#dc2626', `${CONFIG.ENDING_STAGE}스테이지 돌파`); // 만용: 배너만
       } else {
         UI.broadcastDramatic(`STAGE ${this.stage} 클리어!`, '#16a34a', '쓰러진 동료 부활');
+      }
+      if (!D.ending && this.stage >= CONFIG.ENDING_STAGE && (this.stage - CONFIG.ENDING_STAGE) % 10 === 0) {
+        NET.broadcast({ type: 'fragment', diff: this.difficulty }); // ❤️‍🔥 참가자 각자 획득
+        const frag = ACCOUNT.addFragment(this.difficulty);
+        if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);
       }
       world.nextStage = this.stage + 1;
       world.nextStageTimer = CONFIG.PARTY.clearDelay;

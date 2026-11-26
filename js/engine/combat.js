@@ -4,7 +4,7 @@ Object.assign(ENGINE, {
   grantXp(c, amount, world) {
     if (!c || !c.alive || c.isSmallMob) return;
     if (this.isStageMode() && c.team !== 1) return; // 솔로·파티의 적은 레벨업(=풀회복) 안 함
-    c.xp += amount;
+    c.xp += amount * (c.xpMult || 1); // xpMult: 경험의 책 유물
     while (c.xp >= c.nextXp) {
       c.xp -= c.nextXp;
       c.lv++;
@@ -30,7 +30,7 @@ Object.assign(ENGINE, {
         } else {
           c.choiceQueue.push({
             isInitial: false,
-            rerolls: 1,
+            rerolls: 1 + (c.extraRerolls || 0),
             choices: SPELLS.generateChoices(c)
           });
           if (c.isLocal) UI.renderOnlineChoiceSlot();

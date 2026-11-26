@@ -5,6 +5,23 @@ Object.assign(UI, {
     // 아이디: 마지막 아이디 복원, 입력할 때마다 기록 표시 갱신
     PROFILE.load();
     TELEMETRY.flush(); // 오프라인 때 밀린 기록 전송
+    // 계정 & 유물
+    ACCOUNT.restore();
+    $('#btn-login').addEventListener('click', () => UI.authFlow('login'));
+    $('#btn-register').addEventListener('click', () => UI.authFlow('register'));
+    $('#input-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') UI.authFlow('login'); });
+    $('#btn-logout').addEventListener('click', () => { ACCOUNT.logout(); UI.renderAccount(); });
+    $('#btn-relics').addEventListener('click', () => UI.openRelics());
+    $('#btn-relics-close').addEventListener('click', () => $('#modal-relics').classList.add('hidden'));
+    $('#btn-relic-draw').addEventListener('click', () => UI.playRelicDraw());
+    $('#modal-relics').addEventListener('click', (e) => {
+      const ex = e.target.closest('[data-exchange]');
+      if (ex && !ex.disabled) { ACCOUNT.exchange(ex.dataset.exchange); UI.renderAccount(); UI.renderRelics(); return; }
+      const rl = e.target.closest('[data-relic]');
+      if (rl) { ACCOUNT.toggleEquip(rl.dataset.relic); UI.renderRelics(); }
+    });
+    UI.renderAccount();
+    ACCOUNT.refresh().then(() => UI.renderAccount());
     $('#telemetry-note')?.classList.toggle('hidden', !TELEMETRY.enabled());
     if (PROFILE.data.lastId) $('#input-name').value = PROFILE.data.lastId;
     $('#input-name').addEventListener('input', () => UI.renderProfile());

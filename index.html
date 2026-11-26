@@ -30,11 +30,28 @@
           <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">완드 대전 <span class="text-orange-500">Wand Battle</span></h1>
           <p class="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">카드만 고르세요. 싸움은 알아서 합니다.</p>
         </div>
-        <div class="w-full sm:w-44">
-          <label class="block text-[11px] font-extrabold text-slate-600 mb-1">아이디 <span class="text-slate-400">(비번 없음)</span></label>
-          <input id="input-name" type="text" maxlength="10" placeholder="아이디 입력"
-                 class="w-full px-3 py-2 rounded-xl border-2 border-slate-900 text-sm font-bold bg-slate-50 focus:bg-white focus:outline-none" />
-          <div id="recent-ids" class="flex flex-wrap gap-1 mt-1.5"></div>
+        <!-- 계정: 로그아웃 상태(아이디만 or 아이디+비번) / 로그인 상태(유물) -->
+        <div class="w-full sm:w-52">
+          <label class="block text-[11px] font-extrabold text-slate-600 mb-1">아이디 <span id="id-hint" class="text-slate-400">(비번 없음)</span></label>
+          <div id="acc-out">
+            <input id="input-name" type="text" maxlength="10" placeholder="아이디 입력"
+                   class="w-full px-3 py-2 rounded-xl border-2 border-slate-900 text-sm font-bold bg-slate-50 focus:bg-white focus:outline-none" />
+            <input id="input-pw" type="password" maxlength="32" placeholder="비밀번호 (유물 쓰려면)" autocomplete="current-password"
+                   class="hidden w-full mt-1.5 px-3 py-1.5 rounded-xl border-2 border-slate-900 text-xs font-bold bg-slate-50 focus:bg-white focus:outline-none" />
+            <div id="acc-buttons" class="hidden grid grid-cols-2 gap-1 mt-1.5">
+              <button id="btn-login" class="arcade-btn py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-black cursor-pointer">로그인</button>
+              <button id="btn-register" class="arcade-btn py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-900 text-[11px] font-black cursor-pointer">가입</button>
+            </div>
+            <div id="recent-ids" class="flex flex-wrap gap-1 mt-1.5"></div>
+          </div>
+          <div id="acc-in" class="hidden flex flex-col gap-1.5">
+            <div class="flex items-center justify-between gap-1 px-3 py-2 rounded-xl border-2 border-slate-900 bg-amber-50">
+              <span class="text-sm font-black text-slate-900 truncate">👤 <span id="acc-name"></span></span>
+              <button id="btn-logout" class="text-[10px] font-black text-slate-500 underline cursor-pointer shrink-0">로그아웃</button>
+            </div>
+            <button id="btn-relics" class="arcade-btn w-full py-1.5 rounded-lg bg-amber-300 hover:bg-amber-200 text-slate-900 text-xs font-black cursor-pointer">🎒 유물 <span id="acc-tickets"></span></button>
+            <div id="acc-status" class="text-[10px] font-bold text-slate-400 text-center"></div>
+          </div>
         </div>
       </div>
 
@@ -331,6 +348,7 @@
       <div class="text-4xl">🎉👑🎉</div>
       <h3 id="solo-ending-title" class="text-xl font-black text-slate-900">대마왕 심규형 토벌!</h3>
       <p id="solo-ending-desc" class="text-xs sm:text-sm font-bold text-slate-600"></p>
+      <p id="solo-ending-reward" class="text-xs sm:text-sm font-black text-amber-700"></p>
       <div id="solo-ending-build" class="bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5"></div>
       <div class="flex gap-2 pt-1">
         <button id="btn-ending-home" class="arcade-btn flex-1 py-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-900 font-black text-sm cursor-pointer">
@@ -340,6 +358,23 @@
           한 번 더
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- 🎒 유물 모달 (타이틀에서 열림) -->
+  <div id="modal-relics" class="hidden fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-3">
+    <div class="arcade-card rounded-2xl w-full max-w-lg p-4 sm:p-5 flex flex-col gap-3 animate-pop max-h-[92dvh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-black text-slate-900">🎒 내 유물</h3>
+        <button id="btn-relics-close" class="arcade-btn px-3 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-black cursor-pointer">닫기</button>
+      </div>
+      <div id="relic-hearts" class="grid grid-cols-3 gap-1.5"></div>
+      <div class="flex items-center gap-2">
+        <div id="relic-reel" class="flex-1 py-2.5 px-3 rounded-xl bg-amber-50 border-2 border-amber-400 text-center text-sm font-black text-slate-900">🎟 뽑기권 0장</div>
+        <button id="btn-relic-draw" class="arcade-btn px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-sm font-black cursor-pointer">뽑기!</button>
+      </div>
+      <div class="text-[11px] font-black text-slate-600">장착 <span id="relic-eq-count">0</span> / 3 · 눌러서 장착/해제 · 솔로·파티에만 적용</div>
+      <div id="relic-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5"></div>
     </div>
   </div>
 
@@ -366,6 +401,8 @@
   <script src="js/core/sfx.js"></script>
   <script src="js/core/profile.js"></script>
   <script src="js/core/telemetry.js"></script>
+  <script src="js/core/relics.js"></script>
+  <script src="js/core/account.js"></script>
   <script src="js/config.js"></script>
   <script src="js/spells/spells.js"></script>
   <script src="js/spells/casters.js"></script>

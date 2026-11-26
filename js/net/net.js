@@ -35,7 +35,7 @@ const NET = {
     this.peer = new Peer(`wand-battle-${this.roomCode}`);
     this.peer.on('open', (id) => {
       ENGINE.localId = id;
-      this.players = [{ id, name: myName, isHost: true, isBot: false }];
+      this.players = [{ id, name: myName, isHost: true, isBot: false, relics: ACCOUNT.equippedList() }];
       UI.openLobby();
       UI.toast(`방 코드: ${this.roomCode}`);
     });
@@ -77,7 +77,7 @@ const NET = {
       const conn = this.peer.connect(`wand-battle-${code}`, { reliable: true });
       this.hostConn = conn;
       conn.on('open', () => {
-        conn.send({ type: 'join', name: myName });
+        conn.send({ type: 'join', name: myName, relics: ACCOUNT.equippedList() });
         UI.openLobby();
       });
       conn.on('data', (msg) => this.onClientReceive(msg));
@@ -145,6 +145,7 @@ const NET = {
       this.players.push({
         id: conn.peer,
         name: sanitizeName(msg.name, '참가자'),
+        relics: RELICS.sanitize(msg.relics),
         isHost: false,
         isBot: false
       });
@@ -175,6 +176,11 @@ const NET = {
       this.enterMatchScreen();
     } else if (msg.type === 'state') {
       this.applySnapshot(msg.snap);
+    } else if (msg.type === 'fragment') {
+      if (CONFIG.HEARTS[msg.diff]) {
+        const frag = ACCOUNT.addFragment(msg.diff);
+        if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);
+      }
     } else if (msg.type === 'dramatic') {
       UI.showDramatic(msg.text, msg.color, msg.sub || '');
     } else if (msg.type === 'gameover') {

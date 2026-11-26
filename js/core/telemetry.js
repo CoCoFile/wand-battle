@@ -39,7 +39,8 @@ const TELEMETRY = {
       ultimates: (c.ultimates || []).join(','),
       players: extra.players || 1,
       manual: ENGINE.mode === 'solo' ? !!ENGINE.manualControl : '',
-      speed: ENGINE.mode === 'solo' ? ENGINE.soloSpeed : ''
+      speed: ENGINE.mode === 'solo' ? ENGINE.soloSpeed : '',
+      relics: (c.relics || []).map((r) => `${r.id}:${r.lv}`).join(',')
     };
     const q = this._load();
     q.push(rec);

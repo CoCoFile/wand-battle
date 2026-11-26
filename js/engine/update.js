@@ -123,7 +123,7 @@ Object.assign(ENGINE, {
       if (!c.isSmallMob && (!this.isStageMode() || c.team === 1)) {
         for (let i = w.orbs.length - 1; i >= 0; i--) {
           const o = w.orbs[i];
-          if (dist(c.x, c.y, o.x, o.y) <= c.r + o.r + 10) {
+          if (dist(c.x, c.y, o.x, o.y) <= c.r + o.r + 10 + (c.pickupBonus || 0)) { // pickupBonus: 자석 유물
             w.orbs.splice(i, 1);
             if (o.hp > 0) {
               c.hp = Math.min(c.maxHp, c.hp + o.hp);

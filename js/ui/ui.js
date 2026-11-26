@@ -21,7 +21,7 @@ const UI = {
   },
 
   hideAllModals() {
-    ['#modal-solo-choice', '#modal-solo-stage', '#modal-solo-over', '#modal-solo-ending', '#modal-on-over'].forEach((sel) => {
+    ['#modal-solo-choice', '#modal-solo-stage', '#modal-solo-over', '#modal-solo-ending', '#modal-on-over', '#modal-relics'].forEach((sel) => {
       $(sel).classList.add('hidden');
     });
   },
@@ -284,6 +284,95 @@ const UI = {
     this.renderDifficulty();
   },
 
+  // ── 계정 영역 (타이틀) ──
+  renderAccount() {
+    const en = ACCOUNT.enabled();
+    const inn = ACCOUNT.loggedIn();
+    $('#input-pw').classList.toggle('hidden', !en);
+    $('#acc-buttons').classList.toggle('hidden', !en);
+    $('#id-hint').textContent = en ? '' : '(비번 없음)';
+    $('#acc-out').classList.toggle('hidden', inn);
+    $('#acc-in').classList.toggle('hidden', !inn);
+    if (inn) {
+      $('#acc-name').textContent = ACCOUNT.state.id;
+      $('#input-name').value = ACCOUNT.state.id;
+      const t = ACCOUNT.state.data.tickets;
+      $('#acc-tickets').textContent = t ? `(뽑기권 ${t})` : '';
+      $('#acc-status').textContent = ACCOUNT.status;
+    }
+    if (!$('#modal-relics').classList.contains('hidden')) this.renderRelics();
+    this.renderProfile();
+  },
+
+  async authFlow(action) {
+    const btns = [$('#btn-login'), $('#btn-register')];
+    btns.forEach((b) => { b.disabled = true; });
+    const r = await ACCOUNT[action]($('#input-name').value, $('#input-pw').value);
+    btns.forEach((b) => { b.disabled = false; });
+    if (!r.ok) { this.toast(r.error || '실패'); return; }
+    $('#input-pw').value = '';
+    this.toast(action === 'register' ? `가입 완료! 뽑기권 1장 선물 🎟` : `어서 와요, ${ACCOUNT.state.id}!`);
+    this.renderAccount();
+  },
+
+  // ── 유물 모달 ──
+  openRelics() {
+    this.renderRelics();
+    $('#modal-relics').classList.remove('hidden');
+  },
+
+  renderRelics() {
+    const d = ACCOUNT.state?.data;
+    if (!d) return;
+    $('#relic-hearts').innerHTML = Object.entries(CONFIG.HEARTS).map(([k, h]) => {
+      const have = d.fragments[k] || 0;
+      const can = have >= h.perTicket;
+      return `<div class="rounded-xl border-2 border-slate-200 bg-white p-2 text-center flex flex-col items-center">
+        <div class="text-lg">${h.icon}</div>
+        <div class="text-[10px] font-black text-slate-600 leading-tight">${h.name}</div>
+        <div class="text-xs font-black text-slate-900">${have} / ${h.perTicket}</div>
+        <button data-exchange="${k}" class="arcade-btn mt-1 w-full py-0.5 rounded-md text-[10px] font-black ${can ? 'bg-sky-300 hover:bg-sky-200 cursor-pointer' : 'bg-slate-100'}" ${can ? '' : 'disabled'}>뽑기권으로</button>
+      </div>`;
+    }).join('');
+    if (!this.relicSpinning) $('#relic-reel').textContent = `🎟 뽑기권 ${d.tickets}장`;
+    $('#btn-relic-draw').disabled = this.relicSpinning || d.tickets <= 0;
+    $('#relic-eq-count').textContent = String(d.equipped.length);
+    $('#relic-grid').innerHTML = Object.entries(CONFIG.RELICS).map(([id, def]) => {
+      const lv = d.relics[id];
+      if (!lv) {
+        return `<div class="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-2 text-[11px] font-black text-slate-400">❓ ???</div>`;
+      }
+      const eq = d.equipped.includes(id);
+      return `<button data-relic="${id}" class="text-left rounded-xl border-2 p-2 cursor-pointer ${eq ? 'border-amber-500 bg-amber-50' : 'border-slate-300 bg-white hover:bg-slate-50'}">
+        <div class="text-xs font-black text-slate-900">${def.icon} ${def.name} <span class="text-amber-700">Lv.${lv}</span></div>
+        <div class="text-[10px] font-bold text-slate-600">${RELICS.desc(id, lv)}${eq ? ' · ✔ 장착' : ''}</div>
+      </button>`;
+    }).join('');
+  },
+
+  playRelicDraw() {
+    if (this.relicSpinning) return;
+    const res = ACCOUNT.draw();
+    if (!res) { this.toast(ACCOUNT.state?.data.tickets > 0 ? '모든 유물이 최대 레벨이에요!' : '뽑기권이 없어요'); return; }
+    this.relicSpinning = true;
+    this.renderRelics();
+    const ids = Object.keys(CONFIG.RELICS);
+    const reel = $('#relic-reel');
+    let tick = 0;
+    const timer = setInterval(() => {
+      const r = CONFIG.RELICS[ids[(tick * 3) % ids.length]];
+      reel.textContent = `${r.icon} ${r.name}`;
+      tick++;
+      if (tick >= 18) {
+        clearInterval(timer);
+        const def = CONFIG.RELICS[res.id];
+        reel.textContent = `${def.icon} ${def.name} ${res.isNew ? 'NEW!' : `Lv.${res.lv}!`}`;
+        SFX.play('golden');
+        setTimeout(() => { this.relicSpinning = false; this.renderAccount(); this.renderRelics(); }, 1300);
+      }
+    }, 70);
+  },
+
   // 타이틀: 현재 아이디의 최고 기록 + 최근 아이디 버튼
   renderProfile() {
     const id = PROFILE.currentId();
@@ -329,6 +418,10 @@ const UI = {
       if (ENGINE.isParty()) {
         ENGINE.recordIsNew = PROFILE.submit(id, 'party', ENGINE.difficulty, cleared ? CONFIG.ENDING_STAGE + 1 : Math.max(1, ENGINE.stage), me?.lv || 1).isNew;
         TELEMETRY.record(me, { mode: 'party', cleared, players });
+        if (cleared) {
+          const frag = ACCOUNT.addFragment(ENGINE.difficulty); // 💛💙 파티 엔딩 조각 (각자)
+          if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);
+        }
       } else {
         if (me && me.alive) PROFILE.addWin(id);
         TELEMETRY.record(me, { mode: 'versus', result: me && me.alive ? 'win' : 'lose', players });

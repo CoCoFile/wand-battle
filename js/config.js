@@ -102,6 +102,31 @@ const CONFIG = {
     mineArm: 0.35                     // 지뢰 설치 후 작동까지(초)
   },
 
+  // ── 계정 & 유물 ────────────────────────────
+  // 계정 서버 = TELEMETRY_URL 의 Apps Script (tools/sheets-collector.gs 최신 버전 배포 필요)
+  ACCOUNTS_ENABLED: false,   // 서버 스크립트 업데이트 확인 후 true
+  RELIC_SLOTS: 3,            // 장착 가능 개수
+  RELIC_MAX_LV: 3,
+  // 심장 조각: 엔딩(만용은 30스테이지 돌파 + 이후 10스테이지마다) 때 1개. perTicket개 = 뽑기권 1장
+  HEARTS: {
+    easy:   { name: '겁쟁이의 심장 조각',     icon: '💛', perTicket: 5 },
+    normal: { name: '타협한 자의 심장 조각',  icon: '💙', perTicket: 3 },
+    hard:   { name: '만용의 심장 조각',       icon: '❤️‍🔥', perTicket: 1 }
+  },
+  // 유물: 솔로·파티에만 적용 (대전 X). v = Lv.1/2/3 수치
+  RELICS: {
+    staff:  { name: '낡은 지팡이 끝',  icon: '🪄', v: [4, 7, 10],    desc: (x) => `공격력 +${x}%` },
+    cloak:  { name: '두꺼운 망토',     icon: '🧥', v: [3, 5, 7],     desc: (x) => `받는 피해 -${x}%` },
+    herb:   { name: '할머니 약초',     icon: '🌿', v: [0.5, 1, 1.5], desc: (x) => `초당 HP +${x}` },
+    coffee: { name: '커피 세 잔',      icon: '☕', v: [3, 5, 7],     desc: (x) => `쿨타임 -${x}%` },
+    lens:   { name: '돋보기',          icon: '🔍', v: [4, 7, 10],    desc: (x) => `범위 +${x}%` },
+    heart:  { name: '튼튼한 심장',     icon: '🫀', v: [15, 30, 45],  desc: (x) => `최대 HP +${x}` },
+    coin:   { name: '행운의 동전',     icon: '🪙', v: [1, 2, 3],     desc: (x) => `리롤 +${x >= 3 ? 2 : 1}${x >= 2 ? ', 황금카드 +5%p' : ''}` },
+    shoes:  { name: '가벼운 신발',     icon: '👟', v: [5, 10, 15],   desc: (x) => `이동속도 +${x}%` },
+    book:   { name: '경험의 책',       icon: '📖', v: [8, 14, 20],   desc: (x) => `경험치 +${x}%` },
+    magnet: { name: '말발굽 자석',     icon: '🧲', v: [20, 40, 60],  desc: (x) => `구슬 흡수 범위 +${x}` }
+  },
+
   // ── 파티 모드 (온라인 협동) ─────────────────
   PARTY: {
     prepTime: 5,       // 시작 후 첫 스테이지까지 준비 시간(초) — 시작 마법 고르기

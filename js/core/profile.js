@@ -19,6 +19,7 @@ const PROFILE = {
 
   // 아이디 칸 값 (비어 있으면 '손님')
   currentId() {
+    if (typeof ACCOUNT !== 'undefined' && ACCOUNT.loggedIn()) return ACCOUNT.state.id; // 로그인 중이면 계정 아이디
     return sanitizeName($('#input-name')?.value, '손님');
   },
 
