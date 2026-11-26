@@ -356,18 +356,24 @@ const UI = {
     if (!res) { this.toast(ACCOUNT.state?.data.tickets > 0 ? '모든 유물이 최대 레벨이에요!' : '뽑기권이 없어요'); return; }
     this.relicSpinning = true;
     this.renderRelics();
-    const ids = Object.keys(CONFIG.RELICS);
+    // 룰렛: 유물과 꽝을 섞어서 돌림
+    const reelItems = Object.values(CONFIG.RELICS).map((r) => `${r.icon} ${r.name}`);
+    CONFIG.RELIC_BLANKS.forEach((b, i) => reelItems.splice(i * 2 + 1, 0, b));
     const reel = $('#relic-reel');
     let tick = 0;
     const timer = setInterval(() => {
-      const r = CONFIG.RELICS[ids[(tick * 3) % ids.length]];
-      reel.textContent = `${r.icon} ${r.name}`;
+      reel.textContent = reelItems[(tick * 3) % reelItems.length];
       tick++;
       if (tick >= 18) {
         clearInterval(timer);
-        const def = CONFIG.RELICS[res.id];
-        reel.textContent = `${def.icon} ${def.name} ${res.isNew ? 'NEW!' : `Lv.${res.lv}!`}`;
-        SFX.play('golden');
+        if (res.blank) {
+          reel.textContent = `${res.text}… 꽝! ㅋㅋ`;
+          SFX.play('poop');
+        } else {
+          const def = CONFIG.RELICS[res.id];
+          reel.textContent = `${def.icon} ${def.name} ${res.isNew ? 'NEW!' : `Lv.${res.lv}!`}`;
+          SFX.play('golden');
+        }
         setTimeout(() => { this.relicSpinning = false; this.renderAccount(); this.renderRelics(); }, 1300);
       }
     }, 70);

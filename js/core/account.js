@@ -149,12 +149,16 @@ const ACCOUNT = {
     return true;
   },
 
-  // 뽑기: 최대 레벨 아닌 유물 중 랜덤 → 없으면 Lv.1, 있으면 레벨업. 반환 {id, lv, isNew} 또는 null
+  // 뽑기: RELIC_BLANK_CHANCE 확률로 꽝 {blank:true, text}, 아니면 최대 레벨 아닌 유물 중 랜덤 → 없으면 Lv.1, 있으면 레벨업. 반환 {id, lv, isNew} 또는 null
   draw() {
     if (!this.loggedIn() || this.state.data.tickets <= 0) return null;
     const d = this.state.data;
     const pool = Object.keys(CONFIG.RELICS).filter((id) => (d.relics[id] || 0) < CONFIG.RELIC_MAX_LV);
     if (!pool.length) return null;
+    if (Math.random() < CONFIG.RELIC_BLANK_CHANCE) {
+      this.mutate((dd) => { dd.tickets -= 1; });
+      return { blank: true, text: CONFIG.RELIC_BLANKS[randInt(0, CONFIG.RELIC_BLANKS.length - 1)] };
+    }
     const id = pool[randInt(0, pool.length - 1)];
     const isNew = !d.relics[id];
     let lv = 0;

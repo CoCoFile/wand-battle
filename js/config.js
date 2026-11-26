@@ -107,6 +107,8 @@ const CONFIG = {
   ACCOUNTS_ENABLED: true,    // 서버 스크립트(계정 기능 버전) 배포됨 (11/26)
   RELIC_SLOTS: 3,            // 장착 가능 개수
   RELIC_MAX_LV: 3,
+  RELIC_BLANK_CHANCE: 0.25,  // 뽑기 꽝 확률 (뽑기권은 소모됨)
+  RELIC_BLANKS: ['💩 똥', '🧦 냄새나는 양말', '🪨 그냥 돌멩이', '🥄 녹슨 숟가락', '📄 심규형의 반성문', '🦴 누군가의 뼈다귀'],
   // 심장 조각: 엔딩(만용은 30스테이지 돌파 + 이후 10스테이지마다) 때 1개. perTicket개 = 뽑기권 1장
   HEARTS: {
     easy:   { name: '겁쟁이의 심장 조각',     icon: '💛', perTicket: 5 },
