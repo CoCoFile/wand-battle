@@ -76,7 +76,7 @@
             🪄 AUTO-CAST WAND ARENA
           </div>
           <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">완드 대전 <span class="text-orange-500">Wand Battle</span></h1>
-          <p class="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">올랜덤 무빙 & 자동 사격 마법 난투! 시작 마법 3종을 고르고 최후의 1인이 되세요.</p>
+          <p class="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">올랜덤 무빙 & 올랜덤 사격 마법 난투! 시작 마법 3종을 고르고 최후의 1인이 되세요.</p>
         </div>
         <div class="w-full sm:w-44">
           <label class="block text-[11px] font-extrabold text-slate-600 mb-1">마법사 닉네임</label>
@@ -208,6 +208,9 @@
         <span id="hud-alive-info" class="text-xs font-extrabold text-slate-600 shrink-0">생존 5</span>
       </div>
       <div class="flex items-center gap-1.5 shrink-0">
+        <button id="btn-manual-toggle" class="hidden arcade-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black cursor-pointer" title="솔로 수동조작 전환 (WASD/방향키 + 마우스)">
+          🕹️ 수동 OFF
+        </button>
         <button id="btn-sound" class="arcade-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-black cursor-pointer" title="효과음 켜기/끄기">
           🔊 ON
         </button>
@@ -360,7 +363,17 @@
     /* ============================================================================
        0. 유틸리티 & Web Audio 효과음 엔진
        ============================================================================ */
-    const $ = (sel) => document.querySelector(sel);
+    const $ = (sel) => {
+      const el = document.querySelector(sel);
+      if (el && typeof el.text !== 'function') {
+        el.text = (val) => {
+          if (val === undefined) return el.textContent;
+          el.textContent = val;
+          return el;
+        };
+      }
+      return el;
+    };
     const rand = (min, max) => Math.random() * (max - min) + min;
     const randInt = (min, max) => Math.floor(rand(min, max + 1));
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
@@ -941,7 +954,7 @@
               world.texts.push({ x: c.x, y: c.y - c.r - 22, text: `궁극기 획득: ${CONFIG.ULTIMATES[pickedUlt].name}!`, color: '#d97706', life: 1.4 });
             }
           } else {
-            c.poopTimer = 5.0; // 5초간 1회성 똥 변신 (추가 피해 2배 없음)
+            c.poopTimer = 5.0;
             if (c.isLocal) {
               SFX.play('poop');
               UI.showDramatic('똥!똥!똥!', '#92400e', '5초 동안 이동 및 공격 불가!');
@@ -1017,63 +1030,100 @@
       stage: 1,
       paused: false,
       localId: 'player',
+      manualControl: false,
+      input: {
+        up: false,
+        down: false,
+        left: false,
+        right: false,
+        mouseX: CONFIG.W * 0.5,
+        mouseY: CONFIG.H * 0.5,
+        hasMouse: false,
+        touchActive: false,
+        touchX: 0,
+        touchY: 0
+      },
       soloRerolls: 1,
       soloInitialDrafts: 0,
       soloPendingLevels: 0,
       soloCurrentChoices: [],
 
+      toggleManualControl(forceState) {
+        this.manualControl = typeof forceState === 'boolean' ? forceState : !this.manualControl;
+        const btn = $('#btn-manual-toggle');
+        if (btn) {
+          btn.textContent = this.manualControl ? '🕹️ 수동 ON' : '🕹️ 수동 OFF';
+          btn.className = this.manualControl
+            ? 'arcade-btn px-2.5 py-1 rounded-lg bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-black cursor-pointer'
+            : 'arcade-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black cursor-pointer';
+        }
+        if (typeof forceState !== 'boolean' && this.mode === 'solo') {
+          UI.toast(this.manualControl
+            ? '수동조작 ON (WASD/방향키 이동 + 마우스 조준)'
+            : '수동조작 OFF (올랜덤 자동 전투)');
+        }
+      },
+
       createEmptyWorld() {
         return {
           uidSeq: 1,
+          time: 0,
+          orbTimer: 0,
           chars: [],
           projs: [],
           beams: [],
-          zones: [],
           waves: [],
-          orbs: [],
+          zones: [],
           rings: [],
+          orbs: [],
           particles: [],
-          texts: [],
-          orbSpawnTimer: 0.6,
-          ended: false
+          texts: []
         };
       },
 
       makeChar(opts) {
-        const isSmall = !!opts.isSmallMob;
+        const isSmallMob = !!opts.isSmallMob;
         const isBoss = !!opts.isBoss;
-        const r = isSmall ? CONFIG.SLIME_R : isBoss ? CONFIG.BOSS_R : CONFIG.HEAD_R;
+        const r = isSmallMob ? CONFIG.SLIME_R : isBoss ? CONFIG.BOSS_R : CONFIG.HEAD_R;
         const maxHp = opts.maxHp || 120;
-        const ang = rand(0, Math.PI * 2);
+        const magics = isSmallMob ? {} : Object.assign({ laser: 1 }, opts.magics || {});
+        const cooldowns = {};
+        for (const mid of Object.keys(magics)) {
+          if (mid !== 'shield') cooldowns[mid] = rand(0.1, 0.45);
+        }
         return {
           id: opts.id,
           name: opts.name || '마법사',
-          team: opts.team || opts.id,
           color: opts.color || CONFIG.COLORS[0],
+          team: opts.team ?? 0,
           isLocal: !!opts.isLocal,
           isBot: !!opts.isBot,
-          isSmallMob: isSmall,
-          isBoss: isBoss,
-          noAttack: isSmall,
-          x: opts.x ?? rand(120, CONFIG.W - 120),
-          y: opts.y ?? rand(120, CONFIG.H - 120),
+          isSmallMob,
+          isBoss,
+          noAttack: !!opts.noAttack || isSmallMob,
+          x: opts.x ?? rand(140, CONFIG.W - 140),
+          y: opts.y ?? rand(140, CONFIG.H - 140),
           r,
-          angle: ang,
-          moveAng: rand(0, Math.PI * 2),
-          moveTimer: rand(0.45, 1.35),
-          speed: opts.speed || CONFIG.BASE_SPEED,
           hp: maxHp,
           maxHp,
-          lv: 1,
+          lv: opts.lv || 1,
           xp: 0,
-          nextXp: 45,
-          atkMult: opts.atkMult || 1,
-          areaMult: 1,
-          cdrMult: opts.cdrMult || 1,
-          armor: 0,
-          regen: 0,
-          magics: isSmall ? {} : { ...(opts.magics || { laser: 1 }) },
-          cooldowns: {},
+          nextXp: opts.nextXp || 60,
+          xpReward: opts.xpReward || 45,
+          speed: opts.speed || CONFIG.BASE_SPEED,
+          atkMult: opts.atkMult || 1.0,
+          areaMult: opts.areaMult || 1.0,
+          cdrMult: opts.cdrMult || 1.0,
+          armor: opts.armor || 0,
+          regen: opts.regen || 0,
+          angle: rand(0, Math.PI * 2),
+          aimTimer: rand(0.1, 0.5),
+          aimSpin: rand(-4.5, 4.5),
+          moveAng: rand(0, Math.PI * 2),
+          moveTimer: rand(0.3, 1.1),
+          alive: true,
+          magics,
+          cooldowns,
           shieldAngle: rand(0, Math.PI * 2),
           shieldCooldowns: [],
           recentShieldSkills: {},
@@ -1082,181 +1132,183 @@
           stunTimer: 0,
           slowTimer: 0,
           poopTimer: 0,
-          alive: true,
-          kills: 0,
-          choiceQueue: [],
-          rerolls: 0
+          hurtTimer: 0,
+          initialDrafts: opts.initialDrafts || 0,
+          choiceQueue: []
         };
+      },
+
+      getLocalChar() {
+        if (!this.world) return null;
+        return this.world.chars.find((c) => c.id === this.localId) || null;
       },
 
       startSolo() {
         SFX.init();
         this.mode = 'solo';
         this.stage = 1;
-        this.localId = 'player';
         this.paused = false;
+        this.localId = 'player';
+        this.soloRerolls = 1;
+        this.soloInitialDrafts = 3;
+        this.soloPendingLevels = 0;
+        this.soloCurrentChoices = [];
 
-        const name = ($('#input-name').value || '').trim() || '플레이어';
-        this.world = this.createEmptyWorld();
+        const w = this.createEmptyWorld();
+        const playerName = ($('#input-name').value || '').trim() || '나(마법사)';
         const player = this.makeChar({
           id: 'player',
-          name,
-          team: 'player',
-          color: '#2563EB',
+          name: playerName,
+          color: CONFIG.COLORS[0],
+          team: 1,
           isLocal: true,
           x: CONFIG.W * 0.5,
           y: CONFIG.H * 0.5,
           maxHp: 130,
           magics: {}
         });
-        this.world.chars.push(player);
+        w.chars.push(player);
+        this.world = w;
 
+        this.spawnSoloStageEnemies(1);
+
+        UI.hideAllModals();
         UI.showScreen('game');
         $('#online-bottom-dock').classList.add('hidden');
-        this.setupSoloStage(1, true);
+        $('#btn-manual-toggle').classList.remove('hidden');
+        this.toggleManualControl(this.manualControl);
+        $('#hud-mode-badge').textContent = 'SOLO';
+        $('#hud-mode-badge').className = 'px-2 py-0.5 rounded-lg bg-orange-500 text-white text-[11px] font-black shrink-0';
+        RENDER.resize();
+        UI.updateHUD();
+        this.openNextSoloChoice();
       },
 
-      setupSoloStage(stageNum, isFirstStart = false) {
-        this.stage = stageNum;
+      spawnSoloStageEnemies(stage) {
         const w = this.world;
-        const player = w.chars.find(c => c.id === 'player');
-        if (!player) return;
-
-        // 투사체·장판 초기화 및 플레이어 위치 재정비
-        w.projs = [];
-        w.beams = [];
-        w.zones = [];
-        w.waves = [];
-        w.orbs = [];
-        w.rings = [];
-        w.particles = [];
-        w.texts = [];
-        w.ended = false;
-
-        player.x = CONFIG.W * 0.5;
-        player.y = CONFIG.H * 0.5;
-        player.hp = player.maxHp;
-        player.stunTimer = 0;
-        player.slowTimer = 0;
-        player.poopTimer = 0;
-
-        // 기존 적 제거
-        w.chars = [player];
-        this.soloRerolls = 1;
-
-        const isBossStage = stageNum % 3 === 0;
-        const enemyCount = Math.min(9, 4 + Math.floor((stageNum - 1) * 0.8));
-        const magicPool = Object.keys(CONFIG.MAGICS);
+        if (!w) return;
+        const player = this.getLocalChar();
+        const isBossStage = stage % 3 === 0;
+        const enemyCount = Math.min(9, 3 + stage);
+        const allMagicIds = Object.keys(CONFIG.MAGICS);
 
         for (let i = 0; i < enemyCount; i++) {
-          let ex, ey;
-          do {
-            ex = rand(100, CONFIG.W - 100);
-            ey = rand(100, CONFIG.H - 100);
-          } while (dist(ex, ey, player.x, player.y) < 220);
-
-          const eMagics = { laser: 1 };
-          if (stageNum >= 3) {
-            const extra = magicPool[randInt(0, magicPool.length - 1)];
-            eMagics[extra] = Math.min(3, Math.floor(stageNum / 3));
+          let ex = rand(120, CONFIG.W - 120);
+          let ey = rand(120, CONFIG.H - 120);
+          if (player && dist(ex, ey, player.x, player.y) < 220) {
+            ex = player.x < CONFIG.W * 0.5 ? CONFIG.W - 140 : 140;
           }
-
-          const hpScale = stageNum === 1 ? 32 : 32 + (stageNum - 1) * 18;
-          const atkScale = stageNum === 1 ? 0.45 : Math.min(1.5, 0.45 + (stageNum - 1) * 0.12);
-          const cdrScale = stageNum === 1 ? 1.65 : Math.max(0.85, 1.65 - (stageNum - 1) * 0.08);
-
-          w.chars.push(this.makeChar({
-            id: `enemy_${stageNum}_${i}`,
-            name: `적 마법사 ${i + 1}`,
-            team: 'enemy',
+          const extraMagics = { laser: 1 };
+          if (stage >= 3) {
+            const extraCnt = Math.min(3, Math.floor((stage - 1) / 2));
+            for (let k = 0; k < extraCnt; k++) {
+              const mid = allMagicIds[randInt(0, allMagicIds.length - 1)];
+              extraMagics[mid] = (extraMagics[mid] || 0) + 1;
+            }
+          }
+          const hp = Math.round(32 + (stage - 1) * 18);
+          const atkMult = 0.46 + (stage - 1) * 0.08;
+          const cdrMult = Math.max(0.7, 1.55 - (stage - 1) * 0.07);
+          const enemy = this.makeChar({
+            id: `enemy_${stage}_${i}_${Date.now()}`,
+            name: `견습 마법사 ${i + 1}`,
             color: CONFIG.COLORS[(i + 1) % CONFIG.COLORS.length],
+            team: 2,
             isBot: true,
             x: ex,
             y: ey,
-            maxHp: hpScale,
-            atkMult: atkScale,
-            cdrMult: cdrScale,
-            magics: eMagics
-          }));
+            maxHp: hp,
+            atkMult,
+            cdrMult,
+            xpReward: 42 + stage * 6,
+            magics: extraMagics
+          });
+          SPELLS.ensureShieldSlots(enemy);
+          w.chars.push(enemy);
         }
 
-        // 스테이지 보스 추가 (3스테이지마다)
         if (isBossStage) {
-          w.chars.push(this.makeChar({
-            id: `boss_${stageNum}`,
-            name: `👑 대마법사 보스`,
-            team: 'enemy',
-            color: '#7C3AED',
+          const bossMagics = { laser: 2, fireball: 2, shockwave: 1, shield: 2 };
+          const boss = this.makeChar({
+            id: `boss_${stage}_${Date.now()}`,
+            name: `👑 대마도사 (STAGE ${stage})`,
+            color: '#9333EA',
+            team: 2,
             isBot: true,
             isBoss: true,
-            x: CONFIG.W * 0.2,
-            y: CONFIG.H * 0.2,
-            maxHp: 180 + stageNum * 45,
-            atkMult: 0.75 + stageNum * 0.08,
+            x: CONFIG.W * 0.5,
+            y: 130,
+            maxHp: 240 + stage * 70,
+            atkMult: 0.72 + stage * 0.06,
             cdrMult: 1.15,
-            magics: { laser: 2, fireball: 2, shockwave: 1, shield: 3 }
-          }));
+            xpReward: 130,
+            magics: bossMagics
+          });
+          SPELLS.ensureShieldSlots(boss);
+          w.chars.push(boss);
         }
 
-        // 공격 불가 작은 슬라임 4마리 스폰 (처치 시 HP+XP 구슬 드랍)
-        const slimeHp = stageNum === 1 ? 14 : 14 + (stageNum - 1) * 5;
-        for (let i = 0; i < 4; i++) {
+        // 공격 불가 작은 슬라임 4마리 스폰 (처치 시 HP + XP 구슬 드랍)
+        for (let s = 0; s < 4; s++) {
           w.chars.push(this.makeChar({
-            id: `slime_${stageNum}_${i}`,
+            id: `slime_${stage}_${s}_${Date.now()}`,
             name: '작은 슬라임',
-            team: 'neutral',
-            color: '#22c55e',
+            color: '#22C55E',
+            team: 2,
             isBot: true,
             isSmallMob: true,
-            maxHp: slimeHp
+            noAttack: true,
+            x: rand(120, CONFIG.W - 120),
+            y: rand(120, CONFIG.H - 120),
+            maxHp: 14 + (stage - 1) * 4,
+            xpReward: 20
           }));
         }
-
-        // 시작 시 마법 3회 연속 선택
-        if (isFirstStart) {
-          this.soloInitialDrafts = 3;
-          this.openNextSoloModal();
-        } else {
-          this.paused = false;
-        }
-        UI.updateHud();
       },
 
-      openNextSoloModal() {
-        const player = this.world?.chars.find(c => c.id === 'player');
-        if (!player) return;
+      openNextSoloChoice() {
+        const player = this.getLocalChar();
+        if (!player || !player.alive) return;
+
+        const titleEl = $('#solo-choice-title');
+        const subEl = $('#solo-choice-sub');
 
         if (this.soloInitialDrafts > 0) {
           this.paused = true;
           const step = 4 - this.soloInitialDrafts;
+          if (titleEl) titleEl.textContent = `시작 마법 선택 (${step} / 3)`;
+          if (subEl) subEl.textContent = '전투 시작 전 원하는 마법 3가지를 고르세요!';
           this.soloCurrentChoices = SPELLS.generateInitialSpellChoices(player);
-          UI.openSoloChoiceModal(
-            `시작 마법 선택 (${step} / 3)`,
-            '전투 시작 전 기본 마법 3가지를 선택하세요!',
-            this.soloCurrentChoices,
-            this.soloRerolls
-          );
+          this.renderSoloChoiceModal();
           return;
         }
 
         if (this.soloPendingLevels > 0) {
           this.paused = true;
+          if (titleEl) titleEl.textContent = `레벨 업! (Lv.${player.lv}) 능력 선택`;
+          if (subEl) subEl.textContent = '원하는 마법이나 능력치를 선택하세요 (체력 100% 회복!)';
           this.soloCurrentChoices = SPELLS.generateChoices(player);
-          UI.openSoloChoiceModal(
-            `레벨 업! (Lv.${player.lv})`,
-            '능력을 선택하세요! (레벨업으로 체력 100% 회복 완료)',
-            this.soloCurrentChoices,
-            this.soloRerolls
-          );
+          this.renderSoloChoiceModal();
           return;
         }
 
         this.paused = false;
-        $('#modal-solo-choice').classList.add('hidden');
+        $('#modal-solo-choice')?.classList.add('hidden');
+      },
+
+      renderSoloChoiceModal() {
+        $('#solo-reroll-count').textContent = String(this.soloRerolls);
+        const rerollBtn = $('#btn-solo-reroll');
+        if (rerollBtn) rerollBtn.disabled = this.soloRerolls <= 0;
+
+        UI.renderChoiceCards($('#solo-choice-cards'), this.soloCurrentChoices, (idx) => {
+          this.pickSoloChoice(idx);
+        });
+        $('#modal-solo-choice').classList.remove('hidden');
       },
 
       pickSoloChoice(idx) {
-        const player = this.world?.chars.find(c => c.id === 'player');
+        const player = this.getLocalChar();
         const choice = this.soloCurrentChoices[idx];
         if (!player || !choice) return;
 
@@ -1266,12 +1318,12 @@
         } else if (this.soloPendingLevels > 0) {
           this.soloPendingLevels--;
         }
-        UI.updateHud();
-        this.openNextSoloModal();
+        UI.updateHUD();
+        this.openNextSoloChoice();
       },
 
       rerollSoloChoice() {
-        const player = this.world?.chars.find(c => c.id === 'player');
+        const player = this.getLocalChar();
         if (!player || this.soloRerolls <= 0) return;
         this.soloRerolls--;
         if (this.soloInitialDrafts > 0) {
@@ -1279,8 +1331,24 @@
         } else {
           this.soloCurrentChoices = SPELLS.generateChoices(player);
         }
-        SFX.play('ricochet');
-        UI.renderSoloCards(this.soloCurrentChoices, this.soloRerolls);
+        this.renderSoloChoiceModal();
+      },
+
+      nextSoloStage() {
+        const player = this.getLocalChar();
+        if (!player || !player.alive) return;
+        this.stage++;
+        this.soloRerolls++;
+        player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.35);
+        this.world.projs = [];
+        this.world.beams = [];
+        this.world.waves = [];
+        this.world.zones = [];
+        this.spawnSoloStageEnemies(this.stage);
+        $('#modal-solo-stage').classList.add('hidden');
+        this.paused = false;
+        UI.updateHUD();
+        UI.toast(`STAGE ${this.stage} 시작! (리롤권 +1 충전)`);
       },
 
       grantXp(c, amount, world) {
@@ -1288,48 +1356,50 @@
         c.xp += amount;
         while (c.xp >= c.nextXp) {
           c.xp -= c.nextXp;
-          c.lv += 1;
-          c.nextXp = Math.round(c.nextXp * 1.24 + 12);
-          // 레벨업 시 체력 풀회복
-          c.hp = c.maxHp;
-          world.rings.push({ x: c.x, y: c.y, r: 16, maxR: 78, life: 0.35, maxLife: 0.35, color: '#f59e0b' });
-          world.texts.push({ x: c.x, y: c.y - c.r - 24, text: `LEVEL UP! Lv.${c.lv}`, color: '#d97706', life: 1.0 });
+          c.lv++;
+          c.nextXp = Math.round(c.nextXp * 1.24 + 18);
+          c.hp = c.maxHp; // 레벨업 시 체력 풀회복
 
           if (c.isLocal) SFX.play('levelup');
+          if (world) {
+            world.rings.push({ x: c.x, y: c.y, r: c.r, maxR: c.r + 52, life: 0.38, maxLife: 0.38, color: '#f59e0b' });
+            world.texts.push({ x: c.x, y: c.y - c.r - 18, text: `LEVEL UP! Lv.${c.lv}`, color: '#d97706', life: 1.0 });
+          }
 
-          if (this.mode === 'solo' && c.id === 'player') {
-            this.soloPendingLevels += 1;
+          if (this.mode === 'solo' && c.isLocal) {
+            this.soloPendingLevels++;
             if (!this.paused) {
-              this.openNextSoloModal();
+              this.openNextSoloChoice();
             }
           } else if (this.mode === 'online') {
             if (c.isBot) {
               const botChoices = SPELLS.generateChoices(c);
               SPELLS.applyChoice(c, botChoices[randInt(0, botChoices.length - 1)], world);
             } else {
-              c.choiceQueue.push(SPELLS.generateChoices(c));
-              c.rerolls = 1;
+              c.choiceQueue.push({
+                isInitial: false,
+                rerolls: 1,
+                choices: SPELLS.generateChoices(c)
+              });
               if (c.isLocal) UI.renderOnlineChoiceSlot();
-              else if (NET.active && NET.isHost) NET.syncChoicesToClient(c);
             }
-          } else if (c.isBot) {
-            const botChoices = SPELLS.generateChoices(c);
-            SPELLS.applyChoice(c, botChoices[randInt(0, botChoices.length - 1)], world);
           }
         }
       },
 
       damageChar(target, rawDmg, attacker, world, ignoreArmor = false) {
         if (!target || !target.alive) return;
-        const dmg = ignoreArmor ? rawDmg : rawDmg * (1 - (target.armor || 0));
-        target.hp -= dmg;
+        const dmgMult = ignoreArmor ? 1.0 : (1 - (target.armor || 0));
+        const finalDmg = Math.max(1, rawDmg * dmgMult);
+        target.hp -= finalDmg;
+        target.hurtTimer = 0.14;
 
-        if (!ignoreArmor) {
+        if (world && !ignoreArmor) {
           world.texts.push({
-            x: target.x + rand(-12, 12),
+            x: target.x + rand(-14, 14),
             y: target.y - target.r - 6,
-            text: `-${Math.max(1, Math.round(dmg))}`,
-            color: target.isLocal ? '#ef4444' : '#0f172a',
+            text: `-${Math.round(finalDmg)}`,
+            color: target.isLocal ? '#dc2626' : '#0f172a',
             life: 0.55
           });
         }
@@ -1338,101 +1408,189 @@
           target.hp = 0;
           target.alive = false;
           SPELLS.spawnParticles(world, target.x, target.y, target.color, 18, 210);
-          world.rings.push({ x: target.x, y: target.y, r: 10, maxR: 70, life: 0.3, maxLife: 0.3, color: target.color });
 
-          // 작은 슬라임 처치 시 HP + EXP 구슬 드랍
-          if (target.isSmallMob) {
+          // 작은 슬라임 처치 시 HP + XP 구슬 드랍
+          if (target.isSmallMob && world) {
             world.orbs.push({
               x: target.x,
               y: target.y,
-              r: 12,
+              r: 13,
               xp: 24,
               hp: 18,
-              isHpOrb: true,
-              color: '#16a34a'
+              isHeal: true,
+              color: '#10b981'
             });
-            if (attacker && attacker.alive) {
-              this.grantXp(attacker, 16, world);
+          }
+
+          if (attacker && attacker.alive) {
+            this.grantXp(attacker, target.xpReward || 45, world);
+          }
+
+          if (this.mode === 'solo') {
+            if (target.isLocal) {
+              this.paused = true;
+              $('#solo-over-desc').textContent = `최종 도달 기록: STAGE ${this.stage} (Lv.${target.lv})`;
+              $('#modal-solo-over').classList.remove('hidden');
+            } else {
+              const remainEnemies = world.chars.filter((ch) => ch.alive && ch.team !== 1);
+              if (remainEnemies.length === 0) {
+                this.paused = true;
+                $('#stage-clear-title').textContent = `STAGE ${this.stage} 클리어!`;
+                $('#modal-solo-stage').classList.remove('hidden');
+              }
             }
-          } else if (attacker && attacker.alive) {
-            attacker.kills = (attacker.kills || 0) + 1;
-            const xpGain = this.mode === 'solo' ? (target.isBoss ? 120 : 48) : 55;
-            this.grantXp(attacker, xpGain, world);
+          } else if (this.mode === 'online' && NET.isHost) {
+            const alivePlayers = world.chars.filter((ch) => ch.alive && !ch.isSmallMob);
+            if (alivePlayers.length <= 1) {
+              const winner = alivePlayers[0];
+              const title = winner ? `🏆 ${winner.name} 우승!` : '무승부!';
+              const desc = winner ? `${winner.name} 마법사가 최후의 생존자가 되었습니다!` : '모든 마법사가 동시에 쓰러졌습니다.';
+              NET.broadcast({ type: 'gameover', title, desc });
+              UI.showOnlineGameOver(title, desc);
+            }
           }
         }
       },
 
-      step(dt) {
-        const w = this.world;
-        if (!w || w.ended || this.paused) return;
+      applyOnlinePick(charId, idx) {
+        if (!this.world) return;
+        const c = this.world.chars.find((ch) => ch.id === charId);
+        if (!c || c.choiceQueue.length === 0) return;
+        const item = c.choiceQueue[0];
+        const chosen = item.choices[idx];
+        if (!chosen) return;
 
-        // 온라인 모드 구슬 스폰 (2배 밀도) & 중립 슬라임 보충
-        if (this.mode === 'online' && (!NET.active || NET.isHost)) {
-          w.orbSpawnTimer -= dt;
-          if (w.orbSpawnTimer <= 0) {
-            w.orbSpawnTimer = 0.75;
-            if (w.orbs.length < 36) {
-              for (let k = 0; k < 2; k++) {
-                const isHp = Math.random() < 0.25;
-                w.orbs.push({
-                  x: rand(60, CONFIG.W - 60),
-                  y: rand(60, CONFIG.H - 60),
-                  r: isHp ? 11 : 8,
-                  xp: isHp ? 20 : 16,
-                  hp: isHp ? 16 : 0,
-                  isHpOrb: isHp,
-                  color: isHp ? '#16a34a' : '#f59e0b'
-                });
-              }
+        SPELLS.applyChoice(c, chosen, this.world);
+        c.choiceQueue.shift();
+
+        if (c.initialDrafts > 0) {
+          c.initialDrafts--;
+          if (c.initialDrafts > 0) {
+            c.choiceQueue.unshift({
+              isInitial: true,
+              rerolls: 1,
+              choices: SPELLS.generateInitialSpellChoices(c)
+            });
+          }
+        }
+      },
+
+      rerollOnlinePick(charId) {
+        if (!this.world) return;
+        const c = this.world.chars.find((ch) => ch.id === charId);
+        if (!c || c.choiceQueue.length === 0) return;
+        const item = c.choiceQueue[0];
+        if ((item.rerolls || 0) <= 0) return;
+        item.rerolls--;
+        item.choices = item.isInitial
+          ? SPELLS.generateInitialSpellChoices(c)
+          : SPELLS.generateChoices(c);
+      },
+
+      update(dt) {
+        const w = this.world;
+        if (!w || this.paused) return;
+        w.time += dt;
+
+        // 온라인 대전 시 맵 경험치 구슬 주기적 생성 (2배 스폰)
+        if (this.mode === 'online') {
+          w.orbTimer += dt;
+          if (w.orbTimer >= 1.1 && w.orbs.length < 36) {
+            w.orbTimer = 0;
+            for (let k = 0; k < 2; k++) {
+              w.orbs.push({
+                x: rand(70, CONFIG.W - 70),
+                y: rand(70, CONFIG.H - 70),
+                r: 9,
+                xp: 22,
+                hp: 0,
+                isHeal: false,
+                color: '#f59e0b'
+              });
             }
           }
         }
 
-        // 1. 캐릭터 업데이트 (100% 올랜덤 이동 + 자동 조준/발사 + 방패 + 궁극기)
+        // 1. 캐릭터 업데이트
         for (const c of w.chars) {
           if (!c.alive) continue;
 
+          if (c.hurtTimer > 0) c.hurtTimer = Math.max(0, c.hurtTimer - dt);
           if (c.stunTimer > 0) c.stunTimer = Math.max(0, c.stunTimer - dt);
           if (c.slowTimer > 0) c.slowTimer = Math.max(0, c.slowTimer - dt);
           if (c.poopTimer > 0) c.poopTimer = Math.max(0, c.poopTimer - dt);
 
-          // 체력 재생
           if (c.regen > 0 && c.hp < c.maxHp) {
             c.hp = Math.min(c.maxHp, c.hp + c.regen * dt);
           }
 
-          // 마력 방패 회전 & 쿨다운 복구
           SPELLS.updateShields(c, dt, w);
 
-          const isIncapacitated = (c.stunTimer > 0) || (c.poopTimer > 0);
+          const isIncapacitated = c.stunTimer > 0 || c.poopTimer > 0;
+          const isManual = (this.mode === 'solo' && this.manualControl && c.isLocal);
 
-          // 100% 올랜덤 이동
+          // 이동 처리 (솔로 수동조작 ON이면 키보드/터치 이동, 그 외에는 100% 올랜덤 이동)
           if (!isIncapacitated) {
-            c.moveTimer -= dt;
-            if (c.moveTimer <= 0) {
-              c.moveAng = rand(0, Math.PI * 2);
-              c.moveTimer = rand(0.35, 1.25);
-            }
             const spdMult = c.slowTimer > 0 ? 0.55 : 1.0;
             const spd = c.speed * spdMult;
-            c.x += Math.cos(c.moveAng) * spd * dt;
-            c.y += Math.sin(c.moveAng) * spd * dt;
+            const pad = c.r + 12;
 
-            // 벽 반사
-            if (c.x < c.r + 8) { c.x = c.r + 8; c.moveAng = rand(-Math.PI * 0.45, Math.PI * 0.45); }
-            else if (c.x > CONFIG.W - c.r - 8) { c.x = CONFIG.W - c.r - 8; c.moveAng = rand(Math.PI * 0.55, Math.PI * 1.45); }
-            if (c.y < c.r + 8) { c.y = c.r + 8; c.moveAng = rand(Math.PI * 0.05, Math.PI * 0.95); }
-            else if (c.y > CONFIG.H - c.r - 8) { c.y = CONFIG.H - c.r - 8; c.moveAng = rand(-Math.PI * 0.95, -Math.PI * 0.05); }
+            if (isManual) {
+              let mx = (this.input.right ? 1 : 0) - (this.input.left ? 1 : 0);
+              let my = (this.input.down ? 1 : 0) - (this.input.up ? 1 : 0);
+              if (this.input.touchActive) {
+                const dx = this.input.touchX - c.x;
+                const dy = this.input.touchY - c.y;
+                const d = Math.hypot(dx, dy);
+                if (d > 12) {
+                  mx = dx / d;
+                  my = dy / d;
+                }
+              }
+              if (mx !== 0 || my !== 0) {
+                const len = Math.hypot(mx, my);
+                c.x = clamp(c.x + (mx / len) * spd * dt, pad, CONFIG.W - pad);
+                c.y = clamp(c.y + (my / len) * spd * dt, pad, CONFIG.H - pad);
+              }
+            } else {
+              c.moveTimer -= dt;
+              if (c.moveTimer <= 0) {
+                c.moveAng = rand(0, Math.PI * 2);
+                c.moveTimer = rand(0.45, 1.35);
+              }
+              c.x += Math.cos(c.moveAng) * spd * dt;
+              c.y += Math.sin(c.moveAng) * spd * dt;
+
+              if (c.x < pad) {
+                c.x = pad;
+                c.moveAng = Math.PI - c.moveAng + rand(-0.35, 0.35);
+              } else if (c.x > CONFIG.W - pad) {
+                c.x = CONFIG.W - pad;
+                c.moveAng = Math.PI - c.moveAng + rand(-0.35, 0.35);
+              }
+              if (c.y < pad) {
+                c.y = pad;
+                c.moveAng = -c.moveAng + rand(-0.35, 0.35);
+              } else if (c.y > CONFIG.H - pad) {
+                c.y = CONFIG.H - pad;
+                c.moveAng = -c.moveAng + rand(-0.35, 0.35);
+              }
+            }
           }
 
-          // 구슬 획득 판정
+          // 구슬 흡수 (작은 슬라임 제외)
           if (!c.isSmallMob) {
             for (let i = w.orbs.length - 1; i >= 0; i--) {
               const o = w.orbs[i];
-              if (dist(c.x, c.y, o.x, o.y) <= c.r + o.r + 6) {
-                if (o.hp > 0) c.hp = Math.min(c.maxHp, c.hp + o.hp);
-                if (o.xp > 0) this.grantXp(c, o.xp, w);
+              if (dist(c.x, c.y, o.x, o.y) <= c.r + o.r + 10) {
                 w.orbs.splice(i, 1);
+                if (o.hp > 0) {
+                  c.hp = Math.min(c.maxHp, c.hp + o.hp);
+                  w.texts.push({ x: c.x, y: c.y - c.r - 12, text: `+${o.hp} HP`, color: '#10b981', life: 0.65 });
+                }
+                if (o.xp > 0) {
+                  this.grantXp(c, o.xp, w);
+                }
               }
             }
           }
@@ -1440,19 +1598,23 @@
           // 공격 불가 유닛(작은 슬라임)이나 행동 불가 상태면 공격 생략
           if (c.noAttack || isIncapacitated) continue;
 
-          // 가장 가까운 적 방향으로 완드 회전 조준 (적 없으면 천천히 회전)
-          let nearest = null;
-          let bestD = Infinity;
-          for (const other of w.chars) {
-            if (!other.alive || other.id === c.id || other.team === c.team) continue;
-            const d = dist(c.x, c.y, other.x, other.y);
-            if (d < bestD) { bestD = d; nearest = other; }
-          }
-          if (nearest) {
-            const targetAng = Math.atan2(nearest.y - c.y, nearest.x - c.x);
-            c.angle = lerpAngle(c.angle, targetAng, Math.min(1, dt * 6.5));
+          // 조준 처리 (솔로 수동조작 ON이면 마우스/터치 방향 조준, 그 외에는 360도 올랜덤 회전)
+          if (isManual) {
+            if (this.input.touchActive) {
+              c.angle = Math.atan2(this.input.touchY - c.y, this.input.touchX - c.x);
+            } else if (this.input.hasMouse) {
+              c.angle = Math.atan2(this.input.mouseY - c.y, this.input.mouseX - c.x);
+            }
           } else {
-            c.angle += dt * 2.2;
+            c.aimTimer = (c.aimTimer ?? 0) - dt;
+            if (c.aimTimer <= 0) {
+              c.aimSpin = rand(-5.2, 5.2);
+              if (Math.random() < 0.35) {
+                c.angle = rand(0, Math.PI * 2);
+              }
+              c.aimTimer = rand(0.25, 0.85);
+            }
+            c.angle += (c.aimSpin ?? 2.5) * dt;
           }
 
           // 보유 마법 자동 시전
@@ -1460,46 +1622,50 @@
             if (lv <= 0 || mid === 'shield') continue;
             c.cooldowns[mid] = (c.cooldowns[mid] ?? 0.2) - dt;
             if (c.cooldowns[mid] <= 0) {
-              SPELLS.cast(c, mid, lv, w);
               c.cooldowns[mid] = SPELLS.baseCooldown(mid, lv) * c.cdrMult;
+              SPELLS.cast(c, mid, lv, w);
             }
           }
 
-          // 황금 카드 궁극기 (10초 쿨타임 자동 발동)
-          for (const sid of c.ultimates) {
-            c.ultCooldowns[sid] = (c.ultCooldowns[sid] ?? 1.0) - dt;
-            if (c.ultCooldowns[sid] <= 0) {
-              SPELLS.triggerUltimate(c, sid, w);
-              c.ultCooldowns[sid] = 10.0;
+          // 황금 카드 궁극기 자동 시전 (10초 쿨타임)
+          for (const uid of c.ultimates) {
+            c.ultCooldowns[uid] = (c.ultCooldowns[uid] ?? 10.0) - dt;
+            if (c.ultCooldowns[uid] <= 0) {
+              c.ultCooldowns[uid] = 10.0;
+              SPELLS.triggerUltimate(c, uid, w);
             }
           }
         }
 
-        // 2. 투사체 업데이트
+        // 2. 투사체 업데이트 (벽 도탄 · 마력 방패 차단 · 적중)
         for (let i = w.projs.length - 1; i >= 0; i--) {
           const p = w.projs[i];
           p.life -= dt;
           if (p.life <= 0) {
             if (p.kind === 'poison') {
-              w.zones.push({ kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team, x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.25, life: 3.2, maxLife: 3.2, color: '#16a34a' });
+              w.zones.push({
+                kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
+                x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.4, maxLife: 3.4, color: '#16A34A'
+              });
             }
             w.projs.splice(i, 1);
             continue;
           }
 
           if (p.kind === 'boomerang') {
-            p.spin = (p.spin || 0) + 14 * dt;
-            if (!p.returning && p.life <= p.maxLife * 0.52) {
+            p.spin = (p.spin || 0) + 16 * dt;
+            if (!p.returning && p.life < p.maxLife * 0.52) {
               p.returning = true;
               p.hitIds = [];
             }
             if (p.returning) {
-              const owner = w.chars.find(c => c.id === p.ownerId);
-              if (owner && owner.alive) {
+              const owner = w.chars.find((ch) => ch.id === p.ownerId && ch.alive);
+              if (owner) {
                 const ang = Math.atan2(owner.y - p.y, owner.x - p.x);
-                p.vx = Math.cos(ang) * 510;
-                p.vy = Math.sin(ang) * 510;
-                if (dist(p.x, p.y, owner.x, owner.y) <= owner.r + 12) {
+                const spd = Math.hypot(p.vx, p.vy);
+                p.vx = Math.cos(ang) * spd;
+                p.vy = Math.sin(ang) * spd;
+                if (dist(p.x, p.y, owner.x, owner.y) <= owner.r + p.r) {
                   w.projs.splice(i, 1);
                   continue;
                 }
@@ -1510,66 +1676,82 @@
           p.x += p.vx * dt;
           p.y += p.vy * dt;
 
-          // 부메랑 제외 모든 투사체 기본 벽 도탄 반사
+          // 부메랑 제외 전 투사체 기본 벽 도탄
           if (p.kind !== 'boomerang') {
             let bounced = false;
-            if (p.x <= p.r) { p.x = p.r; p.vx = Math.abs(p.vx); bounced = true; }
-            else if (p.x >= CONFIG.W - p.r) { p.x = CONFIG.W - p.r; p.vx = -Math.abs(p.vx); bounced = true; }
-            if (p.y <= p.r) { p.y = p.r; p.vy = Math.abs(p.vy); bounced = true; }
-            else if (p.y >= CONFIG.H - p.r) { p.y = CONFIG.H - p.r; p.vy = -Math.abs(p.vy); bounced = true; }
+            if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx); bounced = true; }
+            else if (p.x > CONFIG.W - p.r) { p.x = CONFIG.W - p.r; p.vx = -Math.abs(p.vx); bounced = true; }
+            if (p.y < p.r) { p.y = p.r; p.vy = Math.abs(p.vy); bounced = true; }
+            else if (p.y > CONFIG.H - p.r) { p.y = CONFIG.H - p.r; p.vy = -Math.abs(p.vy); bounced = true; }
+
             if (bounced) {
-              p.bounces = (p.bounces ?? 2) - 1;
-              p.hitIds = [];
-              SPELLS.spawnParticles(w, p.x, p.y, p.color, 4, 90);
-              if (p.bounces < 0) { w.projs.splice(i, 1); continue; }
+              if ((p.bounces || 0) > 0) {
+                p.bounces--;
+                p.hitIds = [];
+                SPELLS.spawnParticles(w, p.x, p.y, p.color, 4, 80);
+              } else {
+                w.projs.splice(i, 1);
+                continue;
+              }
             }
-          } else if (p.x < -50 || p.x > CONFIG.W + 50 || p.y < -50 || p.y > CONFIG.H + 50) {
-            w.projs.splice(i, 1);
-            continue;
           }
 
-          // 적 충돌 & 마력 방패 판정 (한 스킬에 방패 1개만 파괴)
-          const owner = w.chars.find(c => c.id === p.ownerId) || null;
+          const attacker = w.chars.find((ch) => ch.id === p.ownerId);
           let removed = false;
+
           for (const t of w.chars) {
             if (!t.alive || t.id === p.ownerId || t.team === p.team) continue;
 
+            // 마력 방패 충돌 판정
             if (SPELLS.tryBlockPoint(t, p.x, p.y, w, p.skillUid)) {
+              if (p.kind === 'fireball') {
+                w.rings.push({ x: p.x, y: p.y, r: 10, maxR: p.expR, life: 0.25, maxLife: 0.25, color: '#f97316' });
+              } else if (p.kind === 'poison') {
+                w.zones.push({
+                  kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
+                  x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.4, maxLife: 3.4, color: '#16A34A'
+                });
+              }
               w.projs.splice(i, 1);
               removed = true;
               break;
             }
 
             if (p.hitIds.includes(t.id)) continue;
-            if (dist(p.x, p.y, t.x, t.y) <= p.r + t.r) {
+            if (dist(p.x, p.y, t.x, t.y) <= t.r + p.r) {
               p.hitIds.push(t.id);
+              this.damageChar(t, p.dmg, attacker, w);
+
               if (p.kind === 'fireball') {
-                w.rings.push({ x: p.x, y: p.y, r: 12, maxR: p.expR, life: 0.25, maxLife: 0.25, color: '#f97316' });
-                SPELLS.spawnParticles(w, p.x, p.y, '#f97316', 12, 170);
+                w.rings.push({ x: p.x, y: p.y, r: 12, maxR: p.expR, life: 0.28, maxLife: 0.28, color: '#f97316' });
+                SPELLS.spawnParticles(w, p.x, p.y, '#f97316', 12, 180);
                 for (const splash of w.chars) {
-                  if (!splash.alive || splash.id === p.ownerId || splash.team === p.team) continue;
+                  if (!splash.alive || splash.id === p.ownerId || splash.team === p.team || splash.id === t.id) continue;
                   if (dist(p.x, p.y, splash.x, splash.y) <= p.expR + splash.r) {
-                    this.damageChar(splash, p.dmg, owner, w);
+                    this.damageChar(splash, p.dmg * 0.65, attacker, w);
                   }
                 }
                 w.projs.splice(i, 1);
                 removed = true;
                 break;
+              } else if (p.kind === 'icespear') {
+                t.slowTimer = Math.max(t.slowTimer || 0, 2.0);
+                if (p.pierce > 0) {
+                  p.pierce--;
+                } else {
+                  w.projs.splice(i, 1);
+                  removed = true;
+                  break;
+                }
               } else if (p.kind === 'poison') {
-                w.zones.push({ kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team, x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.25, life: 3.2, maxLife: 3.2, color: '#16a34a' });
+                w.zones.push({
+                  kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
+                  x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.4, maxLife: 3.4, color: '#16A34A'
+                });
                 w.projs.splice(i, 1);
                 removed = true;
                 break;
-              } else if (p.kind === 'icespear') {
-                this.damageChar(t, p.dmg, owner, w);
-                t.slowTimer = Math.max(t.slowTimer, 2.2);
-                p.pierce -= 1;
-                if (p.pierce <= 0) { w.projs.splice(i, 1); removed = true; break; }
-              } else if (p.kind === 'boomerang') {
-                this.damageChar(t, p.dmg, owner, w);
-              } else {
-                this.damageChar(t, p.dmg, owner, w);
-                SPELLS.spawnParticles(w, p.x, p.y, p.color, 5, 110);
+              } else if (p.kind === 'scatter') {
                 w.projs.splice(i, 1);
                 removed = true;
                 break;
@@ -1579,79 +1761,69 @@
           if (removed) continue;
         }
 
-        // 3. 장판 (독 / 혼돈) 업데이트 — 장판에 닿아도 한 스킬당 방패 1개만 파괴
-        for (let i = w.zones.length - 1; i >= 0; i--) {
-          const z = w.zones[i];
-          z.life -= dt;
-          z.tick -= dt;
-          if (z.tick <= 0) {
-            z.tick = 0.25;
-            const owner = w.chars.find(c => c.id === z.ownerId) || null;
-            for (const t of w.chars) {
-              if (!t.alive || t.id === z.ownerId || t.team === z.team) continue;
-              if ((t.magics?.shield || 0) > 0 && (t.poopTimer || 0) <= 0) {
-                for (const slot of SPELLS.getShieldSlots(t)) {
-                  if ((t.shieldCooldowns?.[slot.index] || 0) > 0) continue;
-                  const sx = t.x + Math.cos(slot.angle) * slot.radius;
-                  const sy = t.y + Math.sin(slot.angle) * slot.radius;
-                  if (dist(z.x, z.y, sx, sy) <= z.r + 12) {
-                    SPELLS.breakShieldSlot(t, slot, sx, sy, w, z.skillUid);
-                    break;
-                  }
-                }
-              }
-              if (dist(z.x, z.y, t.x, t.y) <= z.r + t.r * 0.7) {
-                this.damageChar(t, z.dmg * 0.28, owner, w);
-              }
-            }
-          }
-          if (z.life <= 0) w.zones.splice(i, 1);
-        }
-
-        // 4. 충격파 링 업데이트 — 파동에 닿아도 한 스킬당 방패 1개만 파괴
+        // 3. 충격파 링 업데이트
         for (let i = w.waves.length - 1; i >= 0; i--) {
           const wv = w.waves[i];
           wv.r += wv.speed * dt;
-          const owner = w.chars.find(c => c.id === wv.ownerId) || null;
+          if (wv.r >= wv.maxR) {
+            w.waves.splice(i, 1);
+            continue;
+          }
+          const attacker = w.chars.find((ch) => ch.id === wv.ownerId);
           for (const t of w.chars) {
-            if (!t.alive || t.id === wv.ownerId || t.team === wv.team || wv.hitIds.includes(t.id) || wv.blockedIds?.includes(t.id)) continue;
-            const d = dist(wv.x, wv.y, t.x, t.y);
-            const angToTarget = Math.atan2(t.y - wv.y, t.x - wv.x);
-            const wavePtX = wv.x + Math.cos(angToTarget) * wv.r;
-            const wavePtY = wv.y + Math.sin(angToTarget) * wv.r;
+            if (!t.alive || t.id === wv.ownerId || t.team === wv.team) continue;
+            if (wv.hitIds.includes(t.id) || wv.blockedIds.includes(t.id)) continue;
 
-            let blockedByShield = false;
+            const d = dist(wv.x, wv.y, t.x, t.y);
             if ((t.magics?.shield || 0) > 0 && (t.poopTimer || 0) <= 0) {
-              for (const slot of SPELLS.getShieldSlots(t)) {
-                if ((t.shieldCooldowns?.[slot.index] || 0) > 0) continue;
-                const sx = t.x + Math.cos(slot.angle) * slot.radius;
-                const sy = t.y + Math.sin(slot.angle) * slot.radius;
-                if (Math.abs(dist(wv.x, wv.y, sx, sy) - wv.r) <= 16) {
-                  SPELLS.breakShieldSlot(t, slot, wavePtX, wavePtY, w, wv.skillUid);
-                  blockedByShield = true;
-                  break;
-                }
+              const ang = Math.atan2(t.y - wv.y, t.x - wv.x);
+              const bx = t.x - Math.cos(ang) * Math.min(65, d);
+              const by = t.y - Math.sin(ang) * Math.min(65, d);
+              if (Math.abs(d - wv.r) <= 75 && SPELLS.tryBlockPoint(t, bx, by, w, wv.skillUid)) {
+                wv.blockedIds.push(t.id);
+                continue;
               }
-            }
-            if (blockedByShield) {
-              if (!wv.blockedIds) wv.blockedIds = [];
-              wv.blockedIds.push(t.id);
-              wv.hitIds.push(t.id);
-              continue;
             }
 
             if (Math.abs(d - wv.r) <= t.r + 12) {
               wv.hitIds.push(t.id);
-              this.damageChar(t, wv.dmg, owner, w);
+              this.damageChar(t, wv.dmg, attacker, w);
               const pushAng = Math.atan2(t.y - wv.y, t.x - wv.x);
-              t.x = clamp(t.x + Math.cos(pushAng) * 38, t.r + 8, CONFIG.W - t.r - 8);
-              t.y = clamp(t.y + Math.sin(pushAng) * 38, t.r + 8, CONFIG.H - t.r - 8);
+              t.x = clamp(t.x + Math.cos(pushAng) * 38, t.r + 12, CONFIG.W - t.r - 12);
+              t.y = clamp(t.y + Math.sin(pushAng) * 38, t.r + 12, CONFIG.H - t.r - 12);
             }
           }
-          if (wv.r >= wv.maxR) w.waves.splice(i, 1);
         }
 
-        // 5. 이펙트 감쇠
+        // 4. 장판(독 / 혼돈) 업데이트
+        for (let i = w.zones.length - 1; i >= 0; i--) {
+          const z = w.zones[i];
+          z.life -= dt;
+          if (z.life <= 0) {
+            w.zones.splice(i, 1);
+            continue;
+          }
+          z.tick -= dt;
+          if (z.tick <= 0) {
+            z.tick = 0.35;
+            const attacker = w.chars.find((ch) => ch.id === z.ownerId);
+            for (const t of w.chars) {
+              if (!t.alive || t.id === z.ownerId || t.team === z.team) continue;
+              const d = dist(z.x, z.y, t.x, t.y);
+              if (d <= z.r + t.r) {
+                if ((t.magics?.shield || 0) > 0 && (t.poopTimer || 0) <= 0) {
+                  const ang = Math.atan2(z.y - t.y, z.x - t.x);
+                  const bx = t.x + Math.cos(ang) * 58;
+                  const by = t.y + Math.sin(ang) * 58;
+                  if (SPELLS.tryBlockPoint(t, bx, by, w, z.skillUid)) continue;
+                }
+                this.damageChar(t, z.dmg, attacker, w);
+              }
+            }
+          }
+        }
+
+        // 5. 단발 이펙트(레이저 빔, 링, 파티클, 플로팅 텍스트) 감쇠
         for (let i = w.beams.length - 1; i >= 0; i--) {
           w.beams[i].life -= dt;
           if (w.beams[i].life <= 0) w.beams.splice(i, 1);
@@ -1659,408 +1831,392 @@
         for (let i = w.rings.length - 1; i >= 0; i--) {
           const rg = w.rings[i];
           rg.life -= dt;
-          rg.r += ((rg.maxR - rg.r) * Math.min(1, dt * 12));
+          rg.r += ((rg.maxR - rg.r) * 10) * dt;
           if (rg.life <= 0) w.rings.splice(i, 1);
         }
         for (let i = w.particles.length - 1; i >= 0; i--) {
           const pt = w.particles[i];
+          pt.life -= dt;
           pt.x += pt.vx * dt;
           pt.y += pt.vy * dt;
-          pt.life -= dt;
           if (pt.life <= 0) w.particles.splice(i, 1);
         }
         for (let i = w.texts.length - 1; i >= 0; i--) {
           const tx = w.texts[i];
-          tx.y -= 28 * dt;
           tx.life -= dt;
+          tx.y -= 28 * dt;
           if (tx.life <= 0) w.texts.splice(i, 1);
-        }
-
-        // 6. 승패 및 스테이지 클리어 판정
-        if (this.mode === 'solo') {
-          const player = w.chars.find(c => c.id === 'player');
-          if (!player || !player.alive) {
-            w.ended = true;
-            $('#solo-over-title').textContent = '전투 불능!';
-            $('#solo-over-desc').textContent = `최종 도달 기록: STAGE ${this.stage} (Lv.${player?.lv || 1})`;
-            $('#modal-solo-over').classList.remove('hidden');
-            return;
-          }
-          const enemiesAlive = w.chars.filter(c => c.alive && c.team === 'enemy').length;
-          if (enemiesAlive === 0) {
-            w.ended = true;
-            $('#stage-clear-title').textContent = `STAGE ${this.stage} 클리어!`;
-            $('#stage-clear-desc').textContent = `다음 STAGE ${this.stage + 1}로 이동하며 리롤권 1회가 충전됩니다.`;
-            $('#modal-solo-stage').classList.remove('hidden');
-          }
-        } else if (this.mode === 'online' && (!NET.active || NET.isHost)) {
-          const contenders = w.chars.filter(c => c.alive && !c.isSmallMob);
-          if (contenders.length <= 1) {
-            w.ended = true;
-            const winner = contenders[0];
-            const msg = winner ? `🏆 우승: ${winner.name}!` : '무승부!';
-            NET.broadcast({ type: 'matchOver', title: msg, desc: winner ? `${winner.name} 마법사가 최후의 생존자가 되었습니다!` : '모든 마법사가 동시에 탈락했습니다.' });
-            UI.showOnlineOver(msg, winner ? `${winner.name} 마법사가 최후의 생존자가 되었습니다!` : '모든 마법사가 동시에 탈락했습니다.');
-          }
         }
       }
     };
 
     /* ============================================================================
-       4. NET: PeerJS 기반 실시간 P2P 멀티플레이어 동기화
+       4. NET: PeerJS 실시간 온라인 멀티플레이 동기화
        ============================================================================ */
     const NET = {
-      peer: null,
       active: false,
       isHost: false,
+      peer: null,
       roomCode: '',
+      conns: new Map(),
       hostConn: null,
-      conns: {},
-      members: [], // { id, name, isBot, color }
+      players: [],
+      clientChoiceQueue: [],
       syncTimer: 0,
 
       genCode() {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        let out = '';
-        for (let i = 0; i < 6; i++) out += chars[randInt(0, chars.length - 1)];
-        return out;
-      },
-
-      cleanup() {
-        try {
-          Object.values(this.conns).forEach(c => c.close());
-          if (this.hostConn) this.hostConn.close();
-          if (this.peer) this.peer.destroy();
-        } catch (_) {}
-        this.peer = null;
-        this.active = false;
-        this.isHost = false;
-        this.roomCode = '';
-        this.hostConn = null;
-        this.conns = {};
-        this.members = [];
+        let code = '';
+        for (let i = 0; i < 6; i++) code += chars[randInt(0, chars.length - 1)];
+        return code;
       },
 
       createRoom() {
-        if (typeof Peer === 'undefined') {
-          UI.toast('PeerJS 라이브러리를 불러오지 못했습니다. 네트워크를 확인해주세요.');
-          return;
-        }
-        this.cleanup();
         SFX.init();
-        const code = this.genCode();
-        const peerId = `wandbattle_${code}`;
-        const name = ($('#input-name').value || '').trim() || '방장마법사';
-
-        UI.toast('온라인 방 생성 중...');
-        const peer = new Peer(peerId);
-        this.peer = peer;
-
-        peer.on('open', () => {
-          this.active = true;
-          this.isHost = true;
-          this.roomCode = code;
-          this.members = [{ id: 'host', name, isBot: false, color: CONFIG.COLORS[0] }];
-          UI.openLobby();
-          UI.toast(`방 생성 완료! 코드: ${code}`);
-        });
-
-        peer.on('connection', (conn) => {
-          conn.on('open', () => {
-            if (this.members.length >= 6) {
-              conn.send({ type: 'full' });
-              setTimeout(() => conn.close(), 200);
-              return;
-            }
-            this.conns[conn.peer] = conn;
-          });
-
-          conn.on('data', (data) => this.handleHostReceive(conn, data));
-
-          conn.on('close', () => {
-            delete this.conns[conn.peer];
-            this.members = this.members.filter(m => m.id !== conn.peer);
-            this.broadcastLobby();
-            UI.renderLobby();
-          });
-        });
-
-        peer.on('error', (err) => {
-          UI.toast(`연결 오류: ${err.type || '네트워크 문제'}`);
-        });
-      },
-
-      joinRoom(rawCode) {
-        const code = (rawCode || '').trim().toUpperCase();
-        if (!code) {
-          UI.toast('방 코드를 입력해주세요.');
-          return;
-        }
         if (typeof Peer === 'undefined') {
           UI.toast('PeerJS 라이브러리를 불러오지 못했습니다.');
           return;
         }
         this.cleanup();
-        SFX.init();
-        const name = ($('#input-name').value || '').trim() || '도전자';
-        const peer = new Peer();
-        this.peer = peer;
+        this.active = true;
+        this.isHost = true;
+        this.roomCode = this.genCode();
+        const myName = ($('#input-name').value || '').trim() || '방장 마법사';
 
-        UI.toast(`방(${code})에 접속 중...`);
-        peer.on('open', (myId) => {
-          const conn = peer.connect(`wandbattle_${code}`, { reliable: true });
-          this.hostConn = conn;
+        this.peer = new Peer(`wand-battle-${this.roomCode}`);
+        this.peer.on('open', (id) => {
+          ENGINE.localId = id;
+          this.players = [{ id, name: myName, isHost: true, isBot: false }];
+          UI.openLobby();
+          UI.toast(`방 생성 완료! 코드: ${this.roomCode}`);
+        });
 
-          conn.on('open', () => {
-            this.active = true;
-            this.isHost = false;
-            this.roomCode = code;
-            conn.send({ type: 'join', id: myId, name });
-            UI.openLobby();
-            UI.toast('대기실에 입장했습니다!');
-          });
-
-          conn.on('data', (data) => this.handleClientReceive(data));
-
+        this.peer.on('connection', (conn) => {
+          conn.on('data', (msg) => this.onHostReceive(conn, msg));
           conn.on('close', () => {
-            UI.toast('방장과의 연결이 종료되었습니다.');
-            this.cleanup();
-            UI.showScreen('title');
+            this.conns.delete(conn.peer);
+            this.players = this.players.filter((p) => p.id !== conn.peer);
+            this.broadcastLobby();
           });
         });
 
-        peer.on('error', () => {
-          UI.toast('방을 찾을 수 없거나 접속에 실패했습니다.');
+        this.peer.on('error', (err) => {
+          UI.toast(`네트워크 오류: ${err.type || err.message}`);
+        });
+      },
+
+      joinRoom() {
+        SFX.init();
+        if (typeof Peer === 'undefined') {
+          UI.toast('PeerJS 라이브러리를 불러오지 못했습니다.');
+          return;
+        }
+        const code = ($('#input-room-code').value || '').trim().toUpperCase();
+        if (!code) {
+          UI.toast('방 코드를 입력해 주세요.');
+          return;
+        }
+        this.cleanup();
+        this.active = true;
+        this.isHost = false;
+        this.roomCode = code;
+        const myName = ($('#input-name').value || '').trim() || '도전자';
+
+        this.peer = new Peer();
+        this.peer.on('open', (id) => {
+          ENGINE.localId = id;
+          const conn = this.peer.connect(`wand-battle-${code}`, { reliable: true });
+          this.hostConn = conn;
+          conn.on('open', () => {
+            conn.send({ type: 'join', name: myName });
+            UI.openLobby();
+          });
+          conn.on('data', (msg) => this.onClientReceive(msg));
+          conn.on('close', () => {
+            UI.toast('방장과의 연결이 종료되었습니다.');
+            this.leaveRoom();
+          });
+        });
+
+        this.peer.on('error', () => {
+          UI.toast('방을 찾을 수 없거나 연결에 실패했습니다.');
+          this.leaveRoom();
         });
       },
 
       addBot() {
-        if (!this.isHost || this.members.length >= 6) return;
-        const idx = this.members.length;
-        this.members.push({
+        if (!this.isHost || this.players.length >= 6) return;
+        const idx = this.players.filter((p) => p.isBot).length + 1;
+        this.players.push({
           id: `bot_${Date.now()}_${idx}`,
           name: `AI 봇 ${idx}`,
-          isBot: true,
-          color: CONFIG.COLORS[idx % CONFIG.COLORS.length]
+          isHost: false,
+          isBot: true
         });
         this.broadcastLobby();
-        UI.renderLobby();
       },
 
       removeBot() {
         if (!this.isHost) return;
-        for (let i = this.members.length - 1; i >= 0; i--) {
-          if (this.members[i].isBot) {
-            this.members.splice(i, 1);
+        for (let i = this.players.length - 1; i >= 0; i--) {
+          if (this.players[i].isBot) {
+            this.players.splice(i, 1);
             this.broadcastLobby();
-            UI.renderLobby();
             return;
           }
         }
       },
 
+      broadcastLobby() {
+        UI.renderLobbyPlayers();
+        this.broadcast({ type: 'lobby', players: this.players });
+      },
+
       broadcast(msg) {
-        if (!this.active || !this.isHost) return;
-        Object.values(this.conns).forEach(conn => {
+        for (const conn of this.conns.values()) {
           if (conn.open) conn.send(msg);
-        });
+        }
       },
 
       sendToPeer(peerId, msg) {
-        const conn = this.conns[peerId];
+        const conn = this.conns.get(peerId);
         if (conn && conn.open) conn.send(msg);
       },
 
-      broadcastLobby() {
-        this.broadcast({ type: 'lobby', members: this.members });
+      onHostReceive(conn, msg) {
+        if (!msg || typeof msg !== 'object') return;
+        if (msg.type === 'join') {
+          if (this.players.length >= 6) {
+            conn.send({ type: 'full' });
+            return;
+          }
+          this.conns.set(conn.peer, conn);
+          this.players.push({
+            id: conn.peer,
+            name: (msg.name || '참가자').slice(0, 10),
+            isHost: false,
+            isBot: false
+          });
+          this.broadcastLobby();
+        } else if (msg.type === 'pick') {
+          ENGINE.applyOnlinePick(conn.peer, msg.idx);
+        } else if (msg.type === 'reroll') {
+          ENGINE.rerollOnlinePick(conn.peer);
+        }
       },
 
-      startOnlineMatch() {
+      onClientReceive(msg) {
+        if (!msg || typeof msg !== 'object') return;
+        if (msg.type === 'full') {
+          UI.toast('방 인원이 가득 찼습니다.');
+          this.leaveRoom();
+        } else if (msg.type === 'lobby') {
+          this.players = msg.players || [];
+          UI.renderLobbyPlayers();
+        } else if (msg.type === 'start') {
+          ENGINE.mode = 'online';
+          ENGINE.paused = false;
+          this.clientChoiceQueue = [];
+          $('#modal-on-over').classList.add('hidden');
+          UI.showScreen('game');
+          $('#online-bottom-dock').classList.remove('hidden');
+          $('#btn-manual-toggle').classList.add('hidden');
+          $('#hud-mode-badge').textContent = 'ONLINE';
+          $('#hud-mode-badge').className = 'px-2 py-0.5 rounded-lg bg-sky-500 text-white text-[11px] font-black shrink-0';
+          RENDER.resize();
+          UI.renderOnlineChoiceSlot();
+        } else if (msg.type === 'state') {
+          this.applySnapshot(msg.snap);
+        } else if (msg.type === 'dramatic') {
+          UI.showDramatic(msg.text, msg.color, msg.sub || '');
+        } else if (msg.type === 'gameover') {
+          UI.showOnlineGameOver(msg.title, msg.desc);
+        } else if (msg.type === 'back_lobby') {
+          $('#modal-on-over').classList.add('hidden');
+          UI.openLobby();
+        }
+      },
+
+      startGame() {
         if (!this.isHost) return;
-        if (this.members.length < 2) {
-          UI.toast('최소 2명(또는 AI 봇 추가)이 필요합니다!');
+        if (this.players.length < 2) {
+          UI.toast('최소 2명 이상 필요합니다. (+ 봇 추가 가능)');
           return;
         }
         ENGINE.mode = 'online';
-        ENGINE.localId = 'host';
         ENGINE.paused = false;
         const w = ENGINE.createEmptyWorld();
-        ENGINE.world = w;
 
-        this.members.forEach((m, idx) => {
-          const ang = (Math.PI * 2 * idx) / this.members.length;
+        this.players.forEach((p, idx) => {
+          const ang = (Math.PI * 2 * idx) / this.players.length;
           const c = ENGINE.makeChar({
-            id: m.id,
-            name: m.name,
-            team: m.id,
-            color: m.color,
-            isLocal: m.id === 'host',
-            isBot: m.isBot,
+            id: p.id,
+            name: p.name,
+            color: CONFIG.COLORS[idx % CONFIG.COLORS.length],
+            team: idx + 1,
+            isLocal: p.id === ENGINE.localId,
+            isBot: p.isBot,
             x: CONFIG.W * 0.5 + Math.cos(ang) * 280,
             y: CONFIG.H * 0.5 + Math.sin(ang) * 200,
             maxHp: 140,
-            magics: {}
+            magics: {},
+            initialDrafts: p.isBot ? 0 : 3
           });
-
-          if (m.isBot) {
-            // 봇은 시작 마법 3종 자동 선택
-            for (let k = 0; k < 3; k++) {
-              const initOpts = SPELLS.generateInitialSpellChoices(c);
-              SPELLS.applyChoice(c, initOpts[randInt(0, initOpts.length - 1)], w);
-            }
+          if (p.isBot) {
+            c.magics = { laser: 1, fireball: 1 };
           } else {
-            // 유저는 시작 시 3회 연속 선택 대기열 부여
-            for (let k = 0; k < 3; k++) {
-              c.choiceQueue.push(SPELLS.generateInitialSpellChoices(c));
-            }
-            c.rerolls = 1;
+            c.choiceQueue.push({
+              isInitial: true,
+              rerolls: 1,
+              choices: SPELLS.generateInitialSpellChoices(c)
+            });
           }
           w.chars.push(c);
         });
 
-        // 중립 작은 슬라임 4마리 스폰 옵션
-        if ($('#chk-neutral-mobs').checked) {
-          for (let i = 0; i < 4; i++) {
+        if ($('#chk-neutral-mobs')?.checked) {
+          for (let s = 0; s < 4; s++) {
             w.chars.push(ENGINE.makeChar({
-              id: `on_slime_${i}`,
+              id: `on_slime_${s}_${Date.now()}`,
               name: '작은 슬라임',
-              team: 'neutral',
-              color: '#22c55e',
+              color: '#22C55E',
+              team: 99,
               isBot: true,
               isSmallMob: true,
-              maxHp: 18
+              noAttack: true,
+              x: rand(120, CONFIG.W - 120),
+              y: rand(120, CONFIG.H - 120),
+              maxHp: 22,
+              xpReward: 26
             }));
           }
         }
 
-        this.broadcast({ type: 'startMatch' });
-        UI.enterOnlineGame();
-        w.chars.filter(c => !c.isBot && c.id !== 'host').forEach(c => this.syncChoicesToClient(c));
+        ENGINE.world = w;
+        $('#modal-on-over').classList.add('hidden');
+        this.broadcast({ type: 'start' });
+        UI.showScreen('game');
+        $('#online-bottom-dock').classList.remove('hidden');
+        $('#btn-manual-toggle').classList.add('hidden');
+        $('#hud-mode-badge').textContent = 'ONLINE';
+        $('#hud-mode-badge').className = 'px-2 py-0.5 rounded-lg bg-sky-500 text-white text-[11px] font-black shrink-0';
+        RENDER.resize();
+        UI.renderOnlineChoiceSlot();
+        UI.updateHUD();
       },
 
-      syncChoicesToClient(c) {
-        this.sendToPeer(c.id, {
-          type: 'choices',
-          queue: c.choiceQueue,
-          rerolls: c.rerolls
-        });
-      },
-
-      handleHostReceive(conn, data) {
-        if (!data || !data.type) return;
-        if (data.type === 'join') {
-          const idx = this.members.length;
-          this.members.push({
-            id: conn.peer,
-            name: (data.name || '마법사').slice(0, 10),
-            isBot: false,
-            color: CONFIG.COLORS[idx % CONFIG.COLORS.length]
-          });
-          this.broadcastLobby();
-          UI.renderLobby();
-        } else if (data.type === 'pickChoice') {
-          const c = ENGINE.world?.chars.find(ch => ch.id === conn.peer);
-          if (c && c.choiceQueue.length > 0) {
-            const cur = c.choiceQueue.shift();
-            const picked = cur[data.idx];
-            if (picked) SPELLS.applyChoice(c, picked, ENGINE.world);
-            c.rerolls = c.choiceQueue.length > 0 ? 1 : 0;
-            this.syncChoicesToClient(c);
-          }
-        } else if (data.type === 'reroll') {
-          const c = ENGINE.world?.chars.find(ch => ch.id === conn.peer);
-          if (c && c.choiceQueue.length > 0 && c.rerolls > 0) {
-            c.rerolls--;
-            const isInitial = Object.keys(c.magics).length === 0 && c.lv === 1;
-            c.choiceQueue[0] = isInitial
-              ? SPELLS.generateInitialSpellChoices(c)
-              : SPELLS.generateChoices(c);
-            this.syncChoicesToClient(c);
-          }
-        }
-      },
-
-      handleClientReceive(data) {
-        if (!data || !data.type) return;
-        if (data.type === 'full') {
-          UI.toast('방이 가득 찼습니다.');
-          this.cleanup();
-          UI.showScreen('title');
-        } else if (data.type === 'lobby') {
-          this.members = data.members || [];
-          $('#modal-on-over').classList.add('hidden');
+      returnToLobby() {
+        $('#modal-on-over').classList.add('hidden');
+        if (this.isHost) {
+          this.broadcast({ type: 'back_lobby' });
           UI.openLobby();
-        } else if (data.type === 'startMatch') {
-          ENGINE.mode = 'online';
-          ENGINE.localId = this.peer.id;
-          ENGINE.world = ENGINE.createEmptyWorld();
-          UI.enterOnlineGame();
-        } else if (data.type === 'state') {
-          if (!ENGINE.world) ENGINE.world = ENGINE.createEmptyWorld();
-          const prevLocal = ENGINE.world.chars.find(c => c.id === ENGINE.localId);
-          const savedQueue = prevLocal?.choiceQueue || [];
-          const savedRerolls = prevLocal?.rerolls ?? 0;
-
-          Object.assign(ENGINE.world, data.world);
-          ENGINE.world.chars.forEach(c => {
-            c.isLocal = (c.id === ENGINE.localId);
-            if (c.isLocal) {
-              c.choiceQueue = savedQueue;
-              c.rerolls = savedRerolls;
-            }
-          });
-          UI.updateHud();
-        } else if (data.type === 'choices') {
-          const me = ENGINE.world?.chars.find(c => c.id === ENGINE.localId);
-          if (me) {
-            me.choiceQueue = data.queue || [];
-            me.rerolls = data.rerolls ?? 0;
-            UI.renderOnlineChoiceSlot();
-          }
-        } else if (data.type === 'dramatic') {
-          UI.showDramatic(data.text, data.color, data.sub || '');
-        } else if (data.type === 'matchOver') {
-          UI.showOnlineOver(data.title, data.desc);
         }
       },
 
-      hostTick(dt) {
-        if (!this.active || !this.isHost || ENGINE.mode !== 'online' || !ENGINE.world) return;
+      tickSync(dt) {
+        if (!this.active || !this.isHost || !ENGINE.world) return;
         this.syncTimer += dt;
-        if (this.syncTimer >= 0.05) {
-          this.syncTimer = 0;
-          const w = ENGINE.world;
-          this.broadcast({
+        if (this.syncTimer < 0.05) return;
+        this.syncTimer = 0;
+
+        const w = ENGINE.world;
+        const baseSnap = {
+          time: w.time,
+          chars: w.chars.map((c) => ({
+            id: c.id, name: c.name, color: c.color, team: c.team,
+            isSmallMob: c.isSmallMob, isBoss: c.isBoss,
+            x: Math.round(c.x), y: Math.round(c.y), r: c.r,
+            hp: Math.round(c.hp), maxHp: Math.round(c.maxHp),
+            lv: c.lv, xp: Math.round(c.xp), nextXp: Math.round(c.nextXp),
+            angle: Number(c.angle.toFixed(2)), alive: c.alive,
+            magics: c.magics,
+            shieldAngle: Number((c.shieldAngle || 0).toFixed(2)),
+            shieldCooldowns: c.shieldCooldowns,
+            stunTimer: Number((c.stunTimer || 0).toFixed(1)),
+            slowTimer: Number((c.slowTimer || 0).toFixed(1)),
+            poopTimer: Number((c.poopTimer || 0).toFixed(1)),
+            hurtTimer: c.hurtTimer
+          })),
+          projs: w.projs.map((p) => ({
+            kind: p.kind, x: Math.round(p.x), y: Math.round(p.y),
+            vx: Math.round(p.vx), vy: Math.round(p.vy),
+            r: p.r, color: p.color, spin: p.spin || 0
+          })),
+          beams: w.beams,
+          waves: w.waves.map((wv) => ({ x: wv.x, y: wv.y, r: wv.r, color: wv.color })),
+          zones: w.zones.map((z) => ({ kind: z.kind, x: z.x, y: z.y, r: z.r, color: z.color })),
+          rings: w.rings,
+          orbs: w.orbs,
+          texts: w.texts
+        };
+
+        for (const [peerId, conn] of this.conns.entries()) {
+          if (!conn.open) continue;
+          const ch = w.chars.find((c) => c.id === peerId);
+          conn.send({
             type: 'state',
-            world: {
-              chars: w.chars.map(c => ({
-                id: c.id, name: c.name, team: c.team, color: c.color,
-                isBot: c.isBot, isSmallMob: c.isSmallMob, isBoss: c.isBoss,
-                x: Math.round(c.x), y: Math.round(c.y), r: c.r, angle: Number(c.angle.toFixed(2)),
-                hp: Math.round(c.hp), maxHp: c.maxHp, lv: c.lv, xp: c.xp, nextXp: c.nextXp,
-                magics: c.magics, shieldAngle: Number((c.shieldAngle || 0).toFixed(2)),
-                shieldCooldowns: c.shieldCooldowns, ultimates: c.ultimates,
-                stunTimer: Number((c.stunTimer || 0).toFixed(1)),
-                slowTimer: Number((c.slowTimer || 0).toFixed(1)),
-                poopTimer: Number((c.poopTimer || 0).toFixed(1)),
-                alive: c.alive
-              })),
-              projs: w.projs,
-              beams: w.beams,
-              zones: w.zones,
-              waves: w.waves,
-              orbs: w.orbs,
-              rings: w.rings,
-              particles: w.particles.slice(-40),
-              texts: w.texts.slice(-20)
+            snap: {
+              ...baseSnap,
+              myQueue: ch ? ch.choiceQueue : []
             }
           });
         }
+      },
+
+      applySnapshot(snap) {
+        if (!snap) return;
+        const w = ENGINE.world || ENGINE.createEmptyWorld();
+        w.time = snap.time;
+        w.chars = (snap.chars || []).map((c) => ({
+          ...c,
+          isLocal: c.id === ENGINE.localId
+        }));
+        w.projs = snap.projs || [];
+        w.beams = snap.beams || [];
+        w.waves = snap.waves || [];
+        w.zones = snap.zones || [];
+        w.rings = snap.rings || [];
+        w.orbs = snap.orbs || [];
+        w.particles = w.particles || [];
+        w.texts = snap.texts || [];
+        ENGINE.world = w;
+
+        const prevQ = JSON.stringify(this.clientChoiceQueue[0]?.choices?.map((x) => x.id + x.badge) || []);
+        this.clientChoiceQueue = snap.myQueue || [];
+        const nextQ = JSON.stringify(this.clientChoiceQueue[0]?.choices?.map((x) => x.id + x.badge) || []);
+        if (prevQ !== nextQ || this.clientChoiceQueue.length === 0) {
+          UI.renderOnlineChoiceSlot();
+        }
+        UI.updateHUD();
+      },
+
+      cleanup() {
+        this.active = false;
+        this.isHost = false;
+        this.conns.clear();
+        this.players = [];
+        this.clientChoiceQueue = [];
+        if (this.hostConn) {
+          try { this.hostConn.close(); } catch (_) {}
+          this.hostConn = null;
+        }
+        if (this.peer) {
+          try { this.peer.destroy(); } catch (_) {}
+          this.peer = null;
+        }
+      },
+
+      leaveRoom() {
+        this.cleanup();
+        ENGINE.mode = 'idle';
+        ENGINE.world = null;
+        UI.hideAllModals();
+        UI.showScreen('title');
       }
     };
 
     /* ============================================================================
-       5. RENDER: 2D 아레나 캔버스 렌더링 (마법사, 완드, 방패 2겹, 이펙트)
+       5. RENDER: 아레나 및 캐릭터/투사체/마력방패 캔버스 렌더러
        ============================================================================ */
     const RENDER = {
       canvas: null,
@@ -2078,56 +2234,65 @@
         if (!wrap || !this.canvas) return;
         const rect = wrap.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0) return;
-
         const aspect = CONFIG.W / CONFIG.H;
         let cw = rect.width;
-        let ch = rect.height;
-        if (cw / ch > aspect) cw = ch * aspect;
-        else ch = cw / aspect;
-
+        let ch = rect.width / aspect;
+        if (ch > rect.height) {
+          ch = rect.height;
+          cw = rect.height * aspect;
+        }
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         this.canvas.style.width = `${Math.floor(cw)}px`;
         this.canvas.style.height = `${Math.floor(ch)}px`;
-        this.canvas.width = Math.floor(cw * dpr);
-        this.canvas.height = Math.floor(ch * dpr);
+        this.canvas.width = Math.floor(CONFIG.W * dpr);
+        this.canvas.height = Math.floor(CONFIG.H * dpr);
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      },
+
+      clientToArena(clientX, clientY) {
+        if (!this.canvas) return { x: CONFIG.W * 0.5, y: CONFIG.H * 0.5 };
+        const rect = this.canvas.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return { x: CONFIG.W * 0.5, y: CONFIG.H * 0.5 };
+        return {
+          x: clamp(((clientX - rect.left) / rect.width) * CONFIG.W, 0, CONFIG.W),
+          y: clamp(((clientY - rect.top) / rect.height) * CONFIG.H, 0, CONFIG.H)
+        };
       },
 
       draw() {
         const ctx = this.ctx;
         const w = ENGINE.world;
-        if (!ctx || !this.canvas) return;
+        if (!ctx) return;
 
-        const scaleX = this.canvas.width / CONFIG.W;
-        const scaleY = this.canvas.height / CONFIG.H;
-        ctx.save();
-        ctx.scale(scaleX, scaleY);
-
-        // 배경 & 격자 무늬
+        ctx.clearRect(0, 0, CONFIG.W, CONFIG.H);
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, CONFIG.W, CONFIG.H);
+
+        // 은은한 아레나 그리드
         ctx.strokeStyle = '#f1f5f9';
-        ctx.lineWidth = 2;
-        for (let x = 60; x < CONFIG.W; x += 60) {
-          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CONFIG.H); ctx.stroke();
+        ctx.lineWidth = 1.5;
+        const step = 60;
+        ctx.beginPath();
+        for (let x = step; x < CONFIG.W; x += step) {
+          ctx.moveTo(x, 0); ctx.lineTo(x, CONFIG.H);
         }
-        for (let y = 60; y < CONFIG.H; y += 60) {
-          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CONFIG.W, y); ctx.stroke();
+        for (let y = step; y < CONFIG.H; y += step) {
+          ctx.moveTo(0, y); ctx.lineTo(CONFIG.W, y);
         }
+        ctx.stroke();
 
-        if (!w) { ctx.restore(); return; }
+        if (!w) return;
 
-        // 1. 장판 (독 / 혼돈)
+        // 1. 장판(독 / 혼돈)
         for (const z of w.zones) {
           ctx.save();
-          ctx.globalAlpha = clamp(z.life / 0.6, 0.15, 0.32);
-          ctx.fillStyle = z.color;
           ctx.beginPath();
           ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
+          ctx.fillStyle = z.kind === 'chaos' ? 'rgba(147, 51, 234, 0.22)' : 'rgba(22, 163, 74, 0.20)';
           ctx.fill();
-          ctx.globalAlpha = 0.7;
-          ctx.strokeStyle = z.color;
-          ctx.lineWidth = 3;
+          ctx.lineWidth = 2.5;
           ctx.setLineDash([8, 6]);
+          ctx.strokeStyle = z.color || '#16a34a';
           ctx.stroke();
           ctx.restore();
         }
@@ -2135,17 +2300,20 @@
         // 2. 경험치 & HP 구슬
         for (const o of w.orbs) {
           ctx.save();
-          ctx.fillStyle = o.color || '#f59e0b';
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 2;
           ctx.beginPath();
           ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+          ctx.fillStyle = o.isHeal ? '#10b981' : '#f59e0b';
           ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#0f172a';
           ctx.stroke();
-          if (o.isHpOrb) {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(o.x - 5, o.y - 1.8, 10, 3.6);
-            ctx.fillRect(o.x - 1.8, o.y - 5, 3.6, 10);
+          if (o.isHeal) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(o.x - 5, o.y); ctx.lineTo(o.x + 5, o.y);
+            ctx.moveTo(o.x, o.y - 5); ctx.lineTo(o.x, o.y + 5);
+            ctx.stroke();
           }
           ctx.restore();
         }
@@ -2153,65 +2321,77 @@
         // 3. 충격파 링
         for (const wv of w.waves) {
           ctx.save();
-          ctx.strokeStyle = wv.color;
-          ctx.lineWidth = 6;
-          ctx.globalAlpha = clamp(1 - wv.r / wv.maxR, 0.2, 0.9);
           ctx.beginPath();
           ctx.arc(wv.x, wv.y, wv.r, 0, Math.PI * 2);
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = wv.color || '#c026d3';
           ctx.stroke();
           ctx.restore();
         }
 
-        // 4. 투사체
+        // 4. 폭발/방패 재생성 링
+        for (const rg of w.rings) {
+          const alpha = clamp(rg.life / (rg.maxLife || 0.3), 0, 1);
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.beginPath();
+          ctx.arc(rg.x, rg.y, rg.r, 0, Math.PI * 2);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = rg.color || '#f97316';
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 5. 투사체
         for (const p of w.projs) {
           ctx.save();
-          ctx.fillStyle = p.color;
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 2;
+          ctx.translate(p.x, p.y);
           if (p.kind === 'boomerang') {
-            ctx.translate(p.x, p.y);
             ctx.rotate(p.spin || 0);
+            ctx.strokeStyle = p.color;
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
             ctx.beginPath();
-            ctx.moveTo(-p.r, -p.r * 0.4);
-            ctx.lineTo(p.r, 0);
-            ctx.lineTo(-p.r, p.r * 0.4);
-            ctx.closePath();
-            ctx.fill();
+            ctx.moveTo(-p.r, -p.r * 0.6);
+            ctx.lineTo(0, 0);
+            ctx.lineTo(-p.r, p.r * 0.6);
             ctx.stroke();
           } else if (p.kind === 'scatter') {
-            ctx.translate(p.x, p.y);
             ctx.rotate(Math.atan2(p.vy, p.vx));
+            ctx.fillStyle = p.color;
             ctx.beginPath();
             ctx.moveTo(p.r + 3, 0);
-            ctx.lineTo(-p.r, -p.r * 0.8);
-            ctx.lineTo(-p.r, p.r * 0.8);
+            ctx.lineTo(-p.r, -p.r * 0.85);
+            ctx.lineTo(-p.r, p.r * 0.85);
             ctx.closePath();
             ctx.fill();
-            ctx.stroke();
           } else {
             ctx.beginPath();
-            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
             ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#0f172a';
             ctx.stroke();
           }
           ctx.restore();
         }
 
-        // 5. 레이저 & 파괴 광선
+        // 6. 레이저 빔
         for (const b of w.beams) {
+          const alpha = clamp(b.life / (b.maxLife || 0.16), 0, 1);
           ctx.save();
-          const alpha = clamp(b.life / b.maxLife, 0, 1);
           ctx.globalAlpha = alpha;
-          ctx.strokeStyle = b.color;
-          ctx.lineWidth = b.width;
           ctx.lineCap = 'round';
+          ctx.strokeStyle = b.color || '#0ea5e9';
+          ctx.lineWidth = b.width;
           ctx.beginPath();
           ctx.moveTo(b.x1, b.y1);
           ctx.lineTo(b.x2, b.y2);
           ctx.stroke();
 
           ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = b.width * 0.38;
+          ctx.lineWidth = Math.max(2, b.width * 0.35);
           ctx.beginPath();
           ctx.moveTo(b.x1, b.y1);
           ctx.lineTo(b.x2, b.y2);
@@ -2219,235 +2399,201 @@
           ctx.restore();
         }
 
-        // 6. 캐릭터 (작은 슬라임 / 마법사 / 똥 변신 / 마력 방패 2겹)
+        // 7. 캐릭터 & 마력 방패
         for (const c of w.chars) {
           if (!c.alive) continue;
-
-          if (c.isSmallMob) {
-            // 작은 슬라임 렌더링
-            ctx.save();
-            ctx.fillStyle = '#4ade80';
-            ctx.strokeStyle = '#0f172a';
-            ctx.lineWidth = 2.5;
-            ctx.beginPath();
-            ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-            // 귀여운 눈
-            ctx.fillStyle = '#0f172a';
-            ctx.beginPath();
-            ctx.arc(c.x - 6, c.y - 3, 2.5, 0, Math.PI * 2);
-            ctx.arc(c.x + 6, c.y - 3, 2.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-            continue;
-          }
-
-          if ((c.poopTimer || 0) > 0) {
-            // 5초간 똥 변신 렌더링
-            ctx.save();
-            ctx.font = `${Math.round(c.r * 1.9)}px serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('💩', c.x, c.y);
-            // 파리 이펙트
-            const t = performance.now() * 0.008;
-            ctx.fillStyle = '#0f172a';
-            ctx.beginPath();
-            ctx.arc(c.x + Math.cos(t) * 28, c.y - 18 + Math.sin(t * 2) * 6, 2.5, 0, Math.PI * 2);
-            ctx.arc(c.x + Math.cos(t + 2.2) * 28, c.y - 14 + Math.sin(t * 2 + 1) * 6, 2.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-          } else {
-            // 마법사 본체 + 꺾인 막대기 팔 + 주황색 완드
-            ctx.save();
-            const handDist = c.r + 14;
-            const wandLen = c.r + 28;
-            const hx = c.x + Math.cos(c.angle) * handDist;
-            const hy = c.y + Math.sin(c.angle) * handDist;
-            const wx = c.x + Math.cos(c.angle) * wandLen;
-            const wy = c.y + Math.sin(c.angle) * wandLen;
-
-            // 팔 (꺾인 선)
-            const elbowX = c.x + Math.cos(c.angle + 0.55) * (c.r + 6);
-            const elbowY = c.y + Math.sin(c.angle + 0.55) * (c.r + 6);
-            ctx.strokeStyle = '#0f172a';
-            ctx.lineWidth = 4.5;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-            ctx.moveTo(c.x + Math.cos(c.angle + 0.7) * (c.r * 0.7), c.y + Math.sin(c.angle + 0.7) * (c.r * 0.7));
-            ctx.lineTo(elbowX, elbowY);
-            ctx.lineTo(hx, hy);
-            ctx.stroke();
-
-            // 주황색 마법 완드
-            ctx.strokeStyle = '#f97316';
-            ctx.lineWidth = 6;
-            ctx.beginPath();
-            ctx.moveTo(hx, hy);
-            ctx.lineTo(wx, wy);
-            ctx.stroke();
-            ctx.strokeStyle = '#0f172a';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // 완드 끝 보석
-            ctx.fillStyle = '#fde047';
-            ctx.beginPath();
-            ctx.arc(wx, wy, 4.5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-
-            // 동그라미 머리
-            ctx.fillStyle = c.slowTimer > 0 ? '#bae6fd' : '#ffffff';
-            ctx.strokeStyle = c.color;
-            ctx.lineWidth = 4.5;
-            ctx.beginPath();
-            ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-
-            // 눈 (조준 방향 바라봄)
-            const eyeOffX = Math.cos(c.angle) * 8;
-            const eyeOffY = Math.sin(c.angle) * 8;
-            const perpX = -Math.sin(c.angle) * 8;
-            const perpY = Math.cos(c.angle) * 8;
-            ctx.fillStyle = '#0f172a';
-            ctx.beginPath();
-            ctx.arc(c.x + eyeOffX + perpX, c.y + eyeOffY + perpY, 3.2, 0, Math.PI * 2);
-            ctx.arc(c.x + eyeOffX - perpX, c.y + eyeOffY - perpY, 3.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-
-            // 마력 방패 렌더링 (최대 Lv.6 · 안쪽/바깥쪽 2겹 · 파괴 후 쿨타임 재충전 게이지)
-            const shLv = Math.min(6, c.magics?.shield || 0);
-            if (shLv > 0) {
-              const { cooldown } = SPELLS.shieldCfg(shLv);
-              const cds = c.shieldCooldowns || [];
-              for (const slot of SPELLS.getShieldSlots(c)) {
-                const rem = cds[slot.index] || 0;
-                ctx.save();
-                if (rem <= 0) {
-                  ctx.strokeStyle = slot.layer === 0 ? '#0284c7' : '#2563eb';
-                  ctx.lineWidth = 7;
-                  ctx.lineCap = 'round';
-                  ctx.beginPath();
-                  ctx.arc(c.x, c.y, slot.radius, slot.angle - slot.arc * 0.5, slot.angle + slot.arc * 0.5);
-                  ctx.stroke();
-
-                  ctx.strokeStyle = slot.layer === 0 ? '#bae6fd' : '#dbeafe';
-                  ctx.lineWidth = 2.5;
-                  ctx.beginPath();
-                  ctx.arc(c.x, c.y, slot.radius, slot.angle - slot.arc * 0.44, slot.angle + slot.arc * 0.44);
-                  ctx.stroke();
-                } else {
-                  const pct = clamp(1 - rem / cooldown, 0, 1);
-                  ctx.globalAlpha = 0.38;
-                  ctx.setLineDash([4, 4]);
-                  ctx.strokeStyle = '#64748b';
-                  ctx.lineWidth = 3;
-                  ctx.beginPath();
-                  ctx.arc(c.x, c.y, slot.radius, slot.angle - slot.arc * 0.5, slot.angle + slot.arc * 0.5);
-                  ctx.stroke();
-
-                  ctx.setLineDash([]);
-                  ctx.globalAlpha = 0.75;
-                  ctx.strokeStyle = '#38bdf8';
-                  ctx.lineWidth = 4;
-                  ctx.beginPath();
-                  ctx.arc(c.x, c.y, slot.radius, slot.angle - slot.arc * 0.5, slot.angle - slot.arc * 0.5 + slot.arc * pct);
-                  ctx.stroke();
-                }
-                ctx.restore();
-              }
-            }
-          }
-
-          // 스턴 표시
-          if ((c.stunTimer || 0) > 0) {
-            ctx.save();
-            ctx.font = 'bold 14px Inter, sans-serif';
-            ctx.fillStyle = '#d97706';
-            ctx.textAlign = 'center';
-            ctx.fillText(`💫 스턴 ${c.stunTimer.toFixed(1)}s`, c.x, c.y - c.r - 28);
-            ctx.restore();
-          }
-
-          // 이름 및 미니 체력바
-          ctx.save();
-          const barW = 54;
-          const barH = 6;
-          const bx = c.x - barW * 0.5;
-          const by = c.y - c.r - 14;
-          ctx.fillStyle = '#e2e8f0';
-          ctx.fillRect(bx, by, barW, barH);
-          ctx.fillStyle = c.isLocal ? '#10b981' : '#ef4444';
-          ctx.fillRect(bx, by, barW * clamp(c.hp / c.maxHp, 0, 1), barH);
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 1.5;
-          ctx.strokeRect(bx, by, barW, barH);
-
-          ctx.font = '800 11px Inter, sans-serif';
-          ctx.fillStyle = '#0f172a';
-          ctx.textAlign = 'center';
-          ctx.fillText(`Lv.${c.lv} ${c.name}`, c.x, by - 4);
-          ctx.restore();
-
-          // 내 캐릭터 머리 위 선명한 아래 화살표 표시
-          if (c.isLocal) {
-            ctx.save();
-            const bob = Math.sin(performance.now() * 0.008) * 4;
-            const tipY = by - ((c.stunTimer || 0) > 0 ? 32 : 18) + bob;
-            ctx.translate(c.x, tipY);
-
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(-11, -13);
-            ctx.lineTo(-4.5, -13);
-            ctx.lineTo(-4.5, -22);
-            ctx.lineTo(4.5, -22);
-            ctx.lineTo(4.5, -13);
-            ctx.lineTo(11, -13);
-            ctx.closePath();
-
-            ctx.fillStyle = '#facc15';
-            ctx.fill();
-            ctx.lineWidth = 2.5;
-            ctx.lineJoin = 'round';
-            ctx.strokeStyle = '#0f172a';
-            ctx.stroke();
-            ctx.restore();
-          }
+          this.drawChar(ctx, c, w.time);
         }
 
-        // 7. 폭발 링, 파티클, 플로팅 데미지 텍스트
-        for (const rg of w.rings) {
-          ctx.save();
-          ctx.strokeStyle = rg.color;
-          ctx.lineWidth = 3;
-          ctx.globalAlpha = clamp(rg.life / rg.maxLife, 0, 1);
-          ctx.beginPath();
-          ctx.arc(rg.x, rg.y, rg.r, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
+        // 8. 파티클
         for (const pt of w.particles) {
           ctx.save();
+          ctx.globalAlpha = clamp(pt.life / (pt.maxLife || 0.4), 0, 1);
           ctx.fillStyle = pt.color;
-          ctx.globalAlpha = clamp(pt.life / pt.maxLife, 0, 1);
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
         }
+
+        // 9. 플로팅 텍스트
         for (const tx of w.texts) {
           ctx.save();
-          ctx.font = '900 13px Inter, sans-serif';
+          ctx.font = '900 15px Inter, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillStyle = tx.color;
-          ctx.globalAlpha = clamp(tx.life / 0.4, 0, 1);
+          ctx.lineWidth = 3.5;
+          ctx.strokeStyle = '#ffffff';
+          ctx.strokeText(tx.text, tx.x, tx.y);
+          ctx.fillStyle = tx.color || '#0f172a';
           ctx.fillText(tx.text, tx.x, tx.y);
+          ctx.restore();
+        }
+
+        // 10. 솔로 수동조작 ON 시 마우스 조준 크로스헤어 표시
+        if (ENGINE.mode === 'solo' && ENGINE.manualControl && ENGINE.input.hasMouse && !ENGINE.input.touchActive) {
+          const mx = ENGINE.input.mouseX;
+          const my = ENGINE.input.mouseY;
+          ctx.save();
+          ctx.strokeStyle = '#f97316';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(mx, my, 12, 0, Math.PI * 2);
+          ctx.moveTo(mx - 18, my); ctx.lineTo(mx - 7, my);
+          ctx.moveTo(mx + 7, my); ctx.lineTo(mx + 18, my);
+          ctx.moveTo(mx, my - 18); ctx.lineTo(mx, my - 7);
+          ctx.moveTo(mx, my + 7); ctx.lineTo(mx, my + 18);
+          ctx.stroke();
+          ctx.restore();
+        }
+      },
+
+      drawChar(ctx, c, worldTime = 0) {
+        ctx.save();
+
+        // 마력 방패 렌더링 (최대 Lv.6 · 2겹)
+        if ((c.magics?.shield || 0) > 0 && (c.poopTimer || 0) <= 0) {
+          const slots = SPELLS.getShieldSlots(c);
+          for (const slot of slots) {
+            const cd = c.shieldCooldowns?.[slot.index] || 0;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, slot.radius, slot.angle - slot.arc * 0.5, slot.angle + slot.arc * 0.5);
+            if (cd <= 0) {
+              ctx.lineWidth = 6;
+              ctx.lineCap = 'round';
+              ctx.strokeStyle = slot.layer === 0 ? '#0284c7' : '#38bdf8';
+            } else {
+              ctx.lineWidth = 2.5;
+              ctx.setLineDash([4, 5]);
+              ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
+            }
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+
+        // 똥 변신 상태 렌더링
+        if ((c.poopTimer || 0) > 0) {
+          ctx.font = `${Math.round(c.r * 1.9)}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('💩', c.x, c.y);
+        } else {
+          // 본체 원형 머리
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+          ctx.fillStyle = c.hurtTimer > 0 ? '#fca5a5' : c.color;
+          ctx.fill();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#0f172a';
+          ctx.stroke();
+
+          // 스턴 / 빙결 상태 링
+          if ((c.stunTimer || 0) > 0) {
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.r + 6, 0, Math.PI * 2);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+          } else if ((c.slowTimer || 0) > 0) {
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.r + 5, 0, Math.PI * 2);
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+          }
+
+          // 작은 슬라임은 귀여운 눈만 표시, 마법사는 팔 & 주황색 완드 표시
+          if (c.isSmallMob) {
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(c.x - 6, c.y - 3, 2.5, 0, Math.PI * 2);
+            ctx.arc(c.x + 6, c.y - 3, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            const cos = Math.cos(c.angle);
+            const sin = Math.sin(c.angle);
+            const perpX = -sin;
+            const perpY = cos;
+
+            const shoulderX = c.x + cos * (c.r * 0.55) + perpX * (c.r * 0.55);
+            const shoulderY = c.y + sin * (c.r * 0.55) + perpY * (c.r * 0.55);
+            const elbowX = shoulderX + cos * 12 + perpX * 8;
+            const elbowY = shoulderY + sin * 12 + perpY * 8;
+            const handX = c.x + cos * (c.r + 8);
+            const handY = c.y + sin * (c.r + 8);
+            const tipX = c.x + cos * (c.r + 28);
+            const tipY = c.y + sin * (c.r + 28);
+
+            // 꺾인 막대기 팔
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(shoulderX, shoulderY);
+            ctx.lineTo(elbowX, elbowY);
+            ctx.lineTo(handX, handY);
+            ctx.stroke();
+
+            // 주황색 직선 완드
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(handX, handY);
+            ctx.lineTo(tipX, tipY);
+            ctx.stroke();
+
+            ctx.fillStyle = '#fef08a';
+            ctx.beginPath();
+            ctx.arc(tipX, tipY, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // 미니 HP 바 & 닉네임
+        const barW = Math.max(44, c.r * 1.5);
+        const barH = 6;
+        const bx = c.x - barW * 0.5;
+        const by = c.y - c.r - 15;
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(bx, by, barW, barH);
+        ctx.fillStyle = c.isLocal ? '#10b981' : (c.isSmallMob ? '#22c55e' : '#ef4444');
+        ctx.fillRect(bx, by, barW * clamp(c.hp / c.maxHp, 0, 1), barH);
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(bx, by, barW, barH);
+
+        if (!c.isSmallMob) {
+          ctx.font = '800 12px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = '#ffffff';
+          ctx.strokeText(c.name, c.x, by - 5);
+          ctx.fillStyle = '#0f172a';
+          ctx.fillText(c.name, c.x, by - 5);
+        }
+
+        // 내 캐릭터 위에 선명하게 통통 튀는 노란색 아래 화살표 표시
+        if (c.isLocal) {
+          const bounce = Math.sin(worldTime * 7) * 5;
+          const ay = by - 25 + bounce;
+          ctx.save();
+          ctx.fillStyle = '#facc15';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 2.5;
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          ctx.moveTo(c.x, ay);
+          ctx.lineTo(c.x - 11, ay - 13);
+          ctx.lineTo(c.x - 4, ay - 13);
+          ctx.lineTo(c.x - 4, ay - 22);
+          ctx.lineTo(c.x + 4, ay - 22);
+          ctx.lineTo(c.x + 4, ay - 13);
+          ctx.lineTo(c.x + 11, ay - 13);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
           ctx.restore();
         }
 
@@ -2456,39 +2602,10 @@
     };
 
     /* ============================================================================
-       6. UI: 화면 전환, HUD 갱신, 카드 UI, 룰렛 & 대형 배너 연출
+       6. UI & 이벤트 바인딩
        ============================================================================ */
     const UI = {
-      dramaticTimer: null,
-      rouletteTimer: null,
-
-      init() {
-        // 타이틀 마법 목록 채우기
-        const list = $('#title-spell-list');
-        if (list) {
-          list.innerHTML = Object.values(CONFIG.MAGICS).map(m => `
-            <div class="flex items-center gap-1.5 bg-white border border-slate-300 rounded-lg px-2 py-1">
-              <span>${m.icon}</span>
-              <span class="truncate text-slate-800">${m.name}</span>
-            </div>
-          `).join('');
-        }
-      },
-
-      showScreen(name) {
-        $('#screen-title').classList.add('hidden');
-        $('#screen-lobby').classList.add('hidden');
-        $('#screen-game').classList.add('hidden');
-        $('#modal-solo-choice').classList.add('hidden');
-        $('#modal-solo-stage').classList.add('hidden');
-        $('#modal-solo-over').classList.add('hidden');
-        $('#modal-on-over').classList.add('hidden');
-
-        $(`#screen-${name}`).classList.remove('hidden');
-        if (name === 'game') {
-          setTimeout(() => RENDER.resize(), 20);
-        }
-      },
+      bannerTimer: null,
 
       toast(msg) {
         const box = $('#toast-box');
@@ -2500,360 +2617,400 @@
         setTimeout(() => el.remove(), 2400);
       },
 
+      showScreen(name) {
+        ['title', 'lobby', 'game'].forEach((sc) => {
+          $(`#screen-${sc}`).classList.toggle('hidden', sc !== name);
+        });
+      },
+
+      hideAllModals() {
+        ['#modal-solo-choice', '#modal-solo-stage', '#modal-solo-over', '#modal-on-over'].forEach((sel) => {
+          $(sel).classList.add('hidden');
+        });
+      },
+
+      openLobby() {
+        this.hideAllModals();
+        this.showScreen('lobby');
+        $('#lobby-room-code').textContent = NET.roomCode;
+        $('#lobby-host-controls').classList.toggle('hidden', !NET.isHost);
+        $('#btn-start-online').classList.toggle('hidden', !NET.isHost);
+        $('#lobby-status-msg').textContent = NET.isHost
+          ? '코드를 친구에게 공유하거나 AI 봇을 추가한 뒤 시작하세요!'
+          : '방장이 게임을 시작할 때까지 대기 중...';
+        this.renderLobbyPlayers();
+      },
+
+      renderLobbyPlayers() {
+        const list = $('#lobby-player-list');
+        if (!list) return;
+        list.innerHTML = '';
+        NET.players.forEach((p, idx) => {
+          const item = document.createElement('div');
+          item.className = 'flex items-center justify-between px-3 py-2 rounded-xl bg-white border-2 border-slate-900';
+          item.innerHTML = `
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-3.5 h-3.5 rounded-full border border-slate-900 shrink-0" style="background:${CONFIG.COLORS[idx % CONFIG.COLORS.length]}"></span>
+              <span class="text-xs sm:text-sm font-black text-slate-900 truncate">${p.name}</span>
+            </div>
+            <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${p.isHost ? 'bg-amber-200 text-amber-900' : p.isBot ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}">
+              ${p.isHost ? '방장' : p.isBot ? 'AI 봇' : '플레이어'}
+            </span>
+          `;
+          list.appendChild(item);
+        });
+      },
+
       showDramatic(text, color = '#f59e0b', sub = '') {
         const banner = $('#dramatic-banner');
-        const txt = $('#dramatic-text');
+        const txtEl = $('#dramatic-text');
         const subEl = $('#dramatic-sub');
-        if (!banner || !txt) return;
+        if (!banner || !txtEl) return;
 
-        txt.textContent = text;
-        txt.style.color = color;
+        txtEl.textContent = text;
+        txtEl.style.color = color;
         if (sub) {
           subEl.textContent = sub;
           subEl.classList.remove('hidden');
         } else {
           subEl.classList.add('hidden');
         }
-
         banner.classList.remove('hidden');
-        clearTimeout(this.dramaticTimer);
-        this.dramaticTimer = setTimeout(() => {
+        clearTimeout(this.bannerTimer);
+        this.bannerTimer = setTimeout(() => {
           banner.classList.add('hidden');
-        }, 1600);
+        }, 1900);
       },
 
-      broadcastDramatic(text, color, sub) {
+      broadcastDramatic(text, color, sub = '') {
         this.showDramatic(text, color, sub);
         if (NET.active && NET.isHost) {
           NET.broadcast({ type: 'dramatic', text, color, sub });
         }
       },
 
-      playRoulette(finalLabel, isSuccess) {
-        const overlay = $('#roulette-overlay');
+      playRoulette(finalLabel, isWin) {
+        const ov = $('#roulette-overlay');
         const reel = $('#roulette-reel');
         const sub = $('#roulette-sub');
-        if (!overlay || !reel) return;
+        if (!ov || !reel) return;
 
-        const items = [
-          '⏱ 멈춰! (광역 3초 스턴)',
-          '💩 꽝! 5초간 똥 변신!',
-          '⚡ 파괴 광선 (한방 컷)',
-          '💩 꽝! 5초간 똥 변신!',
-          '🌀 혼돈! 파괴! 망각!'
-        ];
-        overlay.classList.remove('hidden');
-        sub.textContent = '두근두근... 운명의 룰렛 회전 중!';
+        const samples = ['⏱ 멈춰!', '💩 똥!똥!똥!', '⚡ 파괴 광선', '💩 똥!똥!똥!', '🌀 혼돈! 파괴! 망각!'];
         let tick = 0;
-        clearInterval(this.rouletteTimer);
-        this.rouletteTimer = setInterval(() => {
-          reel.textContent = items[tick % items.length];
+        ov.classList.remove('hidden');
+        sub.textContent = '50% 대박 궁극기 vs 50% 똥 변신!';
+
+        const timer = setInterval(() => {
+          reel.textContent = samples[tick % samples.length];
           tick++;
+          if (tick >= 12) {
+            clearInterval(timer);
+            reel.textContent = finalLabel;
+            sub.textContent = isWin ? '10초마다 자동 발동됩니다!' : '5초간 이동·공격이 봉인됩니다!';
+            setTimeout(() => ov.classList.add('hidden'), 1400);
+          }
         }, 85);
-
-        setTimeout(() => {
-          clearInterval(this.rouletteTimer);
-          reel.textContent = finalLabel;
-          sub.textContent = isSuccess ? '대성공! 10초마다 자동 발동됩니다!' : '아쉽네요! 5초 동안 움직일 수 없습니다!';
-          setTimeout(() => overlay.classList.add('hidden'), 1500);
-        }, 1100);
       },
 
-      openLobby() {
-        this.showScreen('lobby');
-        $('#lobby-room-code').textContent = NET.roomCode || '------';
-        $('#lobby-host-controls').classList.toggle('hidden', !NET.isHost);
-        $('#btn-start-online').classList.toggle('hidden', !NET.isHost);
-        $('#lobby-status-msg').textContent = NET.isHost
-          ? '친구에게 초대 코드를 공유하거나 봇을 추가해 시작하세요!'
-          : '방장이 게임을 시작할 때까지 대기 중...';
-        this.renderLobby();
-      },
-
-      renderLobby() {
-        const list = $('#lobby-player-list');
-        if (!list) return;
-        list.innerHTML = NET.members.map((m, i) => `
-          <div class="flex items-center justify-between bg-slate-50 border-2 border-slate-900 rounded-xl px-3 py-2">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="w-3.5 h-3.5 rounded-full border border-slate-900 shrink-0" style="background:${m.color}"></span>
-              <span class="text-xs sm:text-sm font-black text-slate-900 truncate">${m.name}</span>
-            </div>
-            <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md ${m.isBot ? 'bg-amber-200 text-amber-900' : i === 0 ? 'bg-sky-200 text-sky-900' : 'bg-slate-200 text-slate-700'}">
-              ${m.isBot ? 'AI 봇' : i === 0 ? '방장' : '참가자'}
-            </span>
-          </div>
-        `).join('');
-      },
-
-      enterOnlineGame() {
-        this.showScreen('game');
-        $('#online-bottom-dock').classList.remove('hidden');
-        setTimeout(() => RENDER.resize(), 20);
-        this.updateHud();
-        this.renderOnlineChoiceSlot();
-      },
-
-      showOnlineOver(title, desc) {
-        $('#on-over-title').textContent = title;
-        $('#on-over-desc').textContent = desc;
-        $('#btn-on-rematch').classList.toggle('hidden', !NET.isHost);
-        $('#on-over-hint').classList.toggle('hidden', NET.isHost);
-        $('#modal-on-over').classList.remove('hidden');
-      },
-
-      openSoloChoiceModal(title, sub, choices, rerolls) {
-        $('#solo-choice-title').textContent = title;
-        $('#solo-choice-sub').textContent = sub;
-        this.renderSoloCards(choices, rerolls);
-        $('#modal-solo-choice').classList.remove('hidden');
-      },
-
-      renderSoloCards(choices, rerolls) {
-        $('#solo-reroll-count').textContent = rerolls;
-        $('#btn-solo-reroll').disabled = rerolls <= 0;
-        const wrap = $('#solo-choice-cards');
-        wrap.innerHTML = choices.map((ch, idx) => `
-          <button onclick="ENGINE.pickSoloChoice(${idx})"
-                  class="arcade-btn rounded-xl p-3 text-left flex flex-col justify-between gap-2 cursor-pointer ${ch.isGolden ? 'gold-card-glow bg-amber-50' : ''}"
-                  style="background:${ch.bg || '#ffffff'}">
-            <div>
-              <div class="flex items-center justify-between gap-1 mb-1">
-                <span class="text-xl">${ch.icon}</span>
-                <span class="text-[10px] font-black px-2 py-0.5 rounded-full text-white" style="background:${ch.color}">
-                  ${ch.badge}
-                </span>
+      renderChoiceCards(container, choices, onPick) {
+        if (!container) return;
+        container.innerHTML = '';
+        choices.forEach((ch, idx) => {
+          const btn = document.createElement('button');
+          const extraClass = ch.isGolden
+            ? 'bg-amber-50 gold-card-glow'
+            : ch.isEpic
+              ? 'bg-purple-50 border-purple-700'
+              : 'bg-white hover:bg-slate-50';
+          btn.className = `arcade-btn rounded-xl p-2.5 sm:p-3 text-left flex flex-col justify-between gap-1 cursor-pointer ${extraClass}`;
+          btn.innerHTML = `
+            <div class="flex items-center justify-between gap-1">
+              <div class="flex items-center gap-1">
+                <span class="inline-flex items-center justify-center w-5 h-5 rounded-md bg-slate-900 text-white text-[10px] font-black">${idx + 1}</span>
+                <span class="text-lg sm:text-xl">${ch.icon}</span>
               </div>
-              <div class="text-sm sm:text-base font-black text-slate-900">${ch.name}</div>
-              <p class="text-[11px] font-bold text-slate-600 mt-1 leading-snug">${ch.desc}</p>
+              <span class="text-[10px] font-black px-1.5 py-0.5 rounded-md" style="background:${ch.bg}; color:${ch.color}">
+                ${ch.badge}
+              </span>
             </div>
-            <div class="text-[11px] font-black text-right" style="color:${ch.color}">선택하기 →</div>
-          </button>
-        `).join('');
+            <div class="text-xs sm:text-sm font-black text-slate-900 leading-tight">${ch.name}</div>
+            <div class="text-[10px] sm:text-[11px] font-semibold text-slate-600 leading-snug line-clamp-2">${ch.desc}</div>
+          `;
+          btn.addEventListener('click', () => onPick(idx));
+          container.appendChild(btn);
+        });
       },
 
       renderOnlineChoiceSlot() {
-        const me = ENGINE.world?.chars.find(c => c.id === ENGINE.localId);
-        const slotsWrap = $('#online-choice-slots');
-        const badge = $('#online-queue-badge');
+        const slotsEl = $('#online-choice-slots');
+        const badgeEl = $('#online-queue-badge');
+        const rerollCntEl = $('#on-reroll-count');
         const rerollBtn = $('#btn-on-reroll');
-        const rerollCnt = $('#on-reroll-count');
-        if (!slotsWrap || !me) return;
+        if (!slotsEl) return;
 
-        const qLen = me.choiceQueue?.length || 0;
-        rerollCnt.textContent = me.rerolls || 0;
-        rerollBtn.disabled = qLen === 0 || (me.rerolls || 0) <= 0;
+        const queue = NET.isHost ? (ENGINE.getLocalChar()?.choiceQueue || []) : NET.clientChoiceQueue;
+        const qLen = queue.length;
 
         if (qLen === 0) {
-          badge.textContent = '대기 중';
-          badge.className = 'text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500';
-          slotsWrap.innerHTML = [1, 2, 3].map(() => `
-            <div class="h-full rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-[11px] font-bold text-slate-400">
-              레벨업 대기 중...
+          badgeEl.textContent = '레벨업 대기 중';
+          badgeEl.className = 'text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600';
+          rerollCntEl.textContent = '0';
+          rerollBtn.disabled = true;
+          slotsEl.innerHTML = [1, 2, 3].map((n) => `
+            <div class="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center text-xs font-bold text-slate-400">
+              슬롯 ${n} 대기 중...
             </div>
           `).join('');
           return;
         }
 
-        const current = me.choiceQueue[0];
-        badge.textContent = `선택 가능 (${qLen}회 남음)`;
-        badge.className = 'text-[11px] font-black px-2 py-0.5 rounded-full bg-amber-300 text-slate-900';
+        const current = queue[0];
+        badgeEl.textContent = current.isInitial
+          ? `시작 마법 선택 (${qLen}회 남음)`
+          : `선택 가능! (대기 ${qLen}개)`;
+        badgeEl.className = 'text-[11px] font-black px-2 py-0.5 rounded-full bg-amber-300 text-slate-900';
+        rerollCntEl.textContent = String(current.rerolls || 0);
+        rerollBtn.disabled = (current.rerolls || 0) <= 0;
 
-        slotsWrap.innerHTML = current.map((ch, idx) => `
-          <button onclick="UI.pickOnlineChoice(${idx})"
-                  class="arcade-btn h-full rounded-xl p-2 text-left flex flex-col justify-between overflow-hidden cursor-pointer ${ch.isGolden ? 'gold-card-glow' : ''}"
-                  style="background:${ch.bg || '#ffffff'}">
-            <div class="flex items-center justify-between gap-1">
-              <span class="text-sm sm:text-base">${ch.icon}</span>
-              <span class="text-[9px] sm:text-[10px] font-black px-1.5 py-0.5 rounded text-white truncate" style="background:${ch.color}">
-                ${ch.badge}
-              </span>
-            </div>
-            <div class="text-xs sm:text-sm font-black text-slate-900 truncate">${ch.name}</div>
-            <div class="text-[10px] font-bold text-slate-600 line-clamp-2 leading-tight">${ch.desc}</div>
-          </button>
-        `).join('');
+        this.renderChoiceCards(slotsEl, current.choices || [], (idx) => {
+          if (NET.isHost) {
+            ENGINE.applyOnlinePick(ENGINE.localId, idx);
+            this.renderOnlineChoiceSlot();
+          } else if (NET.hostConn && NET.hostConn.open) {
+            NET.hostConn.send({ type: 'pick', idx });
+          }
+        });
       },
 
-      pickOnlineChoice(idx) {
-        const me = ENGINE.world?.chars.find(c => c.id === ENGINE.localId);
-        if (!me || !me.choiceQueue || me.choiceQueue.length === 0) return;
-
-        if (!NET.active || NET.isHost) {
-          const cur = me.choiceQueue.shift();
-          const picked = cur[idx];
-          if (picked) SPELLS.applyChoice(me, picked, ENGINE.world);
-          me.rerolls = me.choiceQueue.length > 0 ? 1 : 0;
-          this.renderOnlineChoiceSlot();
-          this.updateHud();
-        } else {
-          NET.hostConn?.send({ type: 'pickChoice', idx });
-        }
-      },
-
-      rerollOnlineChoice() {
-        const me = ENGINE.world?.chars.find(c => c.id === ENGINE.localId);
-        if (!me || !me.choiceQueue || me.choiceQueue.length === 0 || (me.rerolls || 0) <= 0) return;
-
-        if (!NET.active || NET.isHost) {
-          me.rerolls--;
-          const isInitial = Object.keys(me.magics).length === 0 && me.lv === 1;
-          me.choiceQueue[0] = isInitial
-            ? SPELLS.generateInitialSpellChoices(me)
-            : SPELLS.generateChoices(me);
-          SFX.play('ricochet');
-          this.renderOnlineChoiceSlot();
-        } else {
-          NET.hostConn?.send({ type: 'reroll' });
-        }
-      },
-
-      updateHud() {
+      updateHUD() {
         const w = ENGINE.world;
-        if (!w) return;
-        const me = w.chars.find(c => c.id === ENGINE.localId);
+        const me = ENGINE.getLocalChar();
+        if (!w || !me) return;
 
-        if (ENGINE.mode === 'solo') {
-          $('#hud-mode-badge').textContent = 'SOLO';
-          $('#hud-mode-badge').className = 'px-2 py-0.5 rounded-lg bg-orange-500 text-white text-[11px] font-black shrink-0';
-          $('#hud-stage-info').textContent = `STAGE ${ENGINE.stage}`;
-          const enemies = w.chars.filter(c => c.alive && c.team === 'enemy').length;
-          $('#hud-alive-info').textContent = `남은 적 ${enemies}`;
-        } else {
-          $('#hud-mode-badge').textContent = 'ONLINE';
-          $('#hud-mode-badge').className = 'px-2 py-0.5 rounded-lg bg-sky-500 text-white text-[11px] font-black shrink-0';
-          $('#hud-stage-info').textContent = `방 코드: ${NET.roomCode}`;
-          const alive = w.chars.filter(c => c.alive && !c.isSmallMob).length;
-          $('#hud-alive-info').textContent = `생존 ${alive}명`;
-        }
+        const aliveCount = w.chars.filter((c) => c.alive && !c.isSmallMob).length;
+        $('#hud-stage-info').textContent = ENGINE.mode === 'solo' ? `STAGE ${ENGINE.stage}` : `ROOM ${NET.roomCode}`;
+        $('#hud-alive-info').textContent = `생존 ${aliveCount}`;
 
-        if (!me) return;
         $('#hud-lv-text').textContent = `Lv.${me.lv}`;
-        $('#hud-hp-text').textContent = `${Math.ceil(me.hp)} / ${Math.round(me.maxHp)}`;
+        $('#hud-hp-text').textContent = `${Math.ceil(me.hp)} / ${Math.ceil(me.maxHp)}`;
         $('#hud-hp-bar').style.width = `${clamp((me.hp / me.maxHp) * 100, 0, 100)}%`;
         $('#hud-xp-bar').style.width = `${clamp((me.xp / me.nextXp) * 100, 0, 100)}%`;
 
-        // 보유 마법 & 궁극기 뱃지
-        const badges = [];
-        for (const [mid, lv] of Object.entries(me.magics || {})) {
-          if (lv <= 0) continue;
-          const info = CONFIG.MAGICS[mid];
-          if (!info) continue;
-          badges.push(`
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-slate-900 text-[11px] font-black shrink-0" style="background:${info.bg}">
-              <span>${info.icon}</span>
-              <span>${info.name} Lv.${lv}</span>
-            </span>
-          `);
+        const skillsBar = $('#hud-skills-bar');
+        if (skillsBar) {
+          const badges = [];
+          for (const [mid, lv] of Object.entries(me.magics || {})) {
+            if (lv <= 0) continue;
+            const info = CONFIG.MAGICS[mid];
+            if (!info) continue;
+            badges.push(`
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-slate-900 text-[11px] font-black shrink-0"
+                    style="background:${info.bg}; color:${info.color}">
+                ${info.icon} ${info.name} Lv.${lv}
+              </span>
+            `);
+          }
+          for (const uid of (me.ultimates || [])) {
+            const u = CONFIG.ULTIMATES[uid];
+            if (!u) continue;
+            badges.push(`
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-amber-500 bg-amber-100 text-amber-900 text-[11px] font-black shrink-0">
+                ${u.icon} ${u.name}
+              </span>
+            `);
+          }
+          skillsBar.innerHTML = badges.join('');
         }
-        for (const sid of (me.ultimates || [])) {
-          const u = CONFIG.ULTIMATES[sid];
-          if (!u) continue;
-          badges.push(`
-            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border border-amber-600 bg-amber-100 text-amber-950 text-[11px] font-black shrink-0">
-              <span>${u.icon}</span>
-              <span>${u.name}</span>
-            </span>
-          `);
+      },
+
+      showOnlineGameOver(title, desc) {
+        $('#on-over-title').textContent = title;
+        $('#on-over-desc').textContent = desc;
+        $('#btn-on-rematch').classList.toggle('hidden', !NET.isHost);
+        $('#modal-on-over').classList.remove('hidden');
+      },
+
+      bindEvents() {
+        // 타이틀 마법 도감 렌더링
+        const spellList = $('#title-spell-list');
+        if (spellList) {
+          spellList.innerHTML = Object.values(CONFIG.MAGICS).map((m) => `
+            <div class="flex items-center gap-1.5 px-2 py-1 rounded-lg border border-slate-300" style="background:${m.bg}">
+              <span>${m.icon}</span>
+              <span class="truncate text-slate-900">${m.name}</span>
+            </div>
+          `).join('');
         }
-        $('#hud-skills-bar').innerHTML = badges.length > 0
-          ? badges.join('')
-          : '<span class="text-[11px] font-bold text-slate-400">보유 마법 없음</span>';
+
+        $('#btn-solo').addEventListener('click', () => ENGINE.startSolo());
+        $('#btn-create-room').addEventListener('click', () => NET.createRoom());
+        $('#btn-join-room').addEventListener('click', () => NET.joinRoom());
+
+        $('#btn-copy-code').addEventListener('click', () => {
+          const ta = document.createElement('textarea');
+          ta.value = NET.roomCode;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+          UI.toast(`초대 코드 [${NET.roomCode}] 복사 완료!`);
+        });
+
+        $('#btn-add-bot').addEventListener('click', () => NET.addBot());
+        $('#btn-rem-bot').addEventListener('click', () => NET.removeBot());
+        $('#btn-leave-lobby').addEventListener('click', () => NET.leaveRoom());
+        $('#btn-start-online').addEventListener('click', () => NET.startGame());
+
+        $('#btn-sound').addEventListener('click', () => {
+          SFX.enabled = !SFX.enabled;
+          $('#btn-sound').textContent = SFX.enabled ? '🔊 ON' : '🔇 OFF';
+        });
+
+        $('#btn-manual-toggle').addEventListener('click', () => {
+          if (ENGINE.mode === 'solo') ENGINE.toggleManualControl();
+        });
+
+        $('#btn-quit-game').addEventListener('click', () => {
+          if (ENGINE.mode === 'online') {
+            NET.leaveRoom();
+          } else {
+            ENGINE.mode = 'idle';
+            ENGINE.world = null;
+            UI.hideAllModals();
+            UI.showScreen('title');
+          }
+        });
+
+        $('#btn-solo-reroll').addEventListener('click', () => ENGINE.rerollSoloChoice());
+        $('#btn-on-reroll').addEventListener('click', () => {
+          if (NET.isHost) {
+            ENGINE.rerollOnlinePick(ENGINE.localId);
+            UI.renderOnlineChoiceSlot();
+          } else if (NET.hostConn && NET.hostConn.open) {
+            NET.hostConn.send({ type: 'reroll' });
+          }
+        });
+
+        // 키보드 단축키 (WASD/방향키 수동조작 + 1/2/3 선택 + R 리롤)
+        window.addEventListener('keydown', (e) => {
+          const tag = document.activeElement?.tagName;
+          if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+          const key = e.key;
+          const lower = key.toLowerCase();
+
+          if (lower === 'w' || key === 'ArrowUp') {
+            ENGINE.input.up = true;
+            if (ENGINE.mode === 'solo' && ENGINE.manualControl) e.preventDefault();
+          } else if (lower === 's' || key === 'ArrowDown') {
+            ENGINE.input.down = true;
+            if (ENGINE.mode === 'solo' && ENGINE.manualControl) e.preventDefault();
+          } else if (lower === 'a' || key === 'ArrowLeft') {
+            ENGINE.input.left = true;
+            if (ENGINE.mode === 'solo' && ENGINE.manualControl) e.preventDefault();
+          } else if (lower === 'd' || key === 'ArrowRight') {
+            ENGINE.input.right = true;
+            if (ENGINE.mode === 'solo' && ENGINE.manualControl) e.preventDefault();
+          }
+
+          if (key === '1' || key === '2' || key === '3') {
+            const idx = Number(key) - 1;
+            if (ENGINE.mode === 'solo' && !$('#modal-solo-choice').classList.contains('hidden')) {
+              e.preventDefault();
+              ENGINE.pickSoloChoice(idx);
+            } else if (ENGINE.mode === 'online') {
+              if (NET.isHost) {
+                const me = ENGINE.getLocalChar();
+                if (me && me.choiceQueue.length > 0 && me.choiceQueue[0].choices[idx]) {
+                  e.preventDefault();
+                  ENGINE.applyOnlinePick(ENGINE.localId, idx);
+                  UI.renderOnlineChoiceSlot();
+                }
+              } else if (NET.hostConn && NET.hostConn.open) {
+                if (NET.clientChoiceQueue.length > 0 && NET.clientChoiceQueue[0].choices?.[idx]) {
+                  e.preventDefault();
+                  NET.hostConn.send({ type: 'pick', idx });
+                }
+              }
+            }
+          }
+
+          if (lower === 'r') {
+            if (ENGINE.mode === 'solo' && !$('#modal-solo-choice').classList.contains('hidden')) {
+              ENGINE.rerollSoloChoice();
+            } else if (ENGINE.mode === 'online') {
+              $('#btn-on-reroll').click();
+            }
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          const key = e.key;
+          const lower = key.toLowerCase();
+          if (lower === 'w' || key === 'ArrowUp') ENGINE.input.up = false;
+          else if (lower === 's' || key === 'ArrowDown') ENGINE.input.down = false;
+          else if (lower === 'a' || key === 'ArrowLeft') ENGINE.input.left = false;
+          else if (lower === 'd' || key === 'ArrowRight') ENGINE.input.right = false;
+        });
+
+        window.addEventListener('blur', () => {
+          ENGINE.input.up = false;
+          ENGINE.input.down = false;
+          ENGINE.input.left = false;
+          ENGINE.input.right = false;
+          ENGINE.input.touchActive = false;
+        });
+
+        // 캔버스 마우스 조준 & 터치 드래그 조작
+        const canvasEl = $('#game-canvas');
+        canvasEl.addEventListener('mousemove', (e) => {
+          const pos = RENDER.clientToArena(e.clientX, e.clientY);
+          ENGINE.input.mouseX = pos.x;
+          ENGINE.input.mouseY = pos.y;
+          ENGINE.input.hasMouse = true;
+        });
+
+        canvasEl.addEventListener('touchstart', (e) => {
+          if (ENGINE.mode === 'solo' && ENGINE.manualControl && e.touches.length > 0) {
+            e.preventDefault();
+            const pos = RENDER.clientToArena(e.touches[0].clientX, e.touches[0].clientY);
+            ENGINE.input.touchActive = true;
+            ENGINE.input.touchX = pos.x;
+            ENGINE.input.touchY = pos.y;
+          }
+        }, { passive: false });
+
+        canvasEl.addEventListener('touchmove', (e) => {
+          if (ENGINE.mode === 'solo' && ENGINE.manualControl && e.touches.length > 0) {
+            e.preventDefault();
+            const pos = RENDER.clientToArena(e.touches[0].clientX, e.touches[0].clientY);
+            ENGINE.input.touchActive = true;
+            ENGINE.input.touchX = pos.x;
+            ENGINE.input.touchY = pos.y;
+          }
+        }, { passive: false });
+
+        const endTouch = () => { ENGINE.input.touchActive = false; };
+        canvasEl.addEventListener('touchend', endTouch);
+        canvasEl.addEventListener('touchcancel', endTouch);
+
+        $('#btn-next-stage').addEventListener('click', () => ENGINE.nextSoloStage());
+        $('#btn-solo-retry').addEventListener('click', () => ENGINE.startSolo());
+        $('#btn-solo-home').addEventListener('click', () => {
+          ENGINE.mode = 'idle';
+          ENGINE.world = null;
+          UI.hideAllModals();
+          UI.showScreen('title');
+        });
+
+        $('#btn-on-exit').addEventListener('click', () => NET.leaveRoom());
+        $('#btn-on-rematch').addEventListener('click', () => NET.returnToLobby());
       }
     };
 
     /* ============================================================================
-       7. 이벤트 바인딩 & 메인 애니메이션 루프
+       7. 메인 게임 루프
        ============================================================================ */
-    function bindEvents() {
-      $('#btn-solo').addEventListener('click', () => ENGINE.startSolo());
-      $('#btn-create-room').addEventListener('click', () => NET.createRoom());
-      $('#btn-join-room').addEventListener('click', () => NET.joinRoom($('#input-room-code').value));
-
-      $('#btn-copy-code').addEventListener('click', () => {
-        const code = NET.roomCode;
-        if (!code) return;
-        const ta = document.createElement('textarea');
-        ta.value = code;
-        document.body.appendChild(ta);
-        ta.select();
-        try {
-          document.execCommand('copy');
-          UI.toast(`초대 코드(${code})가 복사되었습니다!`);
-        } catch (_) {
-          UI.toast(`초대 코드: ${code}`);
-        }
-        ta.remove();
-      });
-
-      $('#btn-add-bot').addEventListener('click', () => NET.addBot());
-      $('#btn-rem-bot').addEventListener('click', () => NET.removeBot());
-      $('#btn-start-online').addEventListener('click', () => NET.startOnlineMatch());
-      $('#btn-leave-lobby').addEventListener('click', () => {
-        NET.cleanup();
-        UI.showScreen('title');
-      });
-
-      $('#btn-sound').addEventListener('click', () => {
-        SFX.enabled = !SFX.enabled;
-        $('#btn-sound').textContent = SFX.enabled ? '🔊 ON' : '🔇 OFF';
-      });
-
-      $('#btn-quit-game').addEventListener('click', () => {
-        ENGINE.mode = 'idle';
-        ENGINE.world = null;
-        NET.cleanup();
-        UI.showScreen('title');
-      });
-
-      $('#btn-solo-reroll').addEventListener('click', () => ENGINE.rerollSoloChoice());
-      $('#btn-on-reroll').addEventListener('click', () => UI.rerollOnlineChoice());
-
-      $('#btn-next-stage').addEventListener('click', () => {
-        $('#modal-solo-stage').classList.add('hidden');
-        ENGINE.setupSoloStage(ENGINE.stage + 1, false);
-      });
-
-      $('#btn-solo-retry').addEventListener('click', () => {
-        $('#modal-solo-over').classList.add('hidden');
-        ENGINE.startSolo();
-      });
-
-      $('#btn-solo-home').addEventListener('click', () => {
-        $('#modal-solo-over').classList.add('hidden');
-        ENGINE.mode = 'idle';
-        ENGINE.world = null;
-        UI.showScreen('title');
-      });
-
-      $('#btn-on-rematch').addEventListener('click', () => {
-        $('#modal-on-over').classList.add('hidden');
-        if (NET.isHost) {
-          NET.broadcastLobby();
-          UI.openLobby();
-        }
-      });
-
-      $('#btn-on-exit').addEventListener('click', () => {
-        $('#modal-on-over').classList.add('hidden');
-        ENGINE.mode = 'idle';
-        ENGINE.world = null;
-        NET.cleanup();
-        UI.showScreen('title');
-      });
-
-      // R 단축키로 리롤 실행
-      window.addEventListener('keydown', (e) => {
-        if (e.key === 'r' || e.key === 'R' || e.key === 'ㄱ') {
-          if (ENGINE.mode === 'solo' && !$('#modal-solo-choice').classList.contains('hidden')) {
-            ENGINE.rerollSoloChoice();
-          } else if (ENGINE.mode === 'online') {
-            UI.rerollOnlineChoice();
-          }
-        }
-      });
-    }
-
     let lastTime = 0;
     function gameLoop(ts) {
       if (!lastTime) lastTime = ts;
@@ -2861,25 +3018,21 @@
       lastTime = ts;
 
       if (ENGINE.mode === 'solo') {
-        ENGINE.step(dt);
-        UI.updateHud();
-        RENDER.draw();
-      } else if (ENGINE.mode === 'online') {
-        if (!NET.active || NET.isHost) {
-          ENGINE.step(dt);
-          NET.hostTick(dt);
-          UI.updateHud();
-        }
-        RENDER.draw();
+        ENGINE.update(dt);
+        UI.updateHUD();
+      } else if (ENGINE.mode === 'online' && NET.isHost) {
+        ENGINE.update(dt);
+        NET.tickSync(dt);
+        UI.updateHUD();
       }
 
+      RENDER.draw();
       requestAnimationFrame(gameLoop);
     }
 
     window.onload = function () {
-      UI.init();
       RENDER.init();
-      bindEvents();
+      UI.bindEvents();
       requestAnimationFrame(gameLoop);
     };
   </script>
