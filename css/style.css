@@ -115,11 +115,12 @@ html, body {
 #gold-flash { background: radial-gradient(circle at center, rgba(253, 230, 138, .9), rgba(245, 158, 11, .55) 55%, rgba(217, 119, 6, 0) 100%); }
 #gold-flash.gold-flash-go { animation: goldFlash .9s ease-out forwards; }
 
-/* 🃏 궁극기 작은 알림 (화면 아래, 11/27z4) */
-#ult-mini { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 25;
-  display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.ult-mini-pill { display: flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px;
-  background: rgba(15, 23, 42, .82); border: 2px solid #f59e0b; font-weight: 900; font-size: 13px; white-space: nowrap;
-  animation: popIn .2s cubic-bezier(0.22, 1, 0.36, 1); transition: opacity .4s, transform .4s; }
-.ult-mini-pill small { color: #cbd5e1; font-size: 11px; font-weight: 800; }
-.ult-mini-pill.out { opacity: 0; transform: translateY(6px); }
+/* 🃏 궁극기 알림 (두 번째부터, 화면 아래 중간 크기, 11/27z5) */
+#ult-mini { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 25;
+  display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.ult-mini-pill { display: flex; align-items: baseline; gap: 8px; padding: 5px 18px; border-radius: 999px;
+  background: rgba(15, 23, 42, .85); border: 3px solid #f59e0b; font-weight: 900; font-size: clamp(18px, 3.4vw, 28px);
+  line-height: 1.2; white-space: nowrap; box-shadow: 0 4px 16px rgba(15, 23, 42, .35);
+  animation: popIn .22s cubic-bezier(0.22, 1, 0.36, 1); transition: opacity .4s, transform .4s; }
+.ult-mini-pill small { color: #cbd5e1; font-size: clamp(11px, 1.7vw, 14px); font-weight: 800; }
+.ult-mini-pill.out { opacity: 0; transform: translateY(8px); }

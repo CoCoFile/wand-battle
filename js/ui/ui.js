@@ -102,8 +102,8 @@ const UI = {
     el.innerHTML = `<span style="color:${color}">${escapeHtml(text)}</span>${who ? `<small>${escapeHtml(who)}</small>` : ''}`;
     box.appendChild(el);
     while (box.children.length > 3) box.firstElementChild.remove();
-    setTimeout(() => el.classList.add('out'), 1300);
-    setTimeout(() => el.remove(), 1700);
+    setTimeout(() => el.classList.add('out'), 1500);
+    setTimeout(() => el.remove(), 1900);
   },
 
   broadcastUltMini(text, color, who = '') {
