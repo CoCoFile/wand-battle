@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>완드 대전 (Wand Battle)</title>
+  <title>완드 대전 (Wand Battle) — 시즌0: 마법의 혁명</title>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
   <!-- Tailwind: 로컬 빌드본 (오프라인 OK). 새 클래스 쓰면 tools/build-css.mjs 로 재빌드 -->
-  <link rel="stylesheet" href="css/tailwind.css?v=2026.11.27w" />
-  <link rel="stylesheet" href="css/style.css?v=2026.11.27w" />
+  <link rel="stylesheet" href="css/tailwind.css?v=2026.11.27x" />
+  <link rel="stylesheet" href="css/style.css?v=2026.11.27x" />
 </head>
 <body class="flex flex-col items-center justify-center">
 
@@ -28,6 +28,7 @@
             🪄 AUTO-CAST WAND ARENA
           </div>
           <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">완드 대전 <span class="text-orange-500">Wand Battle</span></h1>
+          <div class="mt-0.5 text-sm sm:text-base font-black tracking-tight"><span class="px-1.5 py-0.5 rounded-md bg-slate-900 text-amber-300 text-[11px] align-middle">SEASON 0</span> <span class="season-title">마법의 혁명</span></div>
           <p class="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">카드만 고르세요. 싸움은 알아서 합니다.</p>
           <!-- 광기(없으면 만용) 1위 (모두에게 공개) -->
           <div id="hard-champion" class="hidden mt-2 items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 border-2 border-rose-400 text-rose-900 text-[11px] font-black"></div>
@@ -451,35 +452,35 @@
 
   <!-- ?v= 는 캐시 꼬임 방지용 (버전 바꿀 때 CONFIG.GAME_VERSION 과 같이 올리기: tools/bump-version.py) -->
   <!-- 스크립트 로드 순서 중요: 위 파일이 정의한 전역 객체를 아래 파일이 사용 (type=module 아님 → 더블클릭 실행 가능) -->
-  <script src="js/core/utils.js?v=2026.11.27w"></script>
-  <script src="js/core/sfx.js?v=2026.11.27w"></script>
-  <script src="js/core/profile.js?v=2026.11.27w"></script>
-  <script src="js/core/telemetry.js?v=2026.11.27w"></script>
-  <script src="js/core/relics.js?v=2026.11.27w"></script>
-  <script src="js/core/account.js?v=2026.11.27w"></script>
-  <script src="js/core/ranking.js?v=2026.11.27w"></script>
-  <script src="js/config.js?v=2026.11.27w"></script>
-  <script src="js/spells/spells.js?v=2026.11.27w"></script>
-  <script src="js/spells/casters.js?v=2026.11.27w"></script>
-  <script src="js/spells/shield.js?v=2026.11.27w"></script>
-  <script src="js/spells/barrier.js?v=2026.11.27w"></script>
-  <script src="js/spells/combos.js?v=2026.11.27w"></script>
-  <script src="js/spells/blades.js?v=2026.11.27w"></script>
-  <script src="js/spells/boss.js?v=2026.11.27w"></script>
-  <script src="js/spells/choices.js?v=2026.11.27w"></script>
-  <script src="js/spells/ultimates.js?v=2026.11.27w"></script>
-  <script src="js/engine/engine.js?v=2026.11.27w"></script>
-  <script src="js/engine/combat.js?v=2026.11.27w"></script>
-  <script src="js/engine/solo.js?v=2026.11.27w"></script>
-  <script src="js/engine/party.js?v=2026.11.27w"></script>
-  <script src="js/engine/online.js?v=2026.11.27w"></script>
-  <script src="js/engine/update.js?v=2026.11.27w"></script>
-  <script src="js/net/net.js?v=2026.11.27w"></script>
-  <script src="js/net/match.js?v=2026.11.27w"></script>
-  <script src="js/render/render.js?v=2026.11.27w"></script>
-  <script src="js/render/draw-char.js?v=2026.11.27w"></script>
-  <script src="js/ui/ui.js?v=2026.11.27w"></script>
-  <script src="js/ui/input.js?v=2026.11.27w"></script>
-  <script src="js/main.js?v=2026.11.27w"></script>
+  <script src="js/core/utils.js?v=2026.11.27x"></script>
+  <script src="js/core/sfx.js?v=2026.11.27x"></script>
+  <script src="js/core/profile.js?v=2026.11.27x"></script>
+  <script src="js/core/telemetry.js?v=2026.11.27x"></script>
+  <script src="js/core/relics.js?v=2026.11.27x"></script>
+  <script src="js/core/account.js?v=2026.11.27x"></script>
+  <script src="js/core/ranking.js?v=2026.11.27x"></script>
+  <script src="js/config.js?v=2026.11.27x"></script>
+  <script src="js/spells/spells.js?v=2026.11.27x"></script>
+  <script src="js/spells/casters.js?v=2026.11.27x"></script>
+  <script src="js/spells/shield.js?v=2026.11.27x"></script>
+  <script src="js/spells/barrier.js?v=2026.11.27x"></script>
+  <script src="js/spells/combos.js?v=2026.11.27x"></script>
+  <script src="js/spells/blades.js?v=2026.11.27x"></script>
+  <script src="js/spells/boss.js?v=2026.11.27x"></script>
+  <script src="js/spells/choices.js?v=2026.11.27x"></script>
+  <script src="js/spells/ultimates.js?v=2026.11.27x"></script>
+  <script src="js/engine/engine.js?v=2026.11.27x"></script>
+  <script src="js/engine/combat.js?v=2026.11.27x"></script>
+  <script src="js/engine/solo.js?v=2026.11.27x"></script>
+  <script src="js/engine/party.js?v=2026.11.27x"></script>
+  <script src="js/engine/online.js?v=2026.11.27x"></script>
+  <script src="js/engine/update.js?v=2026.11.27x"></script>
+  <script src="js/net/net.js?v=2026.11.27x"></script>
+  <script src="js/net/match.js?v=2026.11.27x"></script>
+  <script src="js/render/render.js?v=2026.11.27x"></script>
+  <script src="js/render/draw-char.js?v=2026.11.27x"></script>
+  <script src="js/ui/ui.js?v=2026.11.27x"></script>
+  <script src="js/ui/input.js?v=2026.11.27x"></script>
+  <script src="js/main.js?v=2026.11.27x"></script>
 </body>
 </html>

@@ -151,12 +151,12 @@ Object.assign(SPELLS, {
       const zr = (tf >= 2 ? 80 : 50) * (c.areaMult || 1);
       const life = tf >= 2 ? 3 : 2;
       w.zones.push({ kind: 'poison', stack: 'combo', skillUid: ++w.uidSeq, ownerId: c.id, team: c.team, x, y, r: zr,
-        dmg: this.baseDmg(c, 'poison') * (tf >= 3 ? 3 : 2.2), tick: 0.1, life, maxLife: life, color: '#16A34A' });
+        dmg: this.baseDmg(c, 'poison') * (tf >= 3 ? 3.6 : 2.8), tick: 0.1, life, maxLife: life, color: '#16A34A' });
       if (tf >= 3) {
         for (const t of this.enemiesOf(c, w)) {
           if (dist(x, y, t.x, t.y) > r + t.r) continue;
           const inPoison = w.zones.some((z) => z.kind === 'poison' && z.ownerId === c.id && dist(z.x, z.y, t.x, t.y) <= z.r + t.r);
-          if (inPoison) this.comboBlast(c, w, t.x, t.y, 80 * (c.areaMult || 1), dmg * 1.0, '#84cc16', null);
+          if (inPoison) this.comboBlast(c, w, t.x, t.y, 80 * (c.areaMult || 1), dmg * 1.3, '#84cc16', null);
         }
       }
     }
@@ -167,14 +167,14 @@ Object.assign(SPELLS, {
     const tz = this.comboTier(c, 'zerobeam');
     if (tz <= 0 || !t.alive) return;
     const wasFrozen = (t.frozenTimer || 0) > 0;
-    const freeze = tz >= 2 ? 0.6 : 0.3;
+    const freeze = tz >= 2 ? 0.6 : 0.4;
     t.stunTimer = Math.max(t.stunTimer || 0, freeze);
     t.frozenTimer = freeze;
-    const zs = tz >= 2 ? 0.45 : 0.3;                          // 얼면 받는 피해 증가 (1단계부터)
+    const zs = tz >= 2 ? 0.5 : 0.4;                          // 얼면 받는 피해 증가 (1단계부터)
     t.shred = Math.max(t.shredTimer > 0 ? t.shred || 0 : 0, zs); t.shredTimer = Math.max(t.shredTimer || 0, 1.0);
     if (tz >= 3 && wasFrozen && !(t.shardCd > w.time)) { // 얼어 있는 적 → 얼음 파편 4개
       t.shardCd = w.time + 0.5;
-      const d = this.baseDmg(c, 'laser') * 0.3;
+      const d = this.baseDmg(c, 'laser') * 0.18;
       for (let k = 0; k < 4; k++) this.shootThorn(c, w, t.x, t.y, (Math.PI / 2) * k + rand(-0.3, 0.3), d);
     }
   },
@@ -190,8 +190,8 @@ Object.assign(SPELLS, {
     const spread = 1.1;
     for (let k = 0; k < n; k++) {
       const a = back + (k - (n - 1) / 2) * (spread / Math.max(1, n - 1));
-      if (tp >= 3) this.comboBeam(c, w, hx, hy, a, 500, 8, this.baseDmg(c, 'scatter') * 1.5, '#f472b6');
-      else this.shootThorn(c, w, hx, hy, a, this.baseDmg(c, 'scatter') * 1.5);
+      if (tp >= 3) this.comboBeam(c, w, hx, hy, a, 500, 8, this.baseDmg(c, 'scatter') * 2.0, '#f472b6');
+      else this.shootThorn(c, w, hx, hy, a, this.baseDmg(c, 'scatter') * 2.0);
     }
   },
 
@@ -250,7 +250,7 @@ Object.assign(SPELLS, {
     const tg = this.nearestEnemy(c, w, p.x, p.y);
     const base = tg ? Math.atan2(tg.y - p.y, tg.x - p.x) : rand(0, Math.PI * 2);
     for (let k = 0; k < n; k++) {
-      this.comboBeam(c, w, p.x, p.y, base + (k - (n - 1) / 2) * 0.25, 600, 9, this.baseDmg(c, 'laser') * 0.3, '#a855f7', true);
+      this.comboBeam(c, w, p.x, p.y, base + (k - (n - 1) / 2) * 0.25, 600, 9, this.baseDmg(c, 'laser') * 0.36, '#a855f7', true);
     }
   },
 
@@ -269,7 +269,7 @@ Object.assign(SPELLS, {
     if (tt <= 0) return;
     const n = tt >= 2 ? 10 : 6;
     const off = rand(0, Math.PI * 2);
-    for (let k = 0; k < n; k++) this.shootThorn(c, w, c.x, c.y, off + (Math.PI * 2 * k) / n, this.baseDmg(c, 'blades') * 3);
+    for (let k = 0; k < n; k++) this.shootThorn(c, w, c.x, c.y, off + (Math.PI * 2 * k) / n, this.baseDmg(c, 'blades') * 4.5);
   },
 
   // 🫧 보호막이 피해를 흡수할 때 (3단계+: 때린 쪽으로 가시 1개, 0.3초에 한 번)
@@ -279,7 +279,7 @@ Object.assign(SPELLS, {
     c.thornCd = w.time + 0.3;
     const tg = attacker && attacker.alive && attacker.team !== c.team ? attacker : this.nearestEnemy(c, w, c.x, c.y);
     const ang = tg ? Math.atan2(tg.y - c.y, tg.x - c.x) : rand(0, Math.PI * 2);
-    this.shootThorn(c, w, c.x, c.y, ang, this.baseDmg(c, 'blades') * 3);
+    this.shootThorn(c, w, c.x, c.y, ang, this.baseDmg(c, 'blades') * 4.5);
   },
 
   // 🧪 독 장판 틱: 🧊🧪 냉동 독살 — 빙결(방깍) 중인 적은 독 2배, 2단계+ 독 장판도 감속
@@ -379,7 +379,7 @@ Object.assign(SPELLS, {
         const cx = c.x, cy = c.y, a0 = rand(0, Math.PI * 2);
         for (let k = 0; k < 6; k++) {
           this.comboLater(w, 0.25 * k, () => {
-            for (let j = 0; j < 4; j++) this.comboBeam(c, w, cx, cy, a0 + k * 0.5 + (Math.PI / 2) * j, 600, 10, this.baseDmg(c, 'laser') * 0.5, '#a855f7', true);
+            for (let j = 0; j < 4; j++) this.comboBeam(c, w, cx, cy, a0 + k * 0.5 + (Math.PI / 2) * j, 600, 10, this.baseDmg(c, 'laser') * 0.8, '#a855f7', true);
           });
         }
         break;

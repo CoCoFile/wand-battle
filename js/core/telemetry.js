@@ -40,7 +40,8 @@ const TELEMETRY = {
       players: extra.players || 1,
       manual: ENGINE.mode === 'solo' ? !!ENGINE.manualControl : '',
       speed: ENGINE.mode === 'solo' ? ENGINE.soloSpeed : '',
-      relics: (c.relics || []).map((r) => `${r.id}:${r.lv}`).join(',')
+      relics: (c.relics || []).map((r) => `${r.id}:${r.lv}`).join(','),
+      combos: SPELLS.activeCombos(c).map(({ cb, tier }) => `${cb.id}:${SPELLS.comboTierLv(tier)}`).join(',') // 🔗 켠 조합:단계 (11/27x)
     };
     const q = this._load();
     q.push(rec);

@@ -82,4 +82,12 @@ html, body {
 @keyframes titleFlow {
   to { background-position: 200% center; }
 }
+
+/* 시즌 제목 (시즌0: 마법의 혁명) */
+.season-title {
+  background: linear-gradient(90deg, #7c3aed, #db2777, #f97316);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 }
