@@ -12,7 +12,7 @@ Object.assign(ENGINE, {
     this.userPaused = false;
     this.runEnded = false;
     this.localId = 'player';
-    this.soloRerolls = 1;      // 🎲 선택창마다 1장 (안 쓰면 다음 창에 안 넘어감, 금화 유물 +1) — 11/27l
+    this.soloRerolls = 1;      // 🎲 시작 1장 + 스테이지 클리어마다 +1 (쌓임), 금화 유물 +1~2
     this.soloInitialDrafts = 3;
     this.soloPendingLevels = 0;
     this.soloStageCleared = false;
@@ -172,7 +172,6 @@ Object.assign(ENGINE, {
       this.paused = true;
       const step = 4 - this.soloInitialDrafts;
       if (titleEl) titleEl.textContent = `시작 마법 선택 (${step} / 3)`;
-      this.soloRerolls = 1 + (player.extraRerolls || 0); // 새 선택창마다 리롤 다시 채움
       this.soloCurrentChoices = SPELLS.generateInitialSpellChoices(player);
       this.renderSoloChoiceModal();
       return;
@@ -181,7 +180,6 @@ Object.assign(ENGINE, {
     if (this.soloPendingLevels > 0) {
       this.paused = true;
       if (titleEl) titleEl.textContent = `레벨 업! Lv.${player.lv}`;
-      this.soloRerolls = 1 + (player.extraRerolls || 0); // 새 선택창마다 리롤 다시 채움
       this.soloCurrentChoices = SPELLS.generateChoices(player);
       this.renderSoloChoiceModal();
       return;
@@ -223,7 +221,7 @@ Object.assign(ENGINE, {
     }
     // 클리어 창 대신 위쪽 작은 알림 → CONFIG.SOLO_NEXT_DELAY초 뒤 자동으로 다음 스테이지 (update.js에서 카운트)
     this.paused = false;
-    UI.toast(`✅ STAGE ${this.stage} 클리어`);
+    UI.toast(`✅ STAGE ${this.stage} 클리어 · 리롤 +1`);
     this.soloNextStageTimer = Math.max(0.001, CONFIG.SOLO_NEXT_DELAY); // 0이어도 다음 프레임에 넘김 (전투 처리 도중 월드를 바꾸지 않게)
   },
 
@@ -272,6 +270,7 @@ Object.assign(ENGINE, {
     this.soloStageCleared = false;
     this.soloNextStageTimer = 0;
     this.stage++;
+    this.soloRerolls++;
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.35);
     this.world.chars = this.world.chars.filter((c) => c.alive || c.isLocal); // 죽은 적 정리
     this.world.projs = [];
