@@ -184,6 +184,7 @@ Object.assign(NET, {
     for (const [peerId, conn] of this.conns.entries()) {
       if (!conn.open) continue;
       const ch = w.chars.find((c) => c.id === peerId);
+      if (!ch) continue;                       // 경기 중에 들어와서 기다리는 사람은 상태 안 보냄
       const q = ch ? ch.choiceQueue : [];
       const qs = JSON.stringify(q);
       const snap = { ...baseSnap };

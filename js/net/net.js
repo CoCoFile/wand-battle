@@ -34,7 +34,14 @@ const NET = {
     const myName = sanitizeName($('#input-name').value, '방장 마법사');
 
     this.peer = new Peer(`wand-battle-${this.roomCode}`);
+    // 중계 서버 연결이 끊기면(탭 백그라운드·네트워크 흔들림) 같은 방 코드로 다시 붙음 — 안 그러면 새 참가자가 방을 못 찾음 (11/27u)
+    this.peer.on('disconnected', () => {
+      if (this.peer && !this.peer.destroyed && this.isHost) {
+        setTimeout(() => { try { if (this.peer && !this.peer.destroyed && this.peer.disconnected) this.peer.reconnect(); } catch (_) {} }, 1000);
+      }
+    });
     this.peer.on('open', (id) => {
+      if (this.players.length) return;            // 재연결로 다시 open 된 경우
       ENGINE.localId = id;
       this.players = [{ id, name: myName, isHost: true, isBot: false, relics: ACCOUNT.equippedList(), title: ACCOUNT.myTitle() }];
       UI.openLobby();
@@ -52,17 +59,20 @@ const NET = {
     });
 
     this.peer.on('error', (err) => {
+      if (err.type === 'unavailable-id' && !this.players.length) { this.createRoom(); return; } // 방 코드 겹침 → 새 코드
+      if (err.type === 'peer-unavailable') return;  // (방장 쪽에선 의미 없음)
       UI.toast(`네트워크 오류: ${err.type || err.message}`);
     });
   },
 
-  joinRoom() {
+  // 참가: 10초 안에 방장과 연결 안 되면 한 번 더 시도, 그래도 안 되면 이유 안내 (11/27u)
+  joinRoom(retry = 0) {
     SFX.init();
     if (typeof Peer === 'undefined') {
       UI.toast('온라인 모듈 로드 실패 (인터넷 확인)');
       return;
     }
-    const code = ($('#input-room-code').value || '').trim().toUpperCase();
+    const code = ($('#input-room-code').value || '').replace(/[\s-]/g, '').toUpperCase();
     if (!code) {
       UI.toast('방 코드를 입력하세요');
       return;
@@ -73,24 +83,47 @@ const NET = {
     this.roomCode = code;
     const myName = sanitizeName($('#input-name').value, '도전자');
 
+    if (retry === 0) UI.toast('방에 연결하는 중…');
+    let opened = false;
+    clearTimeout(this.joinTimer);
+    this.joinTimer = setTimeout(() => {
+      if (opened || !this.active || this.isHost) return;
+      if (retry < 1) {
+        UI.toast('연결이 느려요… 다시 시도 중');
+        this.joinRoom(retry + 1);
+      } else {
+        UI.toast('방장과 직접 연결이 안 돼요 (와이파이↔데이터를 바꾸거나 방장이 방을 다시 열어 보세요)');
+        this.leaveRoom();
+      }
+    }, 10000);
+
     this.peer = new Peer();
     this.peer.on('open', (id) => {
       ENGINE.localId = id;
       const conn = this.peer.connect(`wand-battle-${code}`, { reliable: true, serialization: 'json' }); // json: binarypack보다 빠름 (11/27t)
       this.hostConn = conn;
       conn.on('open', () => {
+        opened = true;
+        clearTimeout(this.joinTimer);
         conn.send({ type: 'join', name: myName, relics: ACCOUNT.equippedList(), title: ACCOUNT.myTitle() });
         UI.openLobby();
       });
       conn.on('data', (msg) => this.onClientReceive(msg));
       conn.on('close', () => {
+        if (!this.active) return;
         UI.toast('방장 연결 끊김');
         this.leaveRoom();
       });
     });
 
-    this.peer.on('error', () => {
-      UI.toast('방을 찾을 수 없어요');
+    this.peer.on('error', (err) => {
+      if (opened) { UI.toast(`네트워크 오류: ${err.type || ''}`); return; }
+      clearTimeout(this.joinTimer);
+      const t = err && err.type;
+      if (t === 'peer-unavailable') UI.toast('방을 찾을 수 없어요 (코드 확인 / 방장이 방을 열어 뒀는지)');
+      else if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') UI.toast('중계 서버 연결 실패 — 잠시 뒤 다시 시도');
+      else if (t === 'browser-incompatible') UI.toast('이 브라우저는 온라인을 지원하지 않아요');
+      else UI.toast(`참가 실패 (${t || '알 수 없음'})`);
       this.leaveRoom();
     });
   },
@@ -144,6 +177,9 @@ const NET = {
         return;
       }
       this.conns.set(conn.peer, conn);
+      // 경기 중에 들어오면: 대기실에서 기다렸다가 다음 판부터 (11/27u)
+      const inGame = ENGINE.mode === 'online' && ENGINE.world && !ENGINE.runEnded && $('#screen-game') && !$('#screen-game').classList.contains('hidden');
+      if (inGame) conn.send({ type: 'wait' });
       this.players.push({
         id: conn.peer,
         name: sanitizeName(msg.name, '참가자'),
@@ -162,9 +198,14 @@ const NET = {
 
   onClientReceive(msg) {
     if (!msg || typeof msg !== 'object') return;
+    // 대기 중(경기 화면 아님)이면 경기 연출·종료 메시지는 무시
+    const onGame = $('#screen-game') && !$('#screen-game').classList.contains('hidden');
+    if (!onGame && (msg.type === 'dramatic' || msg.type === 'bossUlt' || msg.type === 'gameover' || msg.type === 'state')) return;
     if (msg.type === 'full') {
       UI.toast('방이 꽉 찼어요');
       this.leaveRoom();
+    } else if (msg.type === 'wait') {
+      UI.toast('지금 게임 중이에요 — 이번 판이 끝나면 같이 해요');
     } else if (msg.type === 'lobby') {
       this.players = Array.isArray(msg.players) ? msg.players : [];
       if (msg.matchType === 'party' || msg.matchType === 'versus') this.matchType = msg.matchType;
@@ -200,6 +241,7 @@ const NET = {
   },
 
   cleanup() {
+    clearTimeout(this.joinTimer);
     this.active = false;
     this.isHost = false;
     this.conns.clear();
