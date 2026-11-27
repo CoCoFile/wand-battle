@@ -2,7 +2,7 @@
 // 크기·속도·체력·이름은 여기서 조정. ※ 마법별 피해·속도 등 수치는 js/spells/casters.js, 쿨타임은 js/spells/spells.js(baseCooldown)에 있음
 
 const CONFIG = {
-  GAME_VERSION: '2026.11.27d', // 11/27d: 부메랑 빠르게·멀리·벽 반사 / 11/27c: 마법 7종 평균딜 맞춤 / 11/27b: 리롤 한 판 1번(금화 2번), 스탯 카드 수치 숨김 / 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
+  GAME_VERSION: '2026.11.27e', // 11/27e: 빙결 딜 절반 / 11/27d: 부메랑 빠르게·멀리·벽 반사 / 11/27c: 마법 7종 평균딜 맞춤 / 11/27b: 리롤 한 판 1번(금화 2번), 스탯 카드 수치 숨김 / 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
   // 플레이 기록 수집 주소 (구글 Apps Script 웹 앱 /exec URL). 비워두면 수집 안 함
   TELEMETRY_URL: 'https://script.google.com/macros/s/AKfycbyCRCqR5cZPodxsXFBUpEwNUSXvQBr1qMMGUGpo5E41HJxSlZWXWgDIqgjhjf8iHdieVQ/exec',
 
@@ -183,7 +183,7 @@ const CONFIG = {
 
   // ── 빙결 장판 ───────────────────────────────
   // 방깍(받는 피해 증가) = shredMax × Lv/(Lv+4), 감속 slow
-  FROST: { slow: 0.6, shredMax: 0.4, dmg: [5.4, 0.02] }, // 11/27c 평균딜 맞춤: 5+1.5lv → 5.4 고정 (장판 크기·개수·방깍이 레벨 따라 커짐)
+  FROST: { slow: 0.6, shredMax: 0.4, dmg: [2.9, 0.01] }, // 11/27e: 유틸기라 딜은 다른 마법의 절반 수준 (5.4 → 2.9 고정). 감속·방깍은 그대로
 
   // ── 보스 필살기 (보스마다 1개, 경고 표시 후 발동 — 자동 이동은 안 피함: 운빨) ──
   // dmg = k × 보스 공격력 배율 × 난이도 ultMult. cd = 쿨타임(초, 난이도 enemyCdr 곱함), first = 등장 후 첫 사용
