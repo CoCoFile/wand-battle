@@ -8,7 +8,8 @@ Object.assign(NET, {
       UI.toast('2명 이상 필요 (봇 추가 가능)');
       return;
     }
-    this.broadcast({ type: 'start', matchType: this.matchType, difficulty: ENGINE.difficulty });
+    ENGINE.goldenOnly = !!$('#chk-golden-only')?.checked;   // 🃏 황카만 뽑기 모드
+    this.broadcast({ type: 'start', matchType: this.matchType, difficulty: ENGINE.difficulty, goldenOnly: ENGINE.goldenOnly });
     if (party) {
       ENGINE.startParty(this.players);
     } else {
@@ -98,6 +99,9 @@ Object.assign(NET, {
     $('#hud-mode-badge').textContent = party
       ? `파티 · ${(CONFIG.DIFFICULTY[ENGINE.difficulty] || {}).label || ''}`
       : '대전';
+    if (ENGINE.goldenOnly) $('#hud-mode-badge').textContent += ' · 🃏황카';
+    $('#dmg-meter').classList.toggle('hidden', !party);
+    $('#dmg-meter').innerHTML = '';
     $('#hud-mode-badge').className = `px-2 py-0.5 rounded-lg ${party ? 'bg-emerald-500' : 'bg-sky-500'} text-white text-[11px] font-black shrink-0`;
     RENDER.resize();
     UI.renderOnlineChoiceSlot();
@@ -138,6 +142,7 @@ Object.assign(NET, {
         statCounts: c.statCounts,
         shieldAngle: Number((c.shieldAngle || 0).toFixed(2)),
         bladeCds: c.bladeCds,
+        dmgDealt: Math.round(c.dmgDealt || 0),
         barrier: Math.round(c.barrier || 0), barrierMax: Math.round(c.barrierMax || 0),
         stunTimer: Number((c.stunTimer || 0).toFixed(1)),
         slowTimer: Number((c.slowTimer || 0).toFixed(1)),

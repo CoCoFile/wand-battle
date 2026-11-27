@@ -126,6 +126,9 @@ Object.assign(SPELLS, {
 
     if (c.isLocal) {
       UI.playRoulette(resultLabel, success || isStat);
+    } else if (!c.isBot && typeof NET !== 'undefined' && NET.active && NET.isHost) {
+      // 참가자에게 결과 알림 (룰렛 연출은 방장 화면에만 있음)
+      NET.sendToPeer(c.id, { type: 'dramatic', text: resultLabel, color: success || isStat ? '#d97706' : '#78350f', sub: '🃏 황금 카드' });
     }
 
     const applyResult = () => {

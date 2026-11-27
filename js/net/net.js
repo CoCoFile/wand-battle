@@ -27,6 +27,7 @@ const NET = {
       return;
     }
     this.cleanup();
+    if ($('#chk-golden-only')) $('#chk-golden-only').disabled = false; // 방장만 바꿀 수 있음
     this.active = true;
     this.isHost = true;
     this.roomCode = this.genCode();
@@ -120,7 +121,7 @@ const NET = {
   broadcastLobby() {
     UI.renderLobbyPlayers();
     UI.renderLobbyMode();
-    this.broadcast({ type: 'lobby', players: this.players, matchType: this.matchType, difficulty: ENGINE.difficulty });
+    this.broadcast({ type: 'lobby', players: this.players, matchType: this.matchType, difficulty: ENGINE.difficulty, goldenOnly: !!$('#chk-golden-only')?.checked });
   },
 
   broadcast(msg) {
@@ -168,11 +169,14 @@ const NET = {
       this.players = Array.isArray(msg.players) ? msg.players : [];
       if (msg.matchType === 'party' || msg.matchType === 'versus') this.matchType = msg.matchType;
       if (CONFIG.DIFFICULTY[msg.difficulty]) ENGINE.difficulty = msg.difficulty;
+      const g = $('#chk-golden-only');
+      if (g) { g.checked = msg.goldenOnly === true; g.disabled = true; }
       UI.renderLobbyPlayers();
       UI.renderLobbyMode();
     } else if (msg.type === 'start') {
       if (msg.matchType === 'party' || msg.matchType === 'versus') this.matchType = msg.matchType;
       if (CONFIG.DIFFICULTY[msg.difficulty]) ENGINE.difficulty = msg.difficulty;
+      ENGINE.goldenOnly = msg.goldenOnly === true;
       this.clientChoiceQueue = [];
       ENGINE.world = null;
       this.enterMatchScreen();

@@ -230,6 +230,8 @@ const UI = {
       }
     }
 
+    if (NET.matchType === 'party' && ENGINE.mode === 'online') this.renderDmgMeter();
+
     const skillsBar = $('#hud-skills-bar');
     if (skillsBar) {
       const html = this.buildBadgesHtml(me, false);
@@ -238,6 +240,40 @@ const UI = {
         skillsBar.dataset.html = html;
       }
     }
+  },
+
+  // 📊 딜량표: 우리 팀(파티) 플레이어·봇 누적 피해, 많은 순
+  dmgRows() {
+    const w = ENGINE.world;
+    if (!w) return [];
+    const me = ENGINE.getLocalChar();
+    const team = me ? me.team : 1;
+    const rows = w.chars.filter((c) => c.team === team && !c.isSmallMob).map((c) => ({ id: c.id, name: c.name, dmg: Number(c.dmgDealt) || 0, me: c.isLocal || c.id === ENGINE.localId }));
+    rows.sort((a, b) => b.dmg - a.dmg);
+    return rows;
+  },
+
+  dmgTableHtml(rows, big = false) {
+    const top = Math.max(1, ...rows.map((r) => r.dmg));
+    const total = Math.max(1, rows.reduce((s, r) => s + r.dmg, 0));
+    const fmt = (v) => (v >= 10000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v)));
+    return `<div class="text-[10px] font-black text-slate-500 mb-1">📊 딜량</div>` + rows.map((r, i) => `
+      <div class="mb-1">
+        <div class="flex justify-between gap-1 ${big ? 'text-xs' : 'text-[10px]'} font-black ${r.me ? 'text-amber-700' : 'text-slate-800'}">
+          <span class="truncate">${i === 0 ? '👑 ' : ''}${escapeHtml(r.name)}</span>
+          <span class="shrink-0">${fmt(r.dmg)} · ${Math.round((r.dmg / total) * 100)}%</span>
+        </div>
+        <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden"><div class="h-full ${r.me ? 'bg-amber-400' : 'bg-sky-500'}" style="width:${(r.dmg / top) * 100}%"></div></div>
+      </div>`).join('');
+  },
+
+  renderDmgMeter() {
+    const el = $('#dmg-meter');
+    if (!el || el.classList.contains('hidden')) return;
+    const now = performance.now();
+    if (this.dmgMeterAt && now - this.dmgMeterAt < 500) return;   // 0.5초마다
+    this.dmgMeterAt = now;
+    el.innerHTML = this.dmgTableHtml(this.dmgRows());
   },
 
   // 보유 마법(Lv) · 궁극기 · (withStats면) 스탯 선택 횟수 뱃지 HTML. 데이터는 CONFIG 기준이라 이스케이프 불필요
@@ -504,6 +540,12 @@ const UI = {
     $('#btn-on-rematch').classList.toggle('hidden', !NET.isHost);
     $('#on-over-hint').classList.toggle('hidden', NET.isHost);
     this.renderBuildSummary($('#on-over-build'), ENGINE.getLocalChar());
+    const dmgBox = $('#on-over-dmg');                                 // 📊 파티 딜량 결산
+    if (dmgBox) {
+      const party = NET.matchType === 'party';
+      dmgBox.classList.toggle('hidden', !party);
+      if (party) dmgBox.innerHTML = this.dmgTableHtml(this.dmgRows(), true);
+    }
     // 기록 저장 (경기당 1번)
     if (!ENGINE.recordSubmitted) {
       ENGINE.recordSubmitted = true;

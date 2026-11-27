@@ -23,6 +23,8 @@ Object.assign(ENGINE, {
         if (!this.paused) {
           this.openNextSoloChoice();
         }
+      } else if (this.mode === 'online' && this.goldenOnly) {
+        SPELLS.resolveGoldenCard(c, world);   // 🃏 황카만 뽑기 모드: 레벨업 = 황금카드 자동 추첨
       } else if (this.mode === 'online') {
         if (c.isBot) {
           const botChoices = SPELLS.generateChoices(c);
@@ -70,6 +72,9 @@ Object.assign(ENGINE, {
     if (finalDmg <= 0) {
       if (world) world.texts.push({ x: target.x + rand(-14, 14), y: target.y - target.r - 6, text: `🫧${Math.round(beforeBarrier)}`, color: '#0891b2', life: 0.5 });
       return;
+    }
+    if (attacker && attacker !== target && attacker.team !== target.team && !target.isSmallMob) {
+      attacker.dmgDealt = (attacker.dmgDealt || 0) + Math.min(finalDmg, Math.max(0, target.hp)); // 📊 딜량표
     }
     target.hp -= finalDmg;
     target.hurtTimer = 0.14;

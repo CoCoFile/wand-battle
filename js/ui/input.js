@@ -114,6 +114,8 @@ Object.assign(UI, {
       if (document.hidden && ENGINE.mode === 'solo') ENGINE.togglePause(true);
     });
 
+    $('#chk-golden-only').addEventListener('change', () => { if (NET.isHost) NET.broadcastLobby(); }); // 🃏 황카 모드
+
     $('#btn-quit-game').addEventListener('click', () => {
       if (ENGINE.mode === 'online') {
         NET.leaveRoom();

@@ -11,7 +11,10 @@ function gameLoop(ts) {
     for (let i = 0; i < ENGINE.soloSpeed; i++) ENGINE.update(dt);
     UI.updateHUD();
   } else if (ENGINE.mode === 'online' && NET.isHost) {
-    ENGINE.update(dt);
+    // 온라인은 1.5배속 (CONFIG.ONLINE_SPEED): 작은 dt 두 번으로 나눠 돌림 (충돌 뚫림 방지)
+    const sp = CONFIG.ONLINE_SPEED || 1;
+    ENGINE.update(dt * sp / 2);
+    ENGINE.update(dt * sp / 2);
     NET.tickSync(dt);
     UI.updateHUD();
   }
