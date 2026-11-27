@@ -261,12 +261,14 @@ Object.assign(SPELLS, {
       if (c.lzCd > w.time) return;                            // 날아가는 중 레이저: 부메랑 여러 개라도 0.2초에 한 번만
       c.lzCd = w.time + 0.2;
     }
-    const tg = this.nearestEnemy(c, w, p.x, p.y);
-    const base = tg ? Math.atan2(tg.y - p.y, tg.x - p.x) : rand(0, Math.PI * 2);
+    // 11/27z8: 유도 X — 벽 튕김 빔은 튕겨 나가는 방향, 날아가는 중 빔은 진행 방향의 옆(좌우 번갈아)
+    const dir = Math.atan2(p.vy || 0, p.vx || 1);
+    let base = dir;
+    if (!bounce) { p.lzSide = -(p.lzSide || 1); base = dir + p.lzSide * Math.PI / 2; }
     const lv = Math.min(Math.max(1, c.magics?.laser || 1), CONFIG.MAX_SHOTS - 1);
     const width = (6 + lv * 1.4) * (c.areaMult || 1);        // 11/27z2: 내 레이저와 같은 굵기, 벽까지
     for (let k = 0; k < n; k++) {
-      this.comboBeam(c, w, p.x, p.y, base + (k - (n - 1) / 2) * 0.25, 1500, width, this.baseDmg(c, 'laser') * (bounce ? 0.14 : 0.3), '#a855f7', true); // 벽 튕김 빔은 자주 나가서 ×0.14, 굵기 같아져서 날아가는 빔도 ×0.3
+      this.comboBeam(c, w, p.x, p.y, base + (k - (n - 1) / 2) * 0.25, 1500, width, this.baseDmg(c, 'laser') * (bounce ? 0.2 : 0.42), '#a855f7', true); // 11/27z8: 유도 빼서 상향 — 튕김 ×0.2, 날아가는 중 ×0.42
     }
   },
 
