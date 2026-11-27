@@ -2,7 +2,7 @@
 // 크기·속도·체력·이름은 여기서 조정. ※ 마법별 피해·속도 등 수치는 js/spells/casters.js, 쿨타임은 js/spells/spells.js(baseCooldown)에 있음
 
 const CONFIG = {
-  GAME_VERSION: '2026.11.27b', // 11/27b: 리롤 한 판 1번(금화 2번), 스탯 카드 수치 숨김 / 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
+  GAME_VERSION: '2026.11.27c', // 11/27c: 마법 7종 평균딜 맞춤 / 11/27b: 리롤 한 판 1번(금화 2번), 스탯 카드 수치 숨김 / 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
   // 플레이 기록 수집 주소 (구글 Apps Script 웹 앱 /exec URL). 비워두면 수집 안 함
   TELEMETRY_URL: 'https://script.google.com/macros/s/AKfycbyCRCqR5cZPodxsXFBUpEwNUSXvQBr1qMMGUGpo5E41HJxSlZWXWgDIqgjhjf8iHdieVQ/exec',
 
@@ -179,11 +179,11 @@ const CONFIG = {
   // ── 회전 칼날 ───────────────────────────────
   // 칼날 수 = min(MAX_SHOTS, Lv+1), 같은 적은 hitGap초에 1번만 맞음
   // 쿨타임 카드 → 회전 빨라짐 (÷cdrMult), 범위 카드 → 크기·궤도 절반만 적용
-  BLADES: { orbit: 62, len: 22, omega: 2.6, hitGap: 0.35, dmg: [26, 10], enemyMult: 0.3 }, // orbit = 몸 바깥에서 궤도까지(px), enemyMult = 솔로·파티 적이 쓸 때 피해 배율 (몸에 닿기 쉬워서)
+  BLADES: { orbit: 62, len: 22, omega: 2.6, hitGap: 0.35, dmg: [4, 20], enemyMult: 0.3 },  // 11/27c 평균딜 맞춤: 26+10lv → 4+20lv (같은 적 연타 제한이 있어서 레벨 기울기를 크게) // orbit = 몸 바깥에서 궤도까지(px), enemyMult = 솔로·파티 적이 쓸 때 피해 배율 (몸에 닿기 쉬워서)
 
   // ── 빙결 장판 ───────────────────────────────
   // 방깍(받는 피해 증가) = shredMax × Lv/(Lv+4), 감속 slow
-  FROST: { slow: 0.6, shredMax: 0.4, dmg: [5, 1.5] },
+  FROST: { slow: 0.6, shredMax: 0.4, dmg: [5.4, 0.02] }, // 11/27c 평균딜 맞춤: 5+1.5lv → 5.4 고정 (장판 크기·개수·방깍이 레벨 따라 커짐)
 
   // ── 보스 필살기 (보스마다 1개, 경고 표시 후 발동 — 자동 이동은 안 피함: 운빨) ──
   // dmg = k × 보스 공격력 배율 × 난이도 ultMult. cd = 쿨타임(초, 난이도 enemyCdr 곱함), first = 등장 후 첫 사용
