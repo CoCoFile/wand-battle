@@ -134,6 +134,7 @@ Object.assign(NET, {
         angle: Number(c.angle.toFixed(2)), alive: c.alive,
         magics: c.magics,
         ultimates: c.ultimates,
+        ultLv: c.ultLv,
         statCounts: c.statCounts,
         shieldAngle: Number((c.shieldAngle || 0).toFixed(2)),
         shieldCooldowns: c.shieldCooldowns,

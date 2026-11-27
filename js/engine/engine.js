@@ -184,6 +184,7 @@ const ENGINE = {
       shieldCooldowns: [],
       recentShieldSkills: {},
       ultimates: [],
+      ultLv: {},        // 🃏 궁극기 중복 횟수 {id: n} — 겹칠수록 개수·피해 ↑ (×n 표시)
       ultCooldowns: {},
       stunTimer: 0,
       slowTimer: 0,

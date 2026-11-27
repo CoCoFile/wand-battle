@@ -111,7 +111,7 @@ const UI = {
     const sub = $('#roulette-sub');
     if (!ov || !reel) return;
 
-    const samples = ['⏱ 멈춰!', '💩 똥!똥!똥!', '⚡ 파괴 광선', '💩 똥!똥!똥!', '🌀 혼돈! 파괴! 망각!', '💩 똥!똥!똥!', '💥 폭발은 예술이다!'];
+    const samples = ['⏱ 멈춰!', '💩 똥!똥!똥!', '⚡ 파괴 광선', '📈 스탯 +1', '🌀 혼돈! 파괴! 망각!', '💩 똥!똥!똥!', '💥 폭발은 예술이다!'];
     let tick = 0;
     ov.classList.remove('hidden');
     sub.textContent = '대박? 똥?';
@@ -252,7 +252,8 @@ const UI = {
     for (const uid of (c.ultimates || [])) {
       const u = CONFIG.ULTIMATES[uid];
       if (!u) continue;
-      badges.push(`<span class="${base} border-amber-500 bg-amber-100 text-amber-900">${u.icon} ${u.name}</span>`);
+      const n = Number((c.ultLv || {})[uid]) || 1;
+      badges.push(`<span class="${base} border-amber-500 bg-amber-100 text-amber-900">${u.icon} ${u.name}${n > 1 ? ` ×${n}` : ''}</span>`);
     }
     if (withStats) {
       for (const [sid, n] of Object.entries(c.statCounts || {})) {

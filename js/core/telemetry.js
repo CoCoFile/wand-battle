@@ -36,7 +36,7 @@ const TELEMETRY = {
       gameSec: Math.round(ENGINE.world?.time || 0),
       magics: list(c.magics),
       stats: list(c.statCounts),
-      ultimates: (c.ultimates || []).join(','),
+      ultimates: (c.ultimates || []).map((u) => ((c.ultLv || {})[u] > 1 ? `${u}:${c.ultLv[u]}` : u)).join(','),
       players: extra.players || 1,
       manual: ENGINE.mode === 'solo' ? !!ENGINE.manualControl : '',
       speed: ENGINE.mode === 'solo' ? ENGINE.soloSpeed : '',

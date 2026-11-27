@@ -112,30 +112,43 @@ Object.assign(SPELLS, {
     c.cdrMult = c.baseCdr * (1 - Math.min(V.cdrMax, cdrRed));
   },
 
-  // 황금 카드 50:50 추첨 + 슬롯 룰렛 연출
+  // 황금 카드: 궁극기 50% / 랜덤 스탯 +1장 20% / 똥 30% (11/27i: 똥 50→30%) + 슬롯 룰렛 연출
+  // 이미 있는 궁극기가 또 나오면 ×2, ×3 … (개수·피해 ↑, ultimates.js)
   resolveGoldenCard(c, world) {
-    const success = Math.random() < 0.5;
+    const roll = Math.random();
+    const success = roll < 0.5;
+    const isStat = !success && roll < 0.7;
     const ultKeys = Object.keys(CONFIG.ULTIMATES);
     const pickedUlt = ultKeys[randInt(0, ultKeys.length - 1)];
+    const statKeys = Object.keys(CONFIG.STATS);
+    const pickedStat = statKeys[randInt(0, statKeys.length - 1)];
+    const nextLv = ((c.ultLv || {})[pickedUlt] || 0) + 1;
     const resultLabel = success
-      ? `🎉 ${CONFIG.ULTIMATES[pickedUlt].name}`
-      : '💩 꽝!';
+      ? `🎉 ${CONFIG.ULTIMATES[pickedUlt].name}${nextLv > 1 ? ` ×${nextLv}` : ''}`
+      : isStat
+        ? `📈 ${CONFIG.STATS[pickedStat].icon} ${CONFIG.STATS[pickedStat].name} +1`
+        : '💩 꽝!';
 
     if (c.isLocal) {
-      UI.playRoulette(resultLabel, success);
+      UI.playRoulette(resultLabel, success || isStat);
     }
 
     const applyResult = () => {
       if (!c.alive) return;
       if (success) {
-        if (!c.ultimates.includes(pickedUlt)) {
-          c.ultimates.push(pickedUlt);
-        }
+        if (!c.ultLv) c.ultLv = {};
+        if (!c.ultimates.includes(pickedUlt)) c.ultimates.push(pickedUlt);
+        c.ultLv[pickedUlt] = (c.ultLv[pickedUlt] || 0) + 1;
         c.ultCooldowns[pickedUlt] = 0.4;
         SFX.play('golden');
         if (world) {
-          world.texts.push({ x: c.x, y: c.y - c.r - 22, text: `${CONFIG.ULTIMATES[pickedUlt].name}!`, color: '#d97706', life: 1.4 });
+          const n = c.ultLv[pickedUlt];
+          world.texts.push({ x: c.x, y: c.y - c.r - 22, text: `${CONFIG.ULTIMATES[pickedUlt].name}${n > 1 ? ` ×${n}` : ''}!`, color: '#d97706', life: 1.4 });
         }
+      } else if (isStat) {
+        this.applyChoice(c, { type: 'stat', id: pickedStat }, world);
+        SFX.play('golden');
+        if (world) world.texts.push({ x: c.x, y: c.y - c.r - 22, text: `${CONFIG.STATS[pickedStat].name} +1`, color: '#16a34a', life: 1.4 });
       } else {
         c.poopTimer = 5.0;
         if (c.isLocal) {
