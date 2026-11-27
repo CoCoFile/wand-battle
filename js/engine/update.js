@@ -495,6 +495,11 @@ Object.assign(ENGINE, {
               const by = t.y + Math.sin(ang) * CONFIG.SHIELD_R[0];
               if (SPELLS.tryBlockPoint(t, bx, by, w, z.skillUid)) continue;
             }
+            // 중첩 X: 같은 사람이 깐 같은 종류 장판은 여러 개 겹쳐 있어도 0.3초에 한 번만 피해 (11/27f)
+            const stackKey = `${z.ownerId}:${z.kind}`;
+            if (!t.zoneHits) t.zoneHits = {};
+            if ((t.zoneHits[stackKey] ?? -9) > w.time - 0.3) continue;
+            t.zoneHits[stackKey] = w.time;
             if (z.kind === 'frost') { // 🧊 감속 + 받는 피해 증가 (장판 안에 있는 동안 + 잠깐)
               t.slowTimer = Math.max(t.slowTimer || 0, 0.5);
               t.slowMult = Math.min(t.slowMult || 1, CONFIG.FROST.slow);
