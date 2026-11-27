@@ -9,8 +9,16 @@ Object.assign(SPELLS, {
     // 연출 (11/27z3): 화면 잠깐 어둡게 + 궁극기 이름 크게. 파괴 광선은 '한방 컷' 배너가 덮을 수 있음
     const U = CONFIG.ULTIMATES[sid];
     if (U) {
-      world.ultDim = 0.55;
-      UI.broadcastDramatic(`${U.icon} ${U.name}${n > 1 ? ` ×${n}` : ''}`, U.color, caster.name, 'ult');
+      // 11/27z4: 처음 쓸 때(그리고 ×2, ×3 처음)만 크게, 그 뒤로는 화면 아래 작게
+      const label = `${U.icon} ${U.name}${n > 1 ? ` ×${n}` : ''}`;
+      if (!caster.ultShown) caster.ultShown = {};
+      if ((caster.ultShown[sid] || 0) < n) {
+        caster.ultShown[sid] = n;
+        world.ultDim = 0.55;
+        UI.broadcastDramatic(label, U.color, caster.name, 'ult');
+      } else {
+        UI.broadcastUltMini(label, U.color, caster.name);
+      }
     }
     const dmgUp = 1 + 0.3 * (n - 1);
     if (sid === 'stop') {

@@ -92,6 +92,25 @@ const UI = {
     }
   },
 
+  // 🃏 궁극기 두 번째부터: 화면 아래 작은 알림 (최대 3개 쌓임)
+  showUltMini(text, color = '#f59e0b', who = '') {
+    const box = $('#ult-mini');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.className = 'ult-mini-pill';
+    el.style.borderColor = color;
+    el.innerHTML = `<span style="color:${color}">${escapeHtml(text)}</span>${who ? `<small>${escapeHtml(who)}</small>` : ''}`;
+    box.appendChild(el);
+    while (box.children.length > 3) box.firstElementChild.remove();
+    setTimeout(() => el.classList.add('out'), 1300);
+    setTimeout(() => el.remove(), 1700);
+  },
+
+  broadcastUltMini(text, color, who = '') {
+    this.showUltMini(text, color, who);
+    if (NET.active && NET.isHost) NET.broadcast({ type: 'ultMini', text, color, who });
+  },
+
   // 💎 잭팟: 화면 금색 번쩍
   goldFlash() {
     const el = $('#gold-flash');
