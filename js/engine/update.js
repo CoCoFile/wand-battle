@@ -524,7 +524,7 @@ Object.assign(ENGINE, {
               t.shred = Math.max(t.shredTimer > 0 ? (t.shred || 0) : 0, z.shred || 0);
               t.shredTimer = 0.5;
             }
-            const zMult = z.kind === 'poison' && attacker ? SPELLS.poisonTickMult(attacker, t) : 1; // 🔗 냉동 독살
+            const zMult = z.kind === 'poison' && attacker ? SPELLS.poisonTickMult(attacker, t, z) : 1; // 🔗 냉동 독살
             this.damageChar(t, z.dmg * zMult, attacker, w);
           }
         }

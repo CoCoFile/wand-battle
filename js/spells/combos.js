@@ -153,11 +153,10 @@ Object.assign(SPELLS, {
       w.zones.push({ kind: 'poison', stack: 'combo', skillUid: ++w.uidSeq, ownerId: c.id, team: c.team, x, y, r: zr,
         dmg: this.baseDmg(c, 'poison') * (tf >= 3 ? 3.6 : 2.8), tick: 0.1, life, maxLife: life, color: '#16A34A' });
       if (tf >= 3) {
-        for (const t of this.enemiesOf(c, w)) {
-          if (dist(x, y, t.x, t.y) > r + t.r) continue;
-          const inPoison = w.zones.some((z) => z.kind === 'poison' && z.ownerId === c.id && dist(z.x, z.y, t.x, t.y) <= z.r + t.r);
-          if (inPoison) this.comboBlast(c, w, t.x, t.y, 80 * (c.areaMult || 1), dmg * 1.3, '#84cc16', null);
-        }
+        // 11/27y: 적 1명마다 폭발 → 적 수² 로 딜이 터지던 버그. 폭발 1번당 추가 폭발 1번만
+        const myPoison = w.zones.filter((z) => z.kind === 'poison' && z.ownerId === c.id);
+        const any = this.enemiesOf(c, w).some((t) => dist(x, y, t.x, t.y) <= r + t.r && myPoison.some((z) => dist(z.x, z.y, t.x, t.y) <= z.r + t.r));
+        if (any) this.comboBlast(c, w, x, y, Math.max(r, 80 * (c.areaMult || 1)), dmg * 1.3, '#84cc16', null);
       }
     }
   },
@@ -283,10 +282,11 @@ Object.assign(SPELLS, {
   },
 
   // 🧪 독 장판 틱: 🧊🧪 냉동 독살 — 빙결(방깍) 중인 적은 독 2배, 2단계+ 독 장판도 감속
-  poisonTickMult(c, t) {
+  poisonTickMult(c, t, z) {
     const tf = this.comboTier(c, 'frostpoison');
     if (tf <= 0) return 1;
     if (tf >= 2) { t.slowTimer = Math.max(t.slowTimer || 0, 0.4); t.slowMult = Math.min(t.slowMult || 1, 0.7); }
+    if (z && z.stack === 'combo') return 1;                  // 11/27y: 조합 장판(화염병·처치 장판)엔 ×2 안 겹침
     return t.shredTimer > 0 ? 2 : 1;
   },
 
