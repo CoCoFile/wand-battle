@@ -88,6 +88,7 @@ Object.assign(UI, {
     $('#btn-rem-bot').addEventListener('click', () => NET.removeBot());
     $('#btn-leave-lobby').addEventListener('click', () => NET.leaveRoom());
     $('#btn-start-online').addEventListener('click', () => NET.startGame());
+    $('#btn-spectate').addEventListener('click', () => NET.toggleSpectate());
 
     $('#btn-sound').addEventListener('click', () => {
       SFX.enabled = !SFX.enabled;

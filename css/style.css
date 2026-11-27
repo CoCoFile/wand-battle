@@ -125,3 +125,8 @@ html, body {
 .ult-mini-pill small { margin-top: 2px; padding: 1px 10px; border-radius: 999px; background: rgba(15, 23, 42, .88);
   color: #fff; font-size: clamp(11px, 1.6vw, 13px); font-weight: 800; }
 .ult-mini-pill.out { opacity: 0; transform: translateY(10px); }
+
+/* 👀 관전 (11/27z9) */
+.spec-btn { background: #ddd6fe; color: #4c1d95; }
+.spec-btn:hover { background: #ede9fe; }
+.spec-tag { background: #ede9fe; color: #5b21b6; }

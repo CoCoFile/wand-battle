@@ -12,6 +12,35 @@ const NET = {
   clientChoiceQueue: [],
   syncTimer: 0,
   matchType: 'versus', // 'versus'(대전) | 'party'(파티 협동)
+  MAX_PLAYERS: 6,      // 실제로 싸우는 사람 (관전자 제외)
+  MAX_TOTAL: 12,       // 관전자 포함 (11/27z9)
+
+  // 👀 관전 (11/27z9): 관전자는 캐릭터 없이 경기 화면만 봄. 경기 중에 들어온 사람은 자동 관전 → 대기실로 돌아가면 참가자로
+  activePlayers() { return this.players.filter((p) => !p.spectator); },
+  amSpectator() { return !!this.players.find((p) => p.id === ENGINE.localId)?.spectator; },
+  isRunning() {
+    return ENGINE.mode === 'online' && ENGINE.world && !ENGINE.runEnded && $('#screen-game') && !$('#screen-game').classList.contains('hidden');
+  },
+  // 대기실 '👀 관전하기' 버튼
+  toggleSpectate() {
+    if (!this.active) return;
+    const me = this.players.find((p) => p.id === ENGINE.localId);
+    const want = !(me && me.spectator);
+    if (this.isHost) this.setSpectator(ENGINE.localId, want);
+    else if (this.hostConn && this.hostConn.open) this.hostConn.send({ type: 'spectate', on: want });
+  },
+  setSpectator(id, on) {
+    const p = this.players.find((x) => x.id === id);
+    if (!p || p.isBot) return;
+    if (!on && this.activePlayers().length >= this.MAX_PLAYERS) {
+      if (id === ENGINE.localId) UI.toast('참가 자리가 꽉 찼어요 (최대 6명)');
+      else this.sendToPeer(id, { type: 'toast', text: '참가 자리가 꽉 찼어요 (최대 6명)' });
+      return;
+    }
+    p.spectator = !!on;
+    p.midJoin = false;
+    this.broadcastLobby();
+  },
 
   genCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -129,7 +158,7 @@ const NET = {
   },
 
   addBot() {
-    if (!this.isHost || this.players.length >= 6) return;
+    if (!this.isHost || this.activePlayers().length >= this.MAX_PLAYERS) return;
     const idx = this.players.filter((p) => p.isBot).length + 1;
     this.players.push({
       id: `bot_${Date.now()}_${idx}`,
@@ -172,27 +201,37 @@ const NET = {
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'join') {
       if (this.conns.has(conn.peer)) return; // 중복 join 무시
-      if (this.players.length >= 6) {
+      if (this.players.length >= this.MAX_TOTAL) {
         conn.send({ type: 'full' });
         return;
       }
       this.conns.set(conn.peer, conn);
-      // 경기 중에 들어오면: 대기실에서 기다렸다가 다음 판부터 (11/27u)
-      const inGame = ENGINE.mode === 'online' && ENGINE.world && !ENGINE.runEnded && $('#screen-game') && !$('#screen-game').classList.contains('hidden');
-      if (inGame) conn.send({ type: 'wait' });
+      // 경기 중에 들어오면: 이번 판은 관전, 대기실로 돌아가면 참가 (11/27z9 — 전엔 대기실에서 기다리기만 했음)
+      const inGame = this.isRunning();
+      const seatFull = this.activePlayers().length >= this.MAX_PLAYERS;
       this.players.push({
         id: conn.peer,
         name: sanitizeName(msg.name, '참가자'),
         relics: RELICS.sanitize(msg.relics),
         title: sanitizeTitle(msg.title),
         isHost: false,
-        isBot: false
+        isBot: false,
+        spectator: inGame || seatFull,
+        midJoin: inGame && !seatFull
       });
       this.broadcastLobby();
+      if (inGame) {
+        conn.send({ type: 'start', matchType: this.matchType, difficulty: ENGINE.difficulty, goldenOnly: ENGINE.goldenOnly, spectate: true });
+        this.forceFull = true; // 다음 스냅샷에 캐릭터 정보 전부
+      } else if (seatFull) {
+        conn.send({ type: 'toast', text: '참가 자리가 꽉 차서 관전으로 들어왔어요' });
+      }
     } else if (msg.type === 'pick') {
       if (Number.isInteger(msg.idx) && msg.idx >= 0 && msg.idx < 3) ENGINE.applyOnlinePick(conn.peer, msg.idx);
     } else if (msg.type === 'reroll') {
       ENGINE.rerollOnlinePick(conn.peer);
+    } else if (msg.type === 'spectate') {
+      if (!this.isRunning()) this.setSpectator(conn.peer, msg.on === true);
     }
   },
 
@@ -206,6 +245,8 @@ const NET = {
       this.leaveRoom();
     } else if (msg.type === 'wait') {
       UI.toast('지금 게임 중이에요 — 이번 판이 끝나면 같이 해요');
+    } else if (msg.type === 'toast') {
+      if (typeof msg.text === 'string') UI.toast(msg.text.slice(0, 80));
     } else if (msg.type === 'lobby') {
       this.players = Array.isArray(msg.players) ? msg.players : [];
       if (msg.matchType === 'party' || msg.matchType === 'versus') this.matchType = msg.matchType;
@@ -221,6 +262,7 @@ const NET = {
       this.clientChoiceQueue = [];
       ENGINE.world = null;
       this.enterMatchScreen();
+      if (msg.spectate) UI.toast('👀 게임 중이라 관전으로 들어왔어요 — 이번 판 끝나면 같이 해요');
     } else if (msg.type === 'state') {
       this.applySnapshot(msg.snap);
     } else if (msg.type === 'fragment') {

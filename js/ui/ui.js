@@ -43,16 +43,20 @@ const UI = {
     const list = $('#lobby-player-list');
     if (!list) return;
     list.innerHTML = '';
-    NET.players.forEach((p, idx) => {
+    const sb = $('#btn-spectate');
+    if (sb) sb.textContent = NET.amSpectator() ? '🎮 참가하기' : '👀 관전하기';
+    // 참가자 먼저, 관전자는 뒤에 (색 번호는 참가자 순서대로)
+    const ordered = [...NET.players.filter((p) => !p.spectator), ...NET.players.filter((p) => p.spectator)];
+    ordered.forEach((p, idx) => {
       const item = document.createElement('div');
       item.className = 'flex items-center justify-between px-3 py-2 rounded-xl bg-white border-2 border-slate-900';
       item.innerHTML = `
         <div class="flex items-center gap-2 min-w-0">
-          <span class="w-3.5 h-3.5 rounded-full border border-slate-900 shrink-0" style="background:${CONFIG.COLORS[idx % CONFIG.COLORS.length]}"></span>
+          <span class="w-3.5 h-3.5 rounded-full border border-slate-900 shrink-0" style="background:${p.spectator ? '#cbd5e1' : CONFIG.COLORS[idx % CONFIG.COLORS.length]}"></span>
           <span class="text-xs sm:text-sm font-black text-slate-900 truncate">${titleHtml(p.title)}${escapeHtml(p.name)}</span>
         </div>
-        <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${p.isHost ? 'bg-amber-200 text-amber-900' : p.isBot ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}">
-          ${p.isHost ? '방장' : p.isBot ? 'AI 봇' : '플레이어'}
+        <span class="text-[10px] font-black px-2 py-0.5 rounded-md shrink-0 ${p.spectator ? 'spec-tag' : p.isHost ? 'bg-amber-200 text-amber-900' : p.isBot ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}">
+          ${p.spectator ? `👀 관전${p.isHost ? '(방장)' : p.midJoin ? '(다음 판 참가)' : ''}` : p.isHost ? '방장' : p.isBot ? 'AI 봇' : '플레이어'}
         </span>
       `;
       list.appendChild(item);
@@ -256,7 +260,34 @@ const UI = {
   updateHUD() {
     const w = ENGINE.world;
     const me = ENGINE.getLocalChar();
-    if (!w || !me) return;
+    if (!w) return;
+    if (!me) { // 👀 관전자: 위 정보·보스바·딜량표만
+      if (ENGINE.mode !== 'online') return;
+      const stageMode = ENGINE.isParty();
+      $('#hud-stage-info').textContent = stageMode ? `STAGE ${Math.max(1, ENGINE.stage)}` : `ROOM ${NET.roomCode}`;
+      $('#hud-alive-info').textContent = stageMode
+        ? `적 ${w.chars.filter((c) => c.alive && c.team !== 1 && !c.isSmallMob).length}`
+        : `생존 ${w.chars.filter((c) => c.alive && !c.isSmallMob).length}`;
+      $('#hud-lv-text').textContent = '👀';
+      $('#hud-hp-text').textContent = '관전 중';
+      $('#hud-hp-bar').style.width = '0%';
+      $('#hud-xp-bar').style.width = '0%';
+      const boss = w.chars.find((c) => c.isBoss && c.alive);
+      const bossBar = $('#boss-bar');
+      if (bossBar) {
+        bossBar.classList.toggle('hidden', !boss);
+        if (boss) {
+          const pct = clamp(boss.hp / boss.maxHp, 0, 1);
+          $('#boss-bar-name').textContent = boss.name;
+          $('#boss-bar-hp').textContent = `${Math.ceil(pct * 100)}%`;
+          $('#boss-bar-fill').style.width = `${pct * 100}%`;
+        }
+      }
+      if (NET.matchType === 'party') this.renderDmgMeter();
+      const sk = $('#hud-skills-bar');
+      if (sk && sk.dataset.html !== 'spec') { sk.innerHTML = ''; sk.dataset.html = 'spec'; }
+      return;
+    }
 
     const aliveCount = w.chars.filter((c) => c.alive && !c.isSmallMob).length;
     const stageMode = ENGINE.mode === 'solo' || ENGINE.isParty();
@@ -631,7 +662,7 @@ const UI = {
       if (party) dmgBox.innerHTML = this.dmgTableHtml(this.dmgRows(), true);
     }
     // 기록 저장 (경기당 1번)
-    if (!ENGINE.recordSubmitted) {
+    if (!ENGINE.recordSubmitted && ENGINE.getLocalChar()) { // 👀 관전자는 기록·조각·텔레메트리 없음
       ENGINE.recordSubmitted = true;
       const me = ENGINE.getLocalChar();
       const id = PROFILE.currentId();

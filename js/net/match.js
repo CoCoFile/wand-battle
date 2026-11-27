@@ -9,28 +9,29 @@ Object.assign(NET, {
   startGame() {
     if (!this.isHost) return;
     const party = this.matchType === 'party';
-    if (this.players.length < (party ? 1 : 2)) {
-      UI.toast('2명 이상 필요 (봇 추가 가능)');
+    const actives = this.activePlayers();                    // 👀 관전자는 캐릭터 없음
+    if (actives.length < (party ? 1 : 2)) {
+      UI.toast(party ? '참가자가 1명 이상 필요해요 (관전 말고)' : '2명 이상 필요 (봇 추가 가능)');
       return;
     }
     ENGINE.goldenOnly = !!$('#chk-golden-only')?.checked;   // 🃏 황카만 뽑기 모드
     this.broadcast({ type: 'start', matchType: this.matchType, difficulty: ENGINE.difficulty, goldenOnly: ENGINE.goldenOnly });
     if (party) {
-      ENGINE.startParty(this.players);
+      ENGINE.startParty(actives);
     } else {
-      this.startVersusWorld();
+      this.startVersusWorld(actives);
     }
     this.enterMatchScreen();
   },
 
   // 대전(개인전) 월드 구성
-  startVersusWorld() {
+  startVersusWorld(list = this.activePlayers()) {
     ENGINE.mode = 'online';
     ENGINE.paused = false;
     const w = ENGINE.createEmptyWorld();
 
-    this.players.forEach((p, idx) => {
-      const ang = (Math.PI * 2 * idx) / this.players.length;
+    list.forEach((p, idx) => {
+      const ang = (Math.PI * 2 * idx) / list.length;
       const c = ENGINE.makeChar({
         id: p.id,
         name: p.name,
@@ -105,6 +106,9 @@ Object.assign(NET, {
       ? `파티 · ${(CONFIG.DIFFICULTY[ENGINE.difficulty] || {}).label || ''}`
       : '대전';
     if (ENGINE.goldenOnly) $('#hud-mode-badge').textContent += ' · 🃏황카';
+    const spec = this.amSpectator();
+    if (spec) $('#hud-mode-badge').textContent = `👀 관전 · ${$('#hud-mode-badge').textContent}`;
+    $('#online-bottom-dock').classList.toggle('hidden', spec);    // 관전자는 선택창 없음
     $('#dmg-meter').classList.toggle('hidden', !party);
     $('#dmg-meter').innerHTML = '';
     $('#hud-mode-badge').className = `px-2 py-0.5 rounded-lg ${party ? 'bg-emerald-500' : 'bg-sky-500'} text-white text-[11px] font-black shrink-0`;
@@ -117,7 +121,12 @@ Object.assign(NET, {
     $('#modal-on-over').classList.add('hidden');
     if (this.isHost) {
       this.broadcast({ type: 'back_lobby' });
+      // 경기 중에 들어와 관전하던 사람은 이제 참가자로 (자리 있으면)
+      for (const p of this.players) {
+        if (p.midJoin) { p.midJoin = false; if (this.activePlayers().length < this.MAX_PLAYERS) p.spectator = false; }
+      }
       UI.openLobby();
+      this.broadcastLobby();
     }
   },
 
@@ -136,7 +145,8 @@ Object.assign(NET, {
     const ci = (col) => { let k = pal.indexOf(col); if (k < 0) { k = pal.length; pal.push(col); } return k; };
     this.syncTick = (this.syncTick || 0) + 1;
     const ids = w.chars.map((c) => c.id).join(',');
-    const full = this.syncTick % 10 === 1 || ids !== this.lastSyncIds; // 고정 정보 포함 (0.5초마다 + 캐릭터가 바뀌면)
+    const full = this.syncTick % 10 === 1 || ids !== this.lastSyncIds || this.forceFull; // forceFull: 관전자 중간 입장
+    this.forceFull = false; // 고정 정보 포함 (0.5초마다 + 캐릭터가 바뀌면)
     this.lastSyncIds = ids;
     const dyn = (c) => ({
       id: c.id, x: ri(c.x), y: ri(c.y), angle: r2(c.angle), hp: ri(c.hp), alive: c.alive,
@@ -186,8 +196,11 @@ Object.assign(NET, {
     for (const [peerId, conn] of this.conns.entries()) {
       if (!conn.open) continue;
       const ch = w.chars.find((c) => c.id === peerId);
-      if (!ch) continue;                       // 경기 중에 들어와서 기다리는 사람은 상태 안 보냄
-      const q = ch ? ch.choiceQueue : [];
+      if (!ch) { // 👀 관전자: 화면만 (선택지 없음)
+        if (this.players.find((p) => p.id === peerId)?.spectator) conn.send({ type: 'state', snap: baseSnap });
+        continue;
+      }
+      const q = ch.choiceQueue;
       const qs = JSON.stringify(q);
       const snap = { ...baseSnap };
       if (this.lastQueueSent.get(peerId) !== qs || full) { snap.myQueue = q; this.lastQueueSent.set(peerId, qs); } // 선택지는 바뀔 때만
@@ -228,7 +241,7 @@ Object.assign(NET, {
     if (this.snapAt) this.snapGap = this.snapGap ? this.snapGap * 0.8 + (now - this.snapAt) * 0.2 : now - this.snapAt;
     this.snapAt = now;
     const prev = new Map((w.chars || []).map((c) => [c.id, c]));
-    w.chars = (snap.chars || []).map((c0) => {
+    w.chars = (snap.chars || []).filter((c0) => snap.full || prev.has(c0.id)).map((c0) => {
       const p = prev.get(c0.id);
       // 고정 정보는 full 스냅샷에만 옴 → 그 사이엔 직전 값 그대로
       let c = c0;

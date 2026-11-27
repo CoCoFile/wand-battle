@@ -138,9 +138,12 @@ Object.assign(ENGINE, {
         UI.broadcastDramatic(`STAGE ${this.stage} 클리어!`, '#16a34a', '쓰러진 동료 부활');
       }
       if (!D.ending && this.stage >= CONFIG.ENDING_STAGE && (this.stage - CONFIG.ENDING_STAGE) % 10 === 0) {
-        NET.broadcast({ type: 'fragment', diff: this.difficulty }); // 🖤 참가자 각자 획득
-        const frag = ACCOUNT.addFragment(this.difficulty);
-        if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);
+        // 🖤 참가자 각자 획득 (👀 관전자 제외)
+        for (const p of NET.activePlayers()) if (!p.isBot && p.id !== this.localId) NET.sendToPeer(p.id, { type: 'fragment', diff: this.difficulty });
+        if (this.getLocalChar()) {
+          const frag = ACCOUNT.addFragment(this.difficulty);
+          if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);
+        }
       }
       world.nextStage = this.stage + 1;
       world.nextStageTimer = CONFIG.PARTY.clearDelay;
