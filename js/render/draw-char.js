@@ -7,6 +7,20 @@ Object.assign(RENDER, {
     // 🗡️ 회전 칼날 (방패 바깥 궤도, 은색)
     if ((c.magics?.blades || 0) > 0 && (c.poopTimer || 0) <= 0) this.drawBlades(ctx, c);
 
+    // 🫧 보호막 (남은 양만큼 진하게)
+    if ((c.barrier || 0) > 0 && (c.barrierMax || 0) > 0) {
+      const k = clamp(c.barrier / c.barrierMax, 0, 1);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r + 13, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(103, 232, 249, ${0.10 + 0.14 * k})`;
+      ctx.fill();
+      ctx.lineWidth = 2 + 2 * k;
+      ctx.strokeStyle = `rgba(8, 145, 178, ${0.35 + 0.5 * k})`;
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // 똥 변신 상태 렌더링
     if ((c.poopTimer || 0) > 0) {
       ctx.font = `${Math.round(c.r * 1.9)}px sans-serif`;

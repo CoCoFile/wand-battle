@@ -64,7 +64,13 @@ Object.assign(ENGINE, {
     if (!target || !target.alive) return;
     const shred = target.shredTimer > 0 ? (target.shred || 0) : 0; // 🧊 빙결 장판: 받는 피해 +%
     const dmgMult = (ignoreArmor ? 1.0 : (1 - (target.armor || 0))) * (1 + shred);
-    const finalDmg = Math.max(1, rawDmg * dmgMult);
+    let finalDmg = Math.max(1, rawDmg * dmgMult);
+    const beforeBarrier = finalDmg;
+    if (!ignoreArmor && target.barrier > 0) finalDmg = SPELLS.absorbBarrier(target, finalDmg, world); // 🫧 보호막 먼저
+    if (finalDmg <= 0) {
+      if (world) world.texts.push({ x: target.x + rand(-14, 14), y: target.y - target.r - 6, text: `🫧${Math.round(beforeBarrier)}`, color: '#0891b2', life: 0.5 });
+      return;
+    }
     target.hp -= finalDmg;
     target.hurtTimer = 0.14;
 

@@ -75,6 +75,7 @@ Object.assign(ENGINE, {
 
       SPELLS.updateShields(c, dt, w);
       if (!(c.poopTimer > 0)) SPELLS.updateBlades(c, dt, w); // 🗡️ 회전 칼날 (똥 상태면 멈춤)
+      SPELLS.updateBarrier(c, dt, w);                        // 🫧 보호막 재충전
 
       const isIncapacitated = c.stunTimer > 0 || c.poopTimer > 0;
       const isManual = (this.mode === 'solo' && this.manualControl && c.isLocal);
@@ -169,7 +170,7 @@ Object.assign(ENGINE, {
 
       // 보유 마법 자동 시전
       for (const [mid, lv] of Object.entries(c.magics)) {
-        if (lv <= 0 || mid === 'blades') continue; // 칼날은 상시 유지형
+        if (lv <= 0 || mid === 'blades' || mid === 'barrier') continue; // 칼날·보호막은 상시 유지형
         c.cooldowns[mid] = (c.cooldowns[mid] ?? 0.2) - dt;
         if (c.cooldowns[mid] <= 0) {
           c.cooldowns[mid] = SPELLS.baseCooldown(mid, lv) * c.cdrMult;

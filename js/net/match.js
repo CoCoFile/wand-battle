@@ -138,6 +138,7 @@ Object.assign(NET, {
         statCounts: c.statCounts,
         shieldAngle: Number((c.shieldAngle || 0).toFixed(2)),
         bladeCds: c.bladeCds,
+        barrier: Math.round(c.barrier || 0), barrierMax: Math.round(c.barrierMax || 0),
         stunTimer: Number((c.stunTimer || 0).toFixed(1)),
         slowTimer: Number((c.slowTimer || 0).toFixed(1)),
         shredTimer: Number((c.shredTimer || 0).toFixed(1)),
