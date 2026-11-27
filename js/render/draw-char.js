@@ -165,16 +165,7 @@ Object.assign(RENDER, {
     ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI * 2); ctx.stroke();
     for (let i = 0; i < n; i++) {
       const a = base + (Math.PI * 2 * i) / n;
-      const broken = (c.bladeCds?.[i] || 0) > 0;           // 깨진 칼날: 흐린 점선 자국만
-      if (broken) {
-        ctx.save();
-        ctx.setLineDash([3, 4]);
-        ctx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(c.x + Math.cos(a) * R, c.y + Math.sin(a) * R, L * 0.45, 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
-        continue;
-      }
+      if ((c.bladeCds?.[i] || 0) > 0) continue;            // 깨진 칼날은 안 그림 (다시 생길 때까지)
       ctx.save();
       ctx.translate(c.x + Math.cos(a) * R, c.y + Math.sin(a) * R);
       ctx.rotate(a + Math.PI / 2);                         // 진행 방향으로 칼날
