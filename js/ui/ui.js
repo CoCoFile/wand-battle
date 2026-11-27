@@ -92,16 +92,16 @@ const UI = {
     }
   },
 
-  // 🃏 궁극기 두 번째부터: 화면 아래 작은 알림 (최대 3개 쌓임)
+  // 🃏 궁극기 두 번째부터: 화면 아래 중간 크기 테두리 글씨 (최대 2개 쌓임)
   showUltMini(text, color = '#f59e0b', who = '') {
     const box = $('#ult-mini');
     if (!box) return;
     const el = document.createElement('div');
     el.className = 'ult-mini-pill';
-    el.style.borderColor = color;
-    el.innerHTML = `<span style="color:${color}">${escapeHtml(text)}</span>${who ? `<small>${escapeHtml(who)}</small>` : ''}`;
+    el.style.setProperty('--glow', color);
+    el.innerHTML = `<span class="ult-mini-text dramatic-outline" style="color:${color}">${escapeHtml(text)}</span>${who ? `<small>${escapeHtml(who)}</small>` : ''}`;
     box.appendChild(el);
-    while (box.children.length > 3) box.firstElementChild.remove();
+    while (box.children.length > 2) box.firstElementChild.remove(); // 커져서 최대 2개
     setTimeout(() => el.classList.add('out'), 1500);
     setTimeout(() => el.remove(), 1900);
   },
