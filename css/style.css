@@ -106,9 +106,9 @@ html, body {
   filter: drop-shadow(0 0 18px var(--glow, #f59e0b));
 }
 #roulette-reel { transition: background-color .15s, border-color .15s; }
-#roulette-reel.roulette-win { background: #fef3c7; border-color: #f59e0b; box-shadow: 0 0 16px rgba(245, 158, 11, .7); }
-#roulette-reel.roulette-jackpot { background: linear-gradient(90deg, #fde68a, #fff7d6, #fde68a); border-color: #d97706; box-shadow: 0 0 26px rgba(250, 204, 21, .95); }
-#roulette-reel.roulette-bust { background: #e7e5e4; border-color: #78350f; color: #78350f; }
+#roulette-reel.roulette-win, #relic-reel.roulette-win { background: #fef3c7; border-color: #f59e0b; box-shadow: 0 0 16px rgba(245, 158, 11, .7); }
+#roulette-reel.roulette-jackpot, #relic-reel.roulette-jackpot { background: linear-gradient(90deg, #fde68a, #fff7d6, #fde68a); border-color: #d97706; box-shadow: 0 0 26px rgba(250, 204, 21, .95); }
+#roulette-reel.roulette-bust, #relic-reel.roulette-bust { background: #e7e5e4; border-color: #78350f; color: #78350f; }
 @keyframes goldFlash {
   0% { opacity: 0; } 12% { opacity: .85; } 100% { opacity: 0; }
 }

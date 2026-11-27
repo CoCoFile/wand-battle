@@ -510,16 +510,19 @@ const UI = {
         <button data-exchange="${k}" class="arcade-btn mt-1 w-full py-0.5 rounded-md text-[10px] font-black ${can ? 'bg-sky-300 hover:bg-sky-200 cursor-pointer' : 'bg-slate-100'}" ${can ? '' : 'disabled'}>뽑기권으로</button>
       </div>`;
     }).join('');
-    if (!this.relicSpinning) $('#relic-reel').textContent = `🎟 뽑기권 ${d.tickets}장`;
+    if (!this.relicSpinning && !this.relicShowing) $('#relic-reel').textContent = `🎟 뽑기권 ${d.tickets}장`;
     $('#btn-relic-draw').disabled = this.relicSpinning || d.tickets <= 0;
-    $('#relic-eq-count').textContent = String(d.equipped.length);
+    // 11/27z7: 룰렛 도는 동안엔 뽑기 전 상태로 보여줌 (결과 미리 안 보이게)
+    const view = this.relicSpinning && this.relicView ? this.relicView : d;
+    $('#relic-eq-count').textContent = String(view.equipped.length);
     $('#relic-grid').innerHTML = Object.entries(CONFIG.RELICS).map(([id, def]) => {
-      const lv = d.relics[id];
+      const lv = view.relics[id];
       if (!lv) {
         return `<div class="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-2 text-[11px] font-black text-slate-400">❓ ???</div>`;
       }
-      const eq = d.equipped.includes(id);
-      return `<button data-relic="${id}" class="text-left rounded-xl border-2 p-2 cursor-pointer ${eq ? 'border-amber-500 bg-amber-50' : 'border-slate-300 bg-white hover:bg-slate-50'}">
+      const eq = view.equipped.includes(id);
+      const fresh = !this.relicSpinning && this.relicFresh === id;   // 방금 뽑은 유물 반짝
+      return `<button data-relic="${id}" class="text-left rounded-xl border-2 p-2 cursor-pointer ${fresh ? 'gold-card-glow animate-pop ' : ''}${eq ? 'border-amber-500 bg-amber-50' : 'border-slate-300 bg-white hover:bg-slate-50'}">
         <div class="text-xs font-black text-slate-900">${def.icon} ${def.name} <span class="text-amber-700">Lv.${lv}</span></div>
         <div class="text-[10px] font-bold text-slate-600">${RELICS.desc(id, lv)}${eq ? ' · ✔ 장착' : ''}</div>
       </button>`;
@@ -528,31 +531,57 @@ const UI = {
 
   playRelicDraw() {
     if (this.relicSpinning) return;
+    const d0 = ACCOUNT.state?.data;
+    const before = d0 ? { relics: { ...d0.relics }, equipped: [...d0.equipped] } : null; // 뽑기 전 모습
     const res = ACCOUNT.draw();
     if (!res) { this.toast(ACCOUNT.state?.data.tickets > 0 ? '모든 유물이 최대 레벨이에요!' : '뽑기권이 없어요'); return; }
     this.relicSpinning = true;
+    this.relicShowing = false;
+    this.relicView = before;
+    this.relicFresh = null;
     this.renderRelics();
-    // 룰렛: 유물과 꽝을 섞어서 돌림
+    // 룰렛: 유물과 꽝을 섞어서 돌림 → 점점 느려지다 멈추고, 그때 결과 공개 (11/27z7)
     const reelItems = Object.values(CONFIG.RELICS).map((r) => `${r.icon} ${r.name}`);
     CONFIG.RELIC_BLANKS.forEach((b, i) => reelItems.splice(i * 2 + 1, 0, b));
     const reel = $('#relic-reel');
-    let tick = 0;
-    const timer = setInterval(() => {
-      reel.textContent = reelItems[(tick * 3) % reelItems.length];
-      tick++;
-      if (tick >= 18) {
-        clearInterval(timer);
-        if (res.blank) {
-          reel.textContent = `${res.text}… 꽝! ㅋㅋ`;
-          SFX.play('poop');
-        } else {
-          const def = CONFIG.RELICS[res.id];
-          reel.textContent = `${def.icon} ${def.name} ${res.isNew ? 'NEW!' : `Lv.${res.lv}!`}`;
-          SFX.play('golden');
-        }
-        setTimeout(() => { this.relicSpinning = false; this.renderAccount(); this.renderRelics(); }, 1300);
+    reel.classList.remove('roulette-win', 'roulette-jackpot', 'roulette-bust', 'animate-pop');
+    const gaps = [60, 60, 60, 60, 60, 60, 60, 70, 80, 95, 115, 140, 170, 210, 260, 330, 420];
+    let tick = randInt(0, reelItems.length - 1);
+    const step = (k) => {
+      if (k < gaps.length) {
+        reel.textContent = reelItems[(tick += 3) % reelItems.length];
+        setTimeout(() => step(k + 1), gaps[k]);
+        return;
       }
-    }, 70);
+      let cls;
+      if (res.blank) {
+        reel.textContent = `${res.text}… 꽝! ㅋㅋ`;
+        cls = 'roulette-bust';
+        SFX.play('poop');
+      } else {
+        const def = CONFIG.RELICS[res.id];
+        reel.textContent = `${def.icon} ${def.name} ${res.isNew ? 'NEW!' : `Lv.${res.lv}!`}`;
+        cls = res.isNew ? 'roulette-jackpot' : 'roulette-win';
+        SFX.play('golden');
+        this.relicFresh = res.id;
+      }
+      void reel.offsetWidth;
+      reel.classList.add(cls, 'animate-pop');
+      // 멈춘 뒤에야 목록에 반영
+      this.relicSpinning = false;
+      this.relicShowing = true;           // 결과 글자는 잠깐 유지
+      this.relicView = null;
+      this.renderAccount();
+      this.renderRelics();
+      setTimeout(() => {
+        if (this.relicSpinning) return;
+        this.relicShowing = false;
+        reel.classList.remove(cls, 'animate-pop');
+        this.relicFresh = null;
+        this.renderRelics();
+      }, 2200);
+    };
+    step(0);
   },
 
   // 타이틀: 현재 아이디의 최고 기록 + 최근 아이디 버튼

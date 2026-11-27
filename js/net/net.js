@@ -200,7 +200,7 @@ const NET = {
     if (!msg || typeof msg !== 'object') return;
     // 대기 중(경기 화면 아님)이면 경기 연출·종료 메시지는 무시
     const onGame = $('#screen-game') && !$('#screen-game').classList.contains('hidden');
-    if (!onGame && (msg.type === 'dramatic' || msg.type === 'ultMini' || msg.type === 'bossUlt' || msg.type === 'gameover' || msg.type === 'state')) return;
+    if (!onGame && (msg.type === 'dramatic' || msg.type === 'ultMini' || msg.type === 'roulette' || msg.type === 'bossUlt' || msg.type === 'gameover' || msg.type === 'state')) return;
     if (msg.type === 'full') {
       UI.toast('방이 꽉 찼어요');
       this.leaveRoom();
@@ -230,6 +230,8 @@ const NET = {
       }
     } else if (msg.type === 'dramatic') {
       UI.showDramatic(msg.text, msg.color, msg.sub || '', msg.style || '');
+    } else if (msg.type === 'roulette') {
+      UI.playRoulette(msg.label, msg.tone, msg.twist === true);
     } else if (msg.type === 'ultMini') {
       UI.showUltMini(msg.text, msg.color, msg.who || '');
     } else if (msg.type === 'bossUlt') {

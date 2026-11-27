@@ -24,9 +24,9 @@ Object.assign(UI, {
     $('#btn-relic-draw').addEventListener('click', () => UI.playRelicDraw());
     $('#modal-relics').addEventListener('click', (e) => {
       const ex = e.target.closest('[data-exchange]');
-      if (ex && !ex.disabled) { ACCOUNT.exchange(ex.dataset.exchange); UI.renderAccount(); UI.renderRelics(); return; }
+      if (ex && !ex.disabled && !UI.relicSpinning) { ACCOUNT.exchange(ex.dataset.exchange); UI.renderAccount(); UI.renderRelics(); return; }
       const rl = e.target.closest('[data-relic]');
-      if (rl) { ACCOUNT.toggleEquip(rl.dataset.relic); UI.renderRelics(); }
+      if (rl && !UI.relicSpinning) { ACCOUNT.toggleEquip(rl.dataset.relic); UI.renderRelics(); }
     });
     UI.renderAccount();
     ACCOUNT.refresh().then(() => UI.renderAccount());

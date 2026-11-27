@@ -147,8 +147,8 @@ Object.assign(SPELLS, {
     if (c.isLocal) {
       UI.playRoulette(label, tone, kind === 'twist');
     } else if (!c.isBot && typeof NET !== 'undefined' && NET.active && NET.isHost) {
-      // 참가자에게 결과 알림 (룰렛 연출은 방장 화면에만 있음)
-      NET.sendToPeer(c.id, { type: 'dramatic', text: label, color: tone === 'bust' ? '#78350f' : '#d97706', sub: '🃏 황금 카드', style: tone === 'jackpot' ? 'jackpot' : '' });
+      // 참가자 화면에서도 룰렛이 돌고 멈춘 뒤 결과 공개 (11/27z7: 전엔 결과 배너가 바로 떠서 미리 보였음)
+      NET.sendToPeer(c.id, { type: 'roulette', label, tone, twist: kind === 'twist' });
     }
     const tell = (text, color, sub) => { // 본인에게 큰 배너
       if (c.isLocal) UI.showDramatic(text, color, sub);
@@ -175,7 +175,6 @@ Object.assign(SPELLS, {
           this.spawnParticles(world, c.x, c.y, '#fbbf24', 30, 300);
           this.spawnParticles(world, c.x, c.y, '#f59e0b', 20, 200);
         }
-        if (c.isLocal) UI.goldFlash();
       } else if (kind === 'stat') {
         this.applyChoice(c, { type: 'stat', id: pickedStat }, world);
         SFX.play('golden');
@@ -200,10 +199,7 @@ Object.assign(SPELLS, {
       }
     };
 
-    if (c.isLocal) {
-      setTimeout(applyResult, kind === 'twist' ? 2750 : 1950); // 룰렛 멈춘 뒤
-    } else {
-      applyResult();
-    }
+    if (c.isBot) applyResult();
+    else setTimeout(applyResult, kind === 'twist' ? 2750 : 1950); // 룰렛 멈춘 뒤 (참가자도 같은 타이밍)
   }
 });
