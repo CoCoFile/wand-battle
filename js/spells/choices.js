@@ -52,14 +52,17 @@ Object.assign(SPELLS, {
       choices.push(pool.splice(idx, 1)[0]);
     }
 
+    const golden = () => ({
+      type: 'golden', id: 'golden', isGolden: true,
+      name: '황금 카드', icon: '🃏', color: '#B45309', bg: '#FEF3C7',
+      badge: '도박',
+      desc: '궁극기 / 스탯 / 똥'
+    });
+    // 🃏 황카만 뽑기 모드 (온라인 옵션): 레벨업 선택지 3장이 전부 황금 카드
+    if (ENGINE.mode === 'online' && ENGINE.goldenOnly) return [golden(), golden(), golden()];
     // 10% 확률로 마지막 슬롯을 황금 카드로 교체
     if (Math.random() < 0.10 + (c.goldenBonus || 0) && choices.length === 3) { // goldenBonus: 운명의 금화 유물
-      choices[2] = {
-        type: 'golden', id: 'golden', isGolden: true,
-        name: '황금 카드', icon: '🃏', color: '#B45309', bg: '#FEF3C7',
-        badge: '도박',
-        desc: '궁극기 or 똥'
-      };
+      choices[2] = golden();
     }
     return choices;
   },

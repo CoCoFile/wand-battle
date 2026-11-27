@@ -23,9 +23,7 @@ Object.assign(ENGINE, {
         if (!this.paused) {
           this.openNextSoloChoice();
         }
-      } else if (this.mode === 'online' && this.goldenOnly) {
-        SPELLS.resolveGoldenCard(c, world);   // 🃏 황카만 뽑기 모드: 레벨업 = 황금카드 자동 추첨
-      } else if (this.mode === 'online') {
+      } else if (this.mode === 'online') {   // (🃏 황카만 뽑기 모드면 generateChoices 가 황금 카드 3장을 줌)
         if (c.isBot) {
           const botChoices = SPELLS.generateChoices(c);
           SPELLS.applyChoice(c, botChoices[randInt(0, botChoices.length - 1)], world);
