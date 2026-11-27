@@ -87,14 +87,14 @@ const RENDER = {
       ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
       ctx.fillStyle = fill;
       ctx.fill();
-      ctx.lineWidth = ally ? 2.5 : 3;
-      ctx.setLineDash(ally ? [8, 6] : [4, 4]);
+      ctx.lineWidth = ally ? 2.5 : 1.5;
+      ctx.setLineDash(ally ? [8, 6] : [6, 8]);
       ctx.strokeStyle = line;
       ctx.stroke();
       if (z.kind === 'frost') { // 눈꽃 무늬
         ctx.setLineDash([]);
         ctx.lineWidth = 2;
-        ctx.strokeStyle = ally ? 'rgba(255,255,255,0.8)' : 'rgba(224,231,255,0.8)';
+        ctx.strokeStyle = ally ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.45)';
         const rr = z.r * 0.35;
         ctx.beginPath();
         for (let k = 0; k < 3; k++) {
@@ -311,12 +311,12 @@ const RENDER = {
     }
   },
 
-  // 장판 색 [채우기, 테두리] — ally = 내 편(내 화면 기준), enemy = 상대 편
+  // 장판 색 [채우기, 테두리] — ally = 내 편(내 화면 기준, 잘 보이게 선명), enemy = 상대 편(눈 안 아프게 채도 낮춤, 11/27j)
   ZONE_COLORS: {
-    poison: { ally: ['rgba(22, 163, 74, 0.20)', '#16a34a'],  enemy: ['rgba(219, 39, 119, 0.20)', '#be185d'] },  // 초록 / 분홍
-    frost:  { ally: ['rgba(56, 189, 248, 0.24)', '#0284c7'], enemy: ['rgba(99, 102, 241, 0.24)', '#4338ca'] },  // 하늘 / 남색
-    chaos:  { ally: ['rgba(147, 51, 234, 0.22)', '#9333ea'], enemy: ['rgba(220, 38, 38, 0.20)', '#b91c1c'] },   // 보라 / 빨강
-    booze:  { ally: ['rgba(245, 158, 11, 0.22)', '#d97706'], enemy: ['rgba(245, 158, 11, 0.25)', '#b45309'] }   // 술 장판 (보스)
+    poison: { ally: ['rgba(22, 163, 74, 0.20)', '#16a34a'],  enemy: ['rgba(138, 150, 110, 0.16)', '#9aa585'] },  // 초록 / 흐린 올리브
+    frost:  { ally: ['rgba(56, 189, 248, 0.24)', '#0284c7'], enemy: ['rgba(143, 160, 184, 0.17)', '#a3b1c4'] },  // 하늘 / 흐린 회청
+    chaos:  { ally: ['rgba(147, 51, 234, 0.22)', '#9333ea'], enemy: ['rgba(158, 140, 168, 0.16)', '#ad9fb6'] },  // 보라 / 흐린 자주
+    booze:  { ally: ['rgba(245, 158, 11, 0.22)', '#d97706'], enemy: ['rgba(196, 176, 130, 0.18)', '#c2ae84'] }   // 술 장판 (보스)
   },
 
   // 👑 보스 필살기 경고: 발동 전엔 빨간 반투명(점점 진해짐), 발동 순간 주황으로 번쩍
@@ -394,7 +394,7 @@ const RENDER = {
       ctx.fill();
       ctx.stroke();
       const allyMine = myTeam != null && z.team === myTeam;
-      ctx.fillStyle = Math.sin(t * 22) > 0 ? (allyMine ? '#22c55e' : '#ef4444') : (allyMine ? '#14532d' : '#7f1d1d');
+      ctx.fillStyle = allyMine ? (Math.sin(t * 22) > 0 ? '#22c55e' : '#14532d') : (Math.sin(t * 8) > 0 ? '#b08a8a' : '#6b5b5b'); // 상대 지뢰는 흐리고 느리게
       ctx.beginPath();
       ctx.arc(z.x, z.y, 3.5, 0, Math.PI * 2);
       ctx.fill();

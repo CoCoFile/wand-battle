@@ -104,7 +104,7 @@ Object.assign(ENGINE, {
       const enemy = this.makeChar({
         id: `enemy_${stage}_${i}_${Date.now()}`,
         name,
-        color: CONFIG.COLORS[(i + 1) % CONFIG.COLORS.length],
+        color: CONFIG.ENEMY_COLORS[i % CONFIG.ENEMY_COLORS.length],
         team: 2,
         isBot: true,
         x: ex,
@@ -124,7 +124,7 @@ Object.assign(ENGINE, {
       const boss = this.makeChar({
         id: `boss_${stage}_${Date.now()}`,
         name: CONFIG.BOSS_NAMES[bossTier],
-        color: '#9333EA',
+        color: CONFIG.BOSS_COLOR,
         team: 2,
         isBot: true,
         isBoss: true,
