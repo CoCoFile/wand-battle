@@ -43,6 +43,12 @@ function spellShotCount(lv) {
   return Math.min((typeof CONFIG !== 'undefined' && CONFIG.MAX_SHOTS) || 8, Math.max(1, lv) + 1);
 }
 
+// 레벨 성장 완만화 배율 (CONFIG.LEVEL_DAMP): Lv.3까지 1, 그 뒤 (3/Lv)^d
+function spellLevelDamp(id, lv) {
+  const d = (typeof CONFIG !== 'undefined' && CONFIG.LEVEL_DAMP && CONFIG.LEVEL_DAMP[id]) || 0;
+  return lv <= 3 || !d ? 1 : Math.pow(3 / lv, d);
+}
+
 // 발사 수 상한을 넘은 레벨 → 피해 배율 (Lv.7 이하 1, Lv.n이면 (n+1)/8 → 총 화력은 상한 없을 때와 같음)
 function spellOverMult(lv) {
   const max = (typeof CONFIG !== 'undefined' && CONFIG.MAX_SHOTS) || 8;

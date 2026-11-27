@@ -40,10 +40,12 @@ const SPELLS = {
     const ox = c.x + Math.cos(c.angle) * wandLen;
     const oy = c.y + Math.sin(c.angle) * wandLen;
     const shots = spellShotCount(lv);
-    const over = spellOverMult(lv);
+    // Lv.8부터는 모양·크기·한 발 피해는 Lv.7 그대로, 남는 레벨은 over 배율로만 (화력이 레벨에 비례하게, 11/27r)
+    const lvEff = Math.min(lv, CONFIG.MAX_SHOTS - 1);
+    const over = spellOverMult(lv) * spellLevelDamp(mid, lvEff);
     const skillUid = ++world.uidSeq;
     const spreadStep = (count, baseStep, maxTotal) =>
       count <= 1 ? 0 : Math.min(baseStep, maxTotal / (count - 1));
-    caster(c, lv, world, { wandLen, ox, oy, shots, over, skillUid, spreadStep });
+    caster(c, lvEff, world, { wandLen, ox, oy, shots, over, skillUid, spreadStep });
   }
 };

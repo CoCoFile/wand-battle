@@ -66,7 +66,7 @@ Object.assign(ENGINE, {
     const dmgMult = (ignoreArmor ? 1.0 : (1 - (target.armor || 0))) * (1 + shred);
     let finalDmg = Math.max(1, rawDmg * dmgMult);
     const beforeBarrier = finalDmg;
-    if (!ignoreArmor && target.barrier > 0) finalDmg = SPELLS.absorbBarrier(target, finalDmg, world); // 🫧 보호막 먼저
+    if (!ignoreArmor && target.barrier > 0) finalDmg = SPELLS.absorbBarrier(target, finalDmg, world, attacker); // 🫧 보호막 먼저
     if (finalDmg <= 0) {
       if (world) world.texts.push({ x: target.x + rand(-14, 14), y: target.y - target.r - 6, text: `🫧${Math.round(beforeBarrier)}`, color: '#0891b2', life: 0.5 });
       return;
@@ -88,6 +88,7 @@ Object.assign(ENGINE, {
       target.hp = 0;
       target.alive = false;
       SPELLS.spawnParticles(world, target.x, target.y, target.color, 18, 210);
+      SPELLS.onKill(attacker, target, world); // 🔗 냉동 독살 3단계
 
       // 작은 슬라임 처치 시 구슬 드랍 (솔로는 난이도에 따라 회복 구슬 유지시간/없음)
       if (target.isSmallMob && world) {

@@ -22,6 +22,7 @@ Object.assign(ENGINE, {
     this.updateWaves(w, dt);
     this.updateZones(w, dt);
     SPELLS.updateBossWarns(w, dt);
+    SPELLS.updateComboTimers(w, dt);   // 🔗 조합 예약 효과
     this.updateEffects(w, dt);
   },
 
@@ -178,6 +179,8 @@ Object.assign(ENGINE, {
         }
       }
 
+      SPELLS.updateCombos(c, dt, w);   // 🔗 조합 각성 (12초마다)
+
       // 👑 보스 필살기 (솔로·파티 보스만)
       if (c.isBoss) SPELLS.tickBossUlt(c, dt, w);
 
@@ -270,6 +273,7 @@ Object.assign(ENGINE, {
       if (!t.alive || t.id === p.ownerId || t.team === p.team) continue;
       if (dist(p.x, p.y, t.x, t.y) <= p.expR + t.r) this.damageChar(t, p.dmg * 0.65, attacker, w);
     }
+    SPELLS.onExplosion(attacker, w, p.x, p.y, p.expR, p.dmg * 0.65); // 🔗 조합 (불!화염!폭발! / 독불 화염병)
   },
 
   // 독/빙결 플라스크가 떨어진 자리에 장판 생성
@@ -340,7 +344,9 @@ Object.assign(ENGINE, {
           p.vy = (Math.sign(ny) === Math.sign(p.vy) || !p.vy ? ny : -ny) * sp;
           p.hitIds = [];                                   // 튕긴 뒤엔 다시 맞을 수 있음
           SPELLS.spawnParticles(w, p.x, p.y, p.color, 4, 80);
+          SPELLS.onBoomerangBounce(w.chars.find((ch) => ch.id === p.ownerId), p, w); // 🔗 레이저 부메랑
         }
+        SPELLS.onBoomerangFly(w.chars.find((ch) => ch.id === p.ownerId), p, w, dt);
       }
 
       // 부메랑 제외 전 투사체 기본 벽 도탄
@@ -409,13 +415,17 @@ Object.assign(ENGINE, {
             // 관통 연출: 보라 불꽃 + 작은 링 (적중 목록으로 같은 적은 한 번만)
             SPELLS.spawnParticles(w, t.x, t.y, '#a78bfa', 6, 160);
             w.rings.push({ x: t.x, y: t.y, r: t.r * 0.6, maxR: t.r + 14, life: 0.18, maxLife: 0.18, color: '#8b5cf6' });
+            SPELLS.onBoomerangHit(attacker, t, w);           // 🔗 칼춤 부메랑
           } else if (p.kind === 'scatter') {
-            // 💥 산탄 파편이 적에 닿으면 작은 폭발 (주변 다른 적 60%, 11/27k)
-            w.rings.push({ x: p.x, y: p.y, r: 6, maxR: p.expR, life: 0.2, maxLife: 0.2, color: '#78716c' });
-            SPELLS.spawnParticles(w, p.x, p.y, '#a8a29e', 6, 150);
-            for (const sp of w.chars) {
-              if (!sp.alive || sp.id === p.ownerId || sp.team === p.team || sp.id === t.id) continue;
-              if (dist(p.x, p.y, sp.x, sp.y) <= p.expR + sp.r) this.damageChar(sp, p.dmg * 0.6, attacker, w);
+            // 💥 산탄 파편이 적에 닿으면 작은 폭발 (주변 다른 적 60%, 11/27k). noBlast = 조합 가시·파편(폭발 없음)
+            if (!p.noBlast) {
+              w.rings.push({ x: p.x, y: p.y, r: 6, maxR: p.expR, life: 0.2, maxLife: 0.2, color: '#78716c' });
+              SPELLS.spawnParticles(w, p.x, p.y, '#a8a29e', 6, 150);
+              for (const sp of w.chars) {
+                if (!sp.alive || sp.id === p.ownerId || sp.team === p.team || sp.id === t.id) continue;
+                if (dist(p.x, p.y, sp.x, sp.y) <= p.expR + sp.r) this.damageChar(sp, p.dmg * 0.6, attacker, w);
+              }
+              SPELLS.onExplosion(attacker, w, p.x, p.y, p.expR, p.dmg * 0.6); // 🔗 조합
             }
             w.projs.splice(i, 1);
             removed = true;
@@ -504,7 +514,7 @@ Object.assign(ENGINE, {
           const d = dist(z.x, z.y, t.x, t.y);
           if (d <= z.r + t.r) {
             // 중첩 X: 같은 사람이 깐 같은 종류 장판은 여러 개 겹쳐 있어도 0.3초에 한 번만 피해 (11/27f)
-            const stackKey = `${z.ownerId}:${z.kind}`;
+            const stackKey = `${z.ownerId}:${z.kind}:${z.stack || ''}`; // stack: 조합 장판은 따로 (11/27r)
             if (!t.zoneHits) t.zoneHits = {};
             if ((t.zoneHits[stackKey] ?? -9) > w.time - 0.3) continue;
             t.zoneHits[stackKey] = w.time;
@@ -514,7 +524,8 @@ Object.assign(ENGINE, {
               t.shred = Math.max(t.shredTimer > 0 ? (t.shred || 0) : 0, z.shred || 0);
               t.shredTimer = 0.5;
             }
-            this.damageChar(t, z.dmg, attacker, w);
+            const zMult = z.kind === 'poison' && attacker ? SPELLS.poisonTickMult(attacker, t) : 1; // 🔗 냉동 독살
+            this.damageChar(t, z.dmg * zMult, attacker, w);
           }
         }
       }

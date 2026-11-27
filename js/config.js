@@ -2,7 +2,7 @@
 // 크기·속도·체력·이름은 여기서 조정. ※ 마법별 피해·속도 등 수치는 js/spells/casters.js, 쿨타임은 js/spells/spells.js(baseCooldown)에 있음
 
 const CONFIG = {
-  GAME_VERSION: '2026.11.27q', // 11/27q: 보호막 추가 / 11/27p: 칼날 안 깨짐, 적 투사체 지움 / 11/27n: 마력 방패 삭제 → 회전 칼날(최대 3, 닿으면 깨짐, 투사체 막음), 쉼터 적 ×0.92 / 11/27m: 리롤 원래대로(스테이지마다 +1) / 11/27k: 부메랑 방패 관통, 산탄 폭발 / 11/27j: 적·적 장판 눈 편한 색 / 11/27i: 궁극기 중복 ×n, 황카 똥 30%·스탯 20% / 11/27h: 황카 궁극기 스탯 영향(멈춰! 제외) / 11/27g: 부메랑 벽 난반사 후 늦게 귀환 / 11/27f: 장판 중첩 피해 제거 / 11/27e: 빙결 딜 절반 / 11/27d: 부메랑 빠르게·멀리·벽 반사 / 11/27c: 마법 7종 평균딜 맞춤 / 11/27b: 리롤 한 판 1번(금화 2번), 스탯 카드 수치 숨김 / 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
+  GAME_VERSION: '2026.11.27r', // 11/27r: 🔗 조합 시스템 / 11/27q: 보호막 추가 / 11/27p: 칼날 안 깨짐, 적 투사체 지움 / 11/27n: 마력 방패 삭제 → 회전 칼날(최대 3, 닿으면 깨짐, 투사체 막음), 쉼터 적 ×0.92 / 11/27m: 리롤 원래대로(스테이지마다 +1) / 11/27k: 부메랑 방패 관통, 산탄 폭발 / 11/27j: 적·적 장판 눈 편한 색 / 11/27i: 궁극기 중복 ×n, 황카 똥 30%·스탯 20% / 11/27h: 황카 궁극기 스탯 영향(멈춰! 제외) / 11/27g: 부메랑 벽 난반사 후 늦게 귀환 / 11/27f: 장판 중첩 피해 제거 / 11/27e: 빙결 딜 절반 / 11/27d: 부메랑 빠르게·멀리·벽 반사 / 11/27c: 마법 7종 평균딜 맞춤 / 11/27b: 리롤 한 판 1번(금화 2번), 스탯 카드 수치 숨김 / 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
   // 플레이 기록 수집 주소 (구글 Apps Script 웹 앱 /exec URL). 비워두면 수집 안 함
   TELEMETRY_URL: 'https://script.google.com/macros/s/AKfycbyCRCqR5cZPodxsXFBUpEwNUSXvQBr1qMMGUGpo5E41HJxSlZWXWgDIqgjhjf8iHdieVQ/exec',
 
@@ -56,6 +56,9 @@ const CONFIG = {
     cdrMax: 0.7, cdrK: 3         // 쿨타임 감소 최대 70% (1장 17.5%, 3장 35%, 9장 52.5%)
   },
   MAX_SHOTS: 8,      // 마법 동시 발사 수 상한. 넘는 레벨은 피해량으로 (Lv.n → ×(n+1)/8)
+  // 레벨 성장 완만화 (11/27r, 조합 시스템용): Lv.3 넘으면 피해 ×(3/Lv)^d — 화력이 레벨의 거의 제곱 → 거의 비례로
+  // d = 마법별로 (원래 성장이 가파른 마법일수록 큼). 몰아찍기(Lv.9)보다 조합(Lv.5+5)이 이득이 되게
+  LEVEL_DAMP: { laser: 0.77, fireball: 0.76, boomerang: 0.76, scatter: 0.72, blades: 0, poison: 0.33, frost: 0.11, barrier: 0.3 },
   STATS: {
     atk:   { id: 'atk',   name: '공격력',     icon: '⚔️', color: '#DC2626', bg: '#FEE2E2', desc: '피해 증가' },
     armor: { id: 'armor', name: '방어력',     icon: '🛡️', color: '#2563EB', bg: '#DBEAFE', desc: '받는 피해 감소' },
@@ -183,7 +186,24 @@ const CONFIG = {
   // ── 회전 칼날 ───────────────────────────────
   // 칼날 수 = min(3, Lv+1), 넘는 레벨은 피해 ×(Lv+1)/3. 안 깨짐, 적 투사체를 지움
   // 쿨타임 카드 → 회전 빨라짐 (÷cdrMult), 범위 카드 → 크기·궤도 절반만 적용
-  BLADES: { max: 3, orbit: 62, len: 22, omega: 2.6, hitGap: 0.35, dmg: [11, 4.4], enemyMult: 0.3 }, // 11/27p (딜은 평균의 절반, 유틸 겸용): 최대 3개, 안 깨짐, 적 투사체를 지움, 같은 적은 hitGap초에 1번. enemyMult = 솔로·파티 적이 쓸 때 피해 배율
+  BLADES: { max: 3, orbit: 62, len: 22, omega: 2.6, hitGap: 0.35, dmg: [6, 6], enemyMult: 0.3 }, // 11/27p (딜은 평균의 절반, 유틸 겸용): 최대 3개, 안 깨짐, 적 투사체를 지움, 같은 적은 hitGap초에 1번. enemyMult = 솔로·파티 적이 쓸 때 피해 배율
+
+  // ── 🔗 조합 (11/27r): 두 마법이 둘 다 tiers[k] 이상이면 조합 단계 k+1 (Lv.2/5/8/12)
+  // 단계가 오를수록 특수효과가 커짐. 4단계(각성)는 awakenEvery초마다 한 번 크게 터지는 발동형
+  // 연쇄는 이어질 때마다 피해 ×chainDecay. 로직: js/spells/combos.js
+  COMBO_TIERS: [2, 5, 8, 12],
+  COMBO_AWAKEN_EVERY: 12,
+  COMBO_CHAIN_DECAY: 0.6,
+  COMBOS: [
+    { id: 'boom',        a: 'fireball',  b: 'scatter',   name: '불! 화염! 폭발!', icon: '🔥▲', color: '#ea580c', awaken: '광기의 폭발' },
+    { id: 'frostpoison', a: 'frost',     b: 'poison',    name: '냉동 독살',       icon: '🧊🧪', color: '#0d9488', awaken: '빙독의 늪' },
+    { id: 'zerobeam',    a: 'laser',     b: 'frost',     name: '절대영도 빔',     icon: '⚡🧊', color: '#0284c7', awaken: '절대영도' },
+    { id: 'firepoison',  a: 'fireball',  b: 'poison',    name: '독불 화염병',     icon: '🔥🧪', color: '#65a30d', awaken: '불바다' },
+    { id: 'bladeboom',   a: 'boomerang', b: 'blades',    name: '칼춤 부메랑',     icon: '🪃🗡️', color: '#7c3aed', awaken: '칼날 지옥' },
+    { id: 'thorns',      a: 'barrier',   b: 'blades',    name: '가시 갑옷',       icon: '🫧🗡️', color: '#0891b2', awaken: '고슴도치' },
+    { id: 'prism',       a: 'laser',     b: 'scatter',   name: '프리즘',          icon: '⚡▲', color: '#db2777', awaken: '무지개 감옥' },
+    { id: 'laserboom',   a: 'boomerang', b: 'laser',     name: '레이저 부메랑',   icon: '🪃⚡', color: '#2563eb', awaken: '회전 레이저 원반' }
+  ],
 
   // ── 보호막 (11/27q, 방패 빠진 자리 유틸) ─────
   // 흡수량 = 최대 HP × min(capMax, cap[0] + cap[1]×Lv). 다 깨지면 주변 폭발 → delay초(×쿨감) 뒤 다시 꽉 참

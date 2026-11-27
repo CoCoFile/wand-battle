@@ -71,6 +71,7 @@ Object.assign(SPELLS, {
       c.magics[choice.id] = (c.magics[choice.id] || 0) + gain;
       if (!c.cooldowns[choice.id]) c.cooldowns[choice.id] = 0.08;
       if (choice.id === 'blades') this.ensureShieldSlots(c);
+      this.comboCheck(c, world);   // 🔗 조합 켜짐/단계업 알림
     } else if (choice.type === 'stat') {
       if (!c.statCounts) c.statCounts = {};
       c.statCounts[choice.id] = (c.statCounts[choice.id] || 0) + 1;

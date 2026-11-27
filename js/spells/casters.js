@@ -24,8 +24,10 @@ const SPELL_CASTERS = {
         if (!t.alive || t.id === c.id || t.team === c.team) continue;
         if (distToSegment(t.x, t.y, x1, y1, x2, y2) <= t.r + width * 0.5) {
           ENGINE.damageChar(t, dmg, c, world);
+          SPELLS.onLaserHit(c, t, world);                    // 🔗 절대영도 빔
         }
       }
+      if (i === Math.floor((shots - 1) / 2)) SPELLS.onLaserCast(c, world, x1, y1, ang); // 🔗 프리즘 (가운데 빔만)
     }
     if (c.isLocal) SFX.play('laser');
   },

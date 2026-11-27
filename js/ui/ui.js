@@ -255,6 +255,11 @@ const UI = {
       const n = Number((c.ultLv || {})[uid]) || 1;
       badges.push(`<span class="${base} border-amber-500 bg-amber-100 text-amber-900">${u.icon} ${u.name}${n > 1 ? ` ×${n}` : ''}</span>`);
     }
+    for (const { cb, tier } of SPELLS.activeCombos(c)) { // 🔗 조합 (단계 = Lv.2/5/8/12, 각성은 ★). HUD(withStats=false)는 짧게
+      const lvTxt = tier >= 4 ? '★각성' : 'Lv.' + SPELLS.comboTierLv(tier);
+      const label = withStats ? `${cb.icon} ${escapeHtml(cb.name)} ${lvTxt}` : `${cb.icon} ${lvTxt}`;
+      badges.push(`<span class="${base} border-slate-900 text-white" style="background:${safeColor(cb.color)}" title="${escapeHtml(cb.name)}">${label}</span>`);
+    }
     if (withStats) {
       for (const [sid, n] of Object.entries(c.statCounts || {})) {
         const st = CONFIG.STATS[sid];

@@ -29,10 +29,11 @@ Object.assign(SPELLS, {
   },
 
   // damageChar 에서 호출: 흡수하고 남은 피해 반환
-  absorbBarrier(c, dmg, world) {
+  absorbBarrier(c, dmg, world, attacker) {
     if (!(c.barrier > 0)) return dmg;
     const used = Math.min(c.barrier, dmg);
     c.barrier -= used;
+    SPELLS.onBarrierAbsorb(c, attacker, world);             // 🔗 가시 갑옷 3단계
     if (c.barrier <= 0.5) this.breakBarrier(c, world);
     return dmg - used;
   },
@@ -46,7 +47,7 @@ Object.assign(SPELLS, {
     if (!world) return;
     const R = B.burstR * (c.areaMult || 1);
     const enemySide = ENGINE.isStageMode() && c.team !== 1;
-    const dmg = (B.dmg[0] + B.dmg[1] * lv) * (c.atkMult || 1) * (enemySide ? 0.5 : 1);
+    const dmg = (B.dmg[0] + B.dmg[1] * lv) * (c.atkMult || 1) * spellLevelDamp('barrier', lv) * (enemySide ? 0.5 : 1);
     world.rings.push({ x: c.x, y: c.y, r: c.r, maxR: R, life: 0.3, maxLife: 0.3, color: '#06b6d4' });
     this.spawnParticles(world, c.x, c.y, '#67e8f9', 14, 220);
     world.texts.push({ x: c.x, y: c.y - c.r - 20, text: '팡!', color: '#0891b2', life: 0.6 });
@@ -54,6 +55,8 @@ Object.assign(SPELLS, {
       if (!t.alive || t.team === c.team || t.id === c.id) continue;
       if (dist(c.x, c.y, t.x, t.y) <= R + t.r) ENGINE.damageChar(t, dmg, c, world);
     }
+    this.onExplosion(c, world, c.x, c.y, R, dmg);            // 🔗 불!화염!폭발! (보호막 팡도 폭발)
+    this.onBarrierBreak(c, world);                           // 🔗 가시 갑옷
     if (c.isLocal) SFX.play('shieldHit');
   }
 });

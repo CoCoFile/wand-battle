@@ -279,6 +279,7 @@ Object.assign(ENGINE, {
     this.world.zones = [];
     this.world.warns = [];
     this.world.bossTimers = [];
+    this.world.comboTimers = [];
     this.spawnSoloStageEnemies(this.stage);
     $('#modal-solo-stage').classList.add('hidden');
     this.paused = false;
