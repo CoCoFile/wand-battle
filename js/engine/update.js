@@ -300,7 +300,7 @@ Object.assign(ENGINE, {
 
       if (p.kind === 'boomerang') {
         p.spin = (p.spin || 0) + 16 * dt;
-        if (!p.returning && p.life < p.maxLife * 0.52) {
+        if (!p.returning && p.life < p.maxLife * 0.3) { // 11/27g: 0.52 → 0.3 (벽에서 튕기며 더 돌아다니다 귀환)
           p.returning = true;
           p.hitIds = [];
         }
@@ -322,12 +322,23 @@ Object.assign(ENGINE, {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
-      // 부메랑: 벽에 닿으면 반사 (횟수 제한 없음, 적중 목록은 유지 → 같은 적 연타 X)
-      if (p.kind === 'boomerang') {
-        if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx); }
-        else if (p.x > CONFIG.W - p.r) { p.x = CONFIG.W - p.r; p.vx = -Math.abs(p.vx); }
-        if (p.y < p.r) { p.y = p.r; p.vy = Math.abs(p.vy); }
-        else if (p.y > CONFIG.H - p.r) { p.y = CONFIG.H - p.r; p.vy = -Math.abs(p.vy); }
+      // 부메랑: 벽에 닿으면 난반사 (반사각 ±25° 랜덤, 횟수 제한 없음). 귀환 중엔 주인 쪽으로 가므로 해당 없음
+      if (p.kind === 'boomerang' && !p.returning) {
+        let hit = false;
+        if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx); hit = true; }
+        else if (p.x > CONFIG.W - p.r) { p.x = CONFIG.W - p.r; p.vx = -Math.abs(p.vx); hit = true; }
+        if (p.y < p.r) { p.y = p.r; p.vy = Math.abs(p.vy); hit = true; }
+        else if (p.y > CONFIG.H - p.r) { p.y = CONFIG.H - p.r; p.vy = -Math.abs(p.vy); hit = true; }
+        if (hit) {
+          const sp = Math.hypot(p.vx, p.vy);
+          let a = Math.atan2(p.vy, p.vx) + rand(-0.44, 0.44);
+          // 벽 쪽으로 다시 꺾이지 않게: 반사 후 방향 성분 부호 유지
+          const nx = Math.cos(a), ny = Math.sin(a);
+          p.vx = (Math.sign(nx) === Math.sign(p.vx) || !p.vx ? nx : -nx) * sp;
+          p.vy = (Math.sign(ny) === Math.sign(p.vy) || !p.vy ? ny : -ny) * sp;
+          p.hitIds = [];                                   // 튕긴 뒤엔 다시 맞을 수 있음
+          SPELLS.spawnParticles(w, p.x, p.y, p.color, 4, 80);
+        }
       }
 
       // 부메랑 제외 전 투사체 기본 벽 도탄
