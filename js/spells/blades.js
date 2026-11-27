@@ -1,8 +1,8 @@
 // 🗡️ 회전 칼날 (11/27n: 마력 방패 대신 방어 겸 공격). 쿨타임 없이 몸 바깥 궤도를 돎
 // 칼날 수 = min(3, Lv+1) (CONFIG.BLADES.max), 넘는 레벨은 피해량 ×(Lv+1)/3
-// 칼날이 적 몸에 닿으면 피해 주고 그 칼날은 깨짐 / 적 투사체를 막아도 깨짐 (shield.js tryBlockPoint) → 재생 쿨 뒤 다시 생김
-// 레이저·장판·폭발은 칼날을 그냥 통과 (안 깨짐)
-// 쿨타임 카드 → 회전 빨라짐 + 재생 빨라짐, 범위 카드 → 크기·궤도는 절반만
+// 칼날이 적 몸에 닿으면 피해 (같은 적은 hitGap초에 1번) / 적 투사체는 칼날에 닿으면 지워짐 (shield.js tryBlockPoint)
+// 칼날은 깨지지 않음 (11/27p). 레이저·장판·폭발은 칼날을 그냥 통과
+// 쿨타임 카드 → 회전 빨라짐, 범위 카드 → 크기·궤도는 절반만
 
 Object.assign(SPELLS, {
   bladeGeom(c) {
@@ -28,16 +28,21 @@ Object.assign(SPELLS, {
     c.bladeR = Math.round(g.R); c.bladeL = Math.round(g.L); // 렌더(온라인 참가자)용
     const enemySide = ENGINE.isStageMode() && c.team !== 1;  // 솔로·파티의 적 (보스 포함)
     const dmg = (B.dmg[0] + lv * B.dmg[1]) * c.atkMult * g.over * (enemySide ? B.enemyMult : 1);
-    for (let i = 0; i < g.n; i++) {
-      if ((c.bladeCds[i] || 0) > 0) continue;
-      const a = c.bladeAngle + (Math.PI * 2 * i) / g.n;
-      const bx = c.x + Math.cos(a) * g.R;
-      const by = c.y + Math.sin(a) * g.R;
-      for (const t of world.chars) {
-        if (!t.alive || t.id === c.id || t.team === c.team) continue;
+    if (!c.bladeHits) c.bladeHits = {};
+    const now = world.time;
+    for (const t of world.chars) {
+      if (!t.alive || t.id === c.id || t.team === c.team) continue;
+      if ((c.bladeHits[t.id] ?? -9) > now - B.hitGap) continue;
+      const d = dist(c.x, c.y, t.x, t.y);
+      if (Math.abs(d - g.R) > t.r + g.L) continue;           // 궤도 근처에 없음
+      for (let i = 0; i < g.n; i++) {
+        const a = c.bladeAngle + (Math.PI * 2 * i) / g.n;
+        const bx = c.x + Math.cos(a) * g.R;
+        const by = c.y + Math.sin(a) * g.R;
         if (dist(bx, by, t.x, t.y) > t.r + g.L * 0.8) continue;
+        c.bladeHits[t.id] = now;
         ENGINE.damageChar(t, dmg, c, world);
-        this.breakBlade(c, i, world, bx, by);                 // 닿으면 깨짐
+        this.spawnParticles(world, bx, by, '#cbd5e1', 4, 120);
         break;
       }
     }

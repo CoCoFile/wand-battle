@@ -369,9 +369,8 @@ Object.assign(ENGINE, {
         if (!t.alive || t.id === p.ownerId || t.team === p.team) continue;
 
         // 마력 방패 충돌 판정
-        // 🪃 부메랑: 칼날 막기도 관통 (상대 칼날은 깨지지만 부메랑은 계속 날아감)
-        if (p.kind === 'boomerang') SPELLS.tryBlockPoint(t, p.x, p.y, w, p.skillUid);
-        else if (SPELLS.tryBlockPoint(t, p.x, p.y, w, p.skillUid)) {
+        // 상대 회전 칼날에 닿으면 투사체가 지워짐 (🪃 부메랑은 관통이라 안 지워짐)
+        if (p.kind !== 'boomerang' && SPELLS.tryBlockPoint(t, p.x, p.y, w, p.skillUid)) {
           if (p.kind === 'fireball') {
             w.rings.push({ x: p.x, y: p.y, r: 10, maxR: p.expR, life: 0.25, maxLife: 0.25, color: '#f97316' });
           } else {

@@ -1,6 +1,6 @@
 // 🛡 막기 판정 (11/27n: 마력 방패 삭제 → 🗡️ 회전 칼날이 방패 역할)
-// 적 투사체(화염구·빙결/독 플라스크·산탄·부메랑)가 살아 있는 칼날에 닿으면 막히고 그 칼날은 깨짐 → 재생 쿨 뒤 다시 생김
-// 레이저·파괴 광선·장판·폭발·보스 필살기는 칼날을 그냥 통과 (칼날도 안 깨짐)
+// 적 투사체(화염구·빙결/독 플라스크·산탄)가 칼날에 닿으면 지워짐. 칼날은 안 깨짐 (11/27p)
+// 레이저·파괴 광선·장판·폭발·보스 필살기는 칼날을 그냥 통과. 부메랑은 관통이라 안 지워짐
 // 함수 이름은 예전(방패) 그대로 둠: 호출하는 쪽 코드를 덜 바꾸려고
 
 Object.assign(SPELLS, {
@@ -49,7 +49,7 @@ Object.assign(SPELLS, {
       const bx = target.x + Math.cos(a) * g.R;
       const by = target.y + Math.sin(a) * g.R;
       if (dist(bx, by, px, py) <= g.L * 0.9 + 8) {
-        this.breakBlade(target, i, world, bx, by);
+        if (world) this.spawnParticles(world, px, py, '#cbd5e1', 5, 130); // 지워지는 연출 (칼날은 그대로)
         return true;
       }
     }
