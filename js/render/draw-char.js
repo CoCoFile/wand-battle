@@ -89,6 +89,8 @@ Object.assign(RENDER, {
       }
     }
 
+    if (c.isClone) { ctx.restore(); return; } // 👥 분신: 몸·지팡이만 (HP 바·이름·화살표 X)
+
     // 미니 HP 바 & 닉네임
     const barW = Math.max(44, c.r * 1.5);
     const barH = 6;

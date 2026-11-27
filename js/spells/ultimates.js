@@ -1,4 +1,4 @@
-// 황금카드 궁극기 4종 발동 (10초마다 자동): 멈춰!(광역 스턴) / 파괴 광선(즉사 빔) / 혼돈!파괴!망각!(장판 4개) / 폭발은 예술이다!
+// 황금카드 궁극기 6종 발동 (11/27z3: ☄️ 하늘이 무너진다! · 👥 분신술! 추가) (10초마다 자동): 멈춰!(광역 스턴) / 파괴 광선(즉사 빔) / 혼돈!파괴!망각!(장판 4개) / 폭발은 예술이다!
 // 스탯 영향 (11/27h): 멈춰! 빼고 전부 — 쿨타임(×cdrMult, update.js) · 범위(×areaMult) · 공격력(혼돈·예술 피해 ×atkMult, 파괴 광선은 즉사라 무관)
 
 Object.assign(SPELLS, {
@@ -6,6 +6,12 @@ Object.assign(SPELLS, {
   //     혼돈 장판 3+n개(최대 8)·피해 +30%/개, 예술 지뢰 6+2n개(최대 16)·피해 +30%/개
   triggerUltimate(caster, sid, world) {
     const n = Math.max(1, (caster.ultLv || {})[sid] || 1);
+    // 연출 (11/27z3): 화면 잠깐 어둡게 + 궁극기 이름 크게. 파괴 광선은 '한방 컷' 배너가 덮을 수 있음
+    const U = CONFIG.ULTIMATES[sid];
+    if (U) {
+      world.ultDim = 0.55;
+      UI.broadcastDramatic(`${U.icon} ${U.name}${n > 1 ? ` ×${n}` : ''}`, U.color, caster.name, 'ult');
+    }
     const dmgUp = 1 + 0.3 * (n - 1);
     if (sid === 'stop') {
       const stun = Math.min(5, 3 + 0.5 * (n - 1));
@@ -19,7 +25,6 @@ Object.assign(SPELLS, {
       world.pulses.push({ x: caster.x, y: caster.y, r0: caster.r, maxR: far, life: 0.65, maxLife: 0.65, color: '#f59e0b', lw: 10 });
       world.pulses.push({ x: caster.x, y: caster.y, r0: caster.r, maxR: far, life: 0.85, maxLife: 0.85, color: '#fbbf24', lw: 5 });
       SFX.play('golden');
-      UI.broadcastDramatic('멈춰!', '#f59e0b', caster.name);
     }
     else if (sid === 'killray') {
       const wandLen = wandTipDist(caster);
@@ -65,10 +70,36 @@ Object.assign(SPELLS, {
         this.spawnParticles(world, zx, zy, '#a855f7', 14, 180);
       }
       SFX.play('golden');
-      UI.broadcastDramatic('혼돈! 파괴! 망각!', '#9333ea', caster.name);
     }
     else if (sid === 'art') {
       this.castArt(caster, world, n);
+    }
+    else if (sid === 'meteor') { // ☄️ 하늘이 무너진다!: 절반은 적 근처, 절반은 아무 데나 (운빨)
+      const M = CONFIG.METEOR;
+      const cnt = Math.min(16, M.count + 2 * (n - 1));
+      const foes = world.chars.filter((t) => t.alive && t.team !== caster.team);
+      const R = M.r * (caster.areaMult || 1);
+      const dmg = (M.dmg[0] + M.dmg[1] * (caster.lv || 1)) * (caster.atkMult || 1) * dmgUp;
+      for (let i = 0; i < cnt; i++) {
+        let x, y;
+        if (i % 2 === 0 && foes.length) { const f = foes[randInt(0, foes.length - 1)]; x = f.x + rand(-60, 60); y = f.y + rand(-60, 60); }
+        else { x = rand(80, CONFIG.W - 80); y = rand(70, CONFIG.H - 70); }
+        const delay = M.delay + i * 0.12 + rand(0, 0.3);
+        (world.warns = world.warns || []).push({ shape: 'circle', x: clamp(x, 40, CONFIG.W - 40), y: clamp(y, 40, CONFIG.H - 40), r: R,
+          delay, maxDelay: delay, fired: false, life: 0.3, shake: 0.2, ally: true, ownerId: caster.id, team: caster.team, dmg });
+      }
+      SFX.play('golden');
+    }
+    else if (sid === 'clone') { // 👥 분신술!: 분신이 내 주위를 돌며 내 마법을 같이 씀 (피해 50%)
+      const C = CONFIG.CLONE;
+      const cnt = Math.min(4, 1 + n);
+      world.clones = (world.clones || []).filter((k) => k.ownerId !== caster.id);
+      for (let i = 0; i < cnt; i++) {
+        world.clones.push({ ownerId: caster.id, slot: i, cnt, x: caster.x, y: caster.y, angle: caster.angle, life: C.life, maxLife: C.life });
+      }
+      this.spawnParticles(world, caster.x, caster.y, '#38bdf8', 22, 240);
+      world.rings.push({ x: caster.x, y: caster.y, r: 10, maxR: 110, life: 0.4, maxLife: 0.4, color: '#0ea5e9' });
+      SFX.play('golden');
     }
   },
 
@@ -106,7 +137,33 @@ Object.assign(SPELLS, {
     }
     this.spawnParticles(world, cx, cy, '#7c3aed', 18, 200);
     SFX.play('golden');
-    UI.broadcastDramatic('폭발은 예술이다!', '#ea580c', caster.name);
+  },
+
+  // 👥 분신 위치·조준 (방장/솔로). 주인이 죽거나 시간 끝나면 사라짐
+  updateClones(w, dt) {
+    if (!w.clones || !w.clones.length) return;
+    const C = CONFIG.CLONE;
+    for (let i = w.clones.length - 1; i >= 0; i--) {
+      const k = w.clones[i];
+      const o = w.chars.find((c) => c.id === k.ownerId);
+      k.life -= dt;
+      if (!o || !o.alive || k.life <= 0) {
+        this.spawnParticles(w, k.x, k.y, '#7dd3fc', 10, 160);
+        w.clones.splice(i, 1);
+        continue;
+      }
+      const a = (Math.PI * 2 * k.slot) / k.cnt + w.time * 0.9;
+      const tx = clamp(o.x + Math.cos(a) * C.orbit, 20, CONFIG.W - 20), ty = clamp(o.y + Math.sin(a) * C.orbit, 20, CONFIG.H - 20);
+      const f = Math.min(1, dt * 10);
+      k.x += (tx - k.x) * f; k.y += (ty - k.y) * f;
+      let best = null, bd = 1e9;
+      for (const t of w.chars) {
+        if (!t.alive || t.team === o.team) continue;
+        const d = dist(k.x, k.y, t.x, t.y);
+        if (d < bd) { bd = d; best = t; }
+      }
+      k.angle = best ? Math.atan2(best.y - k.y, best.x - k.x) : o.angle;
+    }
   },
 
   // 블랙홀: 범위 안 적을 가운데로 끌어당김

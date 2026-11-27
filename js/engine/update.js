@@ -22,6 +22,7 @@ Object.assign(ENGINE, {
     this.updateWaves(w, dt);
     this.updateZones(w, dt);
     SPELLS.updateBossWarns(w, dt);
+    SPELLS.updateClones(w, dt);   // 👥 분신술
     SPELLS.updateComboTimers(w, dt);   // 🔗 조합 예약 효과
     this.updateEffects(w, dt);
   },
@@ -169,10 +170,13 @@ Object.assign(ENGINE, {
         c.angle += (c.aimSpin ?? 2.5) * dt;
       }
 
-      // 보유 마법 자동 시전
+      // 보유 마법 자동 시전 (🃏 꽝: 👹 적 분노 = 쿨 ×1.5 빠르게, 🐌 느림보 = 쿨 절반 속도)
+      if (c.enrageT > 0) c.enrageT -= dt;
+      if (c.snailT > 0) c.snailT -= dt;
+      const cdDt = dt * (c.enrageT > 0 ? 1.5 : 1) * (c.snailT > 0 ? 0.5 : 1);
       for (const [mid, lv] of Object.entries(c.magics)) {
         if (lv <= 0 || mid === 'blades' || mid === 'barrier') continue; // 칼날·보호막은 상시 유지형
-        c.cooldowns[mid] = (c.cooldowns[mid] ?? 0.2) - dt;
+        c.cooldowns[mid] = (c.cooldowns[mid] ?? 0.2) - cdDt;
         if (c.cooldowns[mid] <= 0) {
           c.cooldowns[mid] = SPELLS.baseCooldown(mid, lv) * c.cdrMult;
           SPELLS.cast(c, mid, lv, w);
@@ -533,6 +537,7 @@ Object.assign(ENGINE, {
   },
 
   updateEffects(w, dt) {
+    if (w.ultDim > 0) w.ultDim = Math.max(0, w.ultDim - dt); // 궁극기 발동 화면 어둡게
     // 수명 있는 구슬(중간 난이도 회복 구슬) 소멸
     for (let i = w.orbs.length - 1; i >= 0; i--) {
       const o = w.orbs[i];

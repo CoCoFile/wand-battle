@@ -278,6 +278,7 @@ Object.assign(ENGINE, {
     this.world.waves = [];
     this.world.zones = [];
     this.world.warns = [];
+    this.world.clones = [];
     this.world.bossTimers = [];
     this.world.comboTimers = [];
     this.spawnSoloStageEnemies(this.stage);

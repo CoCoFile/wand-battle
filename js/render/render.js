@@ -110,6 +110,14 @@ const RENDER = {
     // 1.2 👑 보스 필살기 경고 (빨간 바닥) / 발동 순간 번쩍
     for (const wn of (w.warns || [])) this.drawWarn(ctx, wn, w.time);
 
+    // 🃏 궁극기 발동: 바닥만 잠깐 어둡게 (투사체·캐릭터는 그 위에 그려져서 또렷)
+    if (w.ultDim > 0) {
+      ctx.save();
+      ctx.fillStyle = `rgba(15, 23, 42, ${0.32 * clamp(w.ultDim / 0.55, 0, 1)})`;
+      ctx.fillRect(-20, -20, CONFIG.W + 40, CONFIG.H + 40);
+      ctx.restore();
+    }
+
     // 1.5 바운스 지뢰 (청록 원 + 스프링 무늬)
     for (const m of (w.bouncers || [])) {
       ctx.save();
@@ -266,6 +274,16 @@ const RENDER = {
       if (!c.alive) continue;
       this.drawChar(ctx, c, w.time, myTeam);
     }
+    // 👥 분신술: 주인 모습을 반투명하게 (이름·HP 없이)
+    for (const k of (w.clones || [])) {
+      const o = w.chars.find((c) => c.id === k.ownerId);
+      if (!o || !o.alive) continue;
+      ctx.save();
+      const fade = clamp(k.life / 0.6, 0, 1) * clamp((k.maxLife - k.life) / 0.3, 0, 1);
+      ctx.globalAlpha = 0.5 * fade;
+      this.drawChar(ctx, { ...o, x: k.x, y: k.y, angle: k.angle, name: '', title: null, hp: o.maxHp, magics: {}, barrier: 0, isClone: true, isBoss: false }, w.time, myTeam);
+      ctx.restore();
+    }
 
     // 8. 파티클
     for (const pt of w.particles) {
@@ -327,6 +345,20 @@ const RENDER = {
       const a = clamp(wn.life / 0.3, 0, 1);
       fill = `rgba(249, 115, 22, ${0.45 * a})`;
       line = `rgba(220, 38, 38, ${a})`;
+    } else if (wn.ally) { // ☄️ 내 편 메테오: 주황 점선 + 하늘에서 떨어지는 불덩이
+      const p = 1 - clamp(wn.delay / (wn.maxDelay || 1), 0, 1);
+      fill = `rgba(251, 146, 60, ${0.06 + 0.14 * p})`;
+      line = 'rgba(234, 88, 12, 0.75)';
+      const h = 380 * (1 - p);
+      const mx = wn.x + h * 0.45, my = wn.y - h;
+      ctx.save();
+      const g = ctx.createLinearGradient(mx + 60, my - 110, mx, my);
+      g.addColorStop(0, 'rgba(251, 146, 60, 0)'); g.addColorStop(1, 'rgba(249, 115, 22, 0.85)');
+      ctx.strokeStyle = g; ctx.lineWidth = 16; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(mx + 54, my - 110); ctx.lineTo(mx, my); ctx.stroke();
+      ctx.fillStyle = '#7c2d12'; ctx.strokeStyle = '#f97316'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(mx, my, 13 + 6 * p, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.restore();
     } else {
       const p = 1 - clamp(wn.delay / (wn.maxDelay || 1), 0, 1);  // 0 → 1 (곧 터짐)
       const blink = wn.delay < 0.35 && Math.sin(t * 40) > 0 ? 0.12 : 0;

@@ -91,3 +91,26 @@ html, body {
   color: transparent;
 }
 }
+
+/* 11/27z3: 폰에서 화면보다 길면 위가 잘리던 문제 — 세로 가운데 정렬은 넘치면 위가 잘림 → 위부터 쌓고 여백 auto로 가운데 */
+#screen-title, #screen-lobby { align-items: flex-start !important; overflow-y: auto; }
+#screen-title > *, #screen-lobby > * { margin-top: auto; margin-bottom: auto; }
+/* 1위 배너: 글자 단위로 자연스럽게 줄바꿈 (flex라 칸이 쪼개지던 문제) */
+#hard-champion { line-height: 1.55; word-break: keep-all; max-width: 100%; }
+#hard-champion:not(.hidden) { display: block; }
+#hard-champion .title-shock, #hard-champion span { white-space: nowrap; }
+
+/* 🃏 황카 연출 (11/27z3) */
+.dramatic-ult {
+  font-size: clamp(2.6rem, 8vw, 5.2rem) !important;
+  filter: drop-shadow(0 0 18px var(--glow, #f59e0b));
+}
+#roulette-reel { transition: background-color .15s, border-color .15s; }
+#roulette-reel.roulette-win { background: #fef3c7; border-color: #f59e0b; box-shadow: 0 0 16px rgba(245, 158, 11, .7); }
+#roulette-reel.roulette-jackpot { background: linear-gradient(90deg, #fde68a, #fff7d6, #fde68a); border-color: #d97706; box-shadow: 0 0 26px rgba(250, 204, 21, .95); }
+#roulette-reel.roulette-bust { background: #e7e5e4; border-color: #78350f; color: #78350f; }
+@keyframes goldFlash {
+  0% { opacity: 0; } 12% { opacity: .85; } 100% { opacity: 0; }
+}
+#gold-flash { background: radial-gradient(circle at center, rgba(253, 230, 138, .9), rgba(245, 158, 11, .55) 55%, rgba(217, 119, 6, 0) 100%); }
+#gold-flash.gold-flash-go { animation: goldFlash .9s ease-out forwards; }

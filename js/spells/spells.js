@@ -47,5 +47,19 @@ const SPELLS = {
     const spreadStep = (count, baseStep, maxTotal) =>
       count <= 1 ? 0 : Math.min(baseStep, maxTotal / (count - 1));
     caster(c, lvEff, world, { wandLen, ox, oy, shots, over, skillUid, spreadStep });
+    // 👥 분신술: 분신마다 그 자리에서 같은 마법을 피해 50%로 한 번 더 (11/27z3)
+    if (!c._inClone && world.clones && world.clones.length) {
+      const mine = world.clones.filter((k) => k.ownerId === c.id);
+      if (mine.length) {
+        const sx = c.x, sy = c.y, sa = c.angle, sk = c.atkMult;
+        c._inClone = true;
+        c.atkMult = sk * CONFIG.CLONE.dmg;
+        try {
+          for (const k of mine) { c.x = k.x; c.y = k.y; c.angle = k.angle; this.cast(c, mid, lv, world); }
+        } finally {
+          c.x = sx; c.y = sy; c.angle = sa; c.atkMult = sk; c._inClone = false;
+        }
+      }
+    }
   }
 };

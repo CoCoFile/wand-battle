@@ -169,8 +169,10 @@ Object.assign(NET, {
       zones: w.zones.map((z) => [ZONE_KINDS.indexOf(z.kind), ri(z.x), ri(z.y), ri(z.r), z.team, ci(z.color)]),
       warns: (w.warns || []).map((wn) => ({
         shape: wn.shape, x: wn.x, y: wn.y, r: wn.r, x1: wn.x1, y1: wn.y1, x2: wn.x2, y2: wn.y2, width: wn.width,
-        a0: wn.a0, a1: wn.a1, bx: wn.bx, by: wn.by, delay: r2(wn.delay), maxDelay: wn.maxDelay, fired: wn.fired, life: r2(wn.life)
+        a0: wn.a0, a1: wn.a1, bx: wn.bx, by: wn.by, delay: r2(wn.delay), maxDelay: wn.maxDelay, fired: wn.fired, life: r2(wn.life), ally: wn.ally ? 1 : undefined
       })),
+      clones: (w.clones || []).map((k) => [k.ownerId, ri(k.x), ri(k.y), Math.round(k.angle * 100), ri(k.life * 100), ri(k.maxLife * 100)]),
+      ultDim: w.ultDim > 0 ? r2(w.ultDim) : undefined,
       pulses: (w.pulses || []).map((p) => ({ x: ri(p.x), y: ri(p.y), r0: ri(p.r0), maxR: ri(p.maxR), life: r2(p.life), maxLife: p.maxLife, color: p.color, lw: p.lw })),
       // 링: [x, y, r, maxR, 남은시간×100, 전체시간×100, 색번호]
       rings: w.rings.map((r) => [ri(r.x), ri(r.y), ri(r.r), ri(r.maxR), ri(r.life * 100), ri(r.maxLife * 100), ci(r.color)]),
@@ -254,6 +256,8 @@ Object.assign(NET, {
       : a);
     w.warns = snap.warns || [];
     w.pulses = snap.pulses || [];
+    w.clones = (snap.clones || []).map((a) => ({ ownerId: a[0], x: a[1], y: a[2], angle: a[3] / 100, life: a[4] / 100, maxLife: a[5] / 100 }));
+    w.ultDim = Number(snap.ultDim) || 0;
     w.shake = Number(snap.shake) || 0;
     $('#paused-banner').classList.toggle('hidden', !snap.paused || NET.isHost); // ⏸️ 방장이 일시정지
     w.rings = (snap.rings || []).map((a) => Array.isArray(a)

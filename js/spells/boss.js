@@ -161,8 +161,8 @@ Object.assign(SPELLS, {
     if (wn.shake) w.shake = Math.max(w.shake || 0, wn.shake);
     // 연출
     if (wn.shape === 'circle') {
-      w.rings.push({ x: wn.x, y: wn.y, r: 10, maxR: wn.r, life: 0.3, maxLife: 0.3, color: '#dc2626' });
-      this.spawnParticles(w, wn.x, wn.y, wn.booze ? '#f59e0b' : '#ef4444', 10, 200);
+      w.rings.push({ x: wn.x, y: wn.y, r: 10, maxR: wn.r, life: 0.3, maxLife: 0.3, color: wn.ally ? '#f97316' : '#dc2626' });
+      this.spawnParticles(w, wn.x, wn.y, wn.booze ? '#f59e0b' : wn.ally ? '#fb923c' : '#ef4444', wn.ally ? 16 : 10, 220);
     } else if (wn.shape === 'line') {
       w.beams.push({ x1: wn.x1, y1: wn.y1, x2: wn.x2, y2: wn.y2, width: wn.width, color: wn.beam || '#b91c1c', life: wn.beam ? 0.9 : 0.35, maxLife: wn.beam ? 0.9 : 0.35, glow: !!wn.beam });
       if (wn.dash && boss && boss.alive) { // 🛵 보스가 줄 끝으로 돌진
@@ -182,7 +182,7 @@ Object.assign(SPELLS, {
       w.zones.push({ kind: 'booze', skillUid: ++w.uidSeq, ownerId: wn.ownerId, team: wn.team, x: wn.x, y: wn.y, r: wn.r, dmg: 0, tick: 999, life: 4, maxLife: 4, color: '#f59e0b' });
     }
     for (const t of w.chars) {
-      if (!t.alive || t.team === wn.team || t.isSmallMob) continue;
+      if (!t.alive || t.team === wn.team || (t.isSmallMob && !wn.ally)) continue; // ally: ☄️ 플레이어 메테오
       if (!this.warnHits(wn, t)) continue;
       ENGINE.damageChar(t, wn.dmg, boss, w);
       if (wn.kb) { // 넉백: 줄에서 멀어지는 방향

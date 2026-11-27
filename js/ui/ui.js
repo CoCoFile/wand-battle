@@ -59,7 +59,8 @@ const UI = {
     });
   },
 
-  showDramatic(text, color = '#f59e0b', sub = '') {
+  // style: '' 기본 / 'ult' 궁극기(더 크게·빛) / 'jackpot' 잭팟(금색 번쩍)
+  showDramatic(text, color = '#f59e0b', sub = '', style = '') {
     const banner = $('#dramatic-banner');
     const txtEl = $('#dramatic-text');
     const subEl = $('#dramatic-sub');
@@ -67,6 +68,10 @@ const UI = {
 
     txtEl.textContent = text;
     txtEl.style.color = color;
+    txtEl.style.setProperty('--glow', color);
+    txtEl.classList.toggle('dramatic-ult', style === 'ult' || style === 'jackpot');
+    txtEl.classList.remove('animate-pop'); void txtEl.offsetWidth; txtEl.classList.add('animate-pop');
+    if (style === 'jackpot') this.goldFlash();
     if (sub) {
       subEl.textContent = sub;
       subEl.classList.remove('hidden');
@@ -80,11 +85,20 @@ const UI = {
     }, 1900);
   },
 
-  broadcastDramatic(text, color, sub = '') {
-    this.showDramatic(text, color, sub);
+  broadcastDramatic(text, color, sub = '', style = '') {
+    this.showDramatic(text, color, sub, style);
     if (NET.active && NET.isHost) {
-      NET.broadcast({ type: 'dramatic', text, color, sub });
+      NET.broadcast({ type: 'dramatic', text, color, sub, style });
     }
+  },
+
+  // 💎 잭팟: 화면 금색 번쩍
+  goldFlash() {
+    const el = $('#gold-flash');
+    if (!el) return;
+    el.classList.remove('hidden', 'gold-flash-go'); void el.offsetWidth; el.classList.add('gold-flash-go');
+    clearTimeout(this.goldFlashTimer);
+    this.goldFlashTimer = setTimeout(() => el.classList.add('hidden'), 1000);
   },
 
   // 👑 보스 필살기 배너 (화면 위쪽, 1.5초)
@@ -105,27 +119,50 @@ const UI = {
     if (NET.active && NET.isHost) NET.broadcast({ type: 'bossUlt', name, text: def.name, icon: def.icon });
   },
 
-  playRoulette(finalLabel, isWin) {
+  // 🎰 룰렛 (11/27z3): 빨리 돌다가 점점 느려지며 멈춤. tone: win / jackpot / bust, twist: 똥에 멈췄다가 뒤집힘
+  playRoulette(finalLabel, tone = 'win', twist = false) {
     const ov = $('#roulette-overlay');
     const reel = $('#roulette-reel');
     const sub = $('#roulette-sub');
     if (!ov || !reel) return;
+    if (typeof tone === 'boolean') tone = tone ? 'win' : 'bust';
 
-    const samples = ['⏱ 멈춰!', '💩 똥!똥!똥!', '⚡ 파괴 광선', '📈 스탯 +1', '🌀 혼돈! 파괴! 망각!', '💩 똥!똥!똥!', '💥 폭발은 예술이다!'];
-    let tick = 0;
+    const samples = ['⏱ 멈춰!', '💩 꽝!', '⚡ 파괴 광선', '📈 스탯 +1', '☄️ 하늘이 무너진다!', '👹 적 분노!', '🌀 혼돈! 파괴! 망각!',
+      '💎 잭팟!', '👥 분신술!', '🐌 느림보!', '💥 폭발은 예술이다!', '💩 꽝!'];
+    const gaps = [60, 60, 60, 60, 60, 60, 70, 80, 95, 115, 140, 170, 210, 260, 330];
+    let tick = randInt(0, samples.length - 1);
+    clearTimeout(this.rouletteTimer);
     ov.classList.remove('hidden');
+    reel.className = reel.className.replace(/\broulette-\w+\b/g, '').trim();
     sub.textContent = '대박? 똥?';
-
-    const timer = setInterval(() => {
-      reel.textContent = samples[tick % samples.length];
-      tick++;
-      if (tick >= 12) {
-        clearInterval(timer);
-        reel.textContent = finalLabel;
-        sub.textContent = '';
-        setTimeout(() => ov.classList.add('hidden'), 1400);
+    const land = (text, cls) => {
+      reel.textContent = text;
+      reel.classList.remove('roulette-win', 'roulette-jackpot', 'roulette-bust', 'animate-pop');
+      void reel.offsetWidth;
+      reel.classList.add(cls, 'animate-pop');
+    };
+    const step = (k) => {
+      if (k < gaps.length) {
+        reel.textContent = samples[tick++ % samples.length];
+        if (k >= gaps.length - 4) sub.textContent = '두근…';
+        this.rouletteTimer = setTimeout(() => step(k + 1), gaps[k]);
+        return;
       }
-    }, 85);
+      sub.textContent = '';
+      if (twist) {
+        land('💩 꽝!', 'roulette-bust');
+        this.rouletteTimer = setTimeout(() => {
+          land(finalLabel, 'roulette-jackpot');
+          sub.textContent = '…은 훼이크 ㅋㅋ';
+          this.rouletteTimer = setTimeout(() => ov.classList.add('hidden'), 1600);
+        }, 800);
+        return;
+      }
+      land(finalLabel, `roulette-${tone}`);
+      if (tone === 'jackpot') this.goldFlash();
+      this.rouletteTimer = setTimeout(() => ov.classList.add('hidden'), 1500);
+    };
+    step(0);
   },
 
   renderChoiceCards(container, choices, onPick) {
@@ -386,11 +423,10 @@ const UI = {
       let diff = 'hell';
       let top = (await RANKING.top('hell'))[0];
       if (!top) { diff = 'hard'; top = (await RANKING.top('hard'))[0]; }
-      if (!top) { el.classList.add('hidden'); el.classList.remove('inline-flex'); return; }
+      if (!top) { el.classList.add('hidden'); return; }
       const stage = top.cleared ? '👑 클리어' : `STAGE ${Number(top.stage)}`;
       el.innerHTML = `🔥 ${escapeHtml(CONFIG.DIFFICULTY[diff].label)} 1위 · ${titleHtml(top.title)}${escapeHtml(top.id)}${top.manual ? ' 🕹️' : ''} · ${stage} · Lv.${Number(top.lv)}`;
       el.classList.remove('hidden');
-      el.classList.add('inline-flex');
     } catch (_) {
       this.championAt = 0; // 실패하면 다음에 다시
     }

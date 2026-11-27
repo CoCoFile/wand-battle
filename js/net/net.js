@@ -229,7 +229,7 @@ const NET = {
         if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);
       }
     } else if (msg.type === 'dramatic') {
-      UI.showDramatic(msg.text, msg.color, msg.sub || '');
+      UI.showDramatic(msg.text, msg.color, msg.sub || '', msg.style || '');
     } else if (msg.type === 'bossUlt') {
       UI.showBossUlt(msg.name, msg.text, msg.icon);
     } else if (msg.type === 'gameover') {

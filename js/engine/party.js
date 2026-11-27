@@ -77,7 +77,7 @@ Object.assign(ENGINE, {
       }
     }
     w.chars = w.chars.filter((c) => c.alive || c.team === 1);
-    w.projs = []; w.beams = []; w.waves = []; w.zones = []; w.warns = []; w.bossTimers = []; w.comboTimers = [];
+    w.projs = []; w.beams = []; w.waves = []; w.zones = []; w.warns = []; w.clones = []; w.bossTimers = []; w.comboTimers = [];
     this.spawnSoloStageEnemies(n);
     UI.broadcastDramatic(`STAGE ${n}`, '#0f172a');
   },
