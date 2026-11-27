@@ -239,17 +239,21 @@ Object.assign(SPELLS, {
     const tl = this.comboTier(c, 'laserboom');
     if (tl <= 0) return;
     const n = tl >= 2 ? 2 : 1;
-    this.boomLaser(c, p, w, n);
+    if (p.bounceLzCd > w.time) return;                        // 11/27z: 벽에 부딪칠 때마다 (부메랑마다 따로, 모서리 2번 판정만 막음)
+    p.bounceLzCd = w.time + 0.08;
+    this.boomLaser(c, p, w, n, true);
   },
 
-  // 부메랑에서 가까운 적 쪽으로 레이저 n줄
-  boomLaser(c, p, w, n) {
-    if (c.lzCd > w.time) return;                              // 부메랑이 여러 개라도 0.2초에 한 번만
-    c.lzCd = w.time + 0.2;
+  // 부메랑에서 가까운 적 쪽으로 레이저 n줄 (bounce=true면 공용 쿨 무시)
+  boomLaser(c, p, w, n, bounce = false) {
+    if (!bounce) {
+      if (c.lzCd > w.time) return;                            // 날아가는 중 레이저: 부메랑 여러 개라도 0.2초에 한 번만
+      c.lzCd = w.time + 0.2;
+    }
     const tg = this.nearestEnemy(c, w, p.x, p.y);
     const base = tg ? Math.atan2(tg.y - p.y, tg.x - p.x) : rand(0, Math.PI * 2);
     for (let k = 0; k < n; k++) {
-      this.comboBeam(c, w, p.x, p.y, base + (k - (n - 1) / 2) * 0.25, 600, 9, this.baseDmg(c, 'laser') * 0.36, '#a855f7', true);
+      this.comboBeam(c, w, p.x, p.y, base + (k - (n - 1) / 2) * 0.25, 600, 9, this.baseDmg(c, 'laser') * (bounce ? 0.17 : 0.36), '#a855f7', true); // 벽 튕김 빔은 자주 나가서 ×0.17
     }
   },
 
