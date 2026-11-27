@@ -322,6 +322,14 @@ Object.assign(ENGINE, {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
+      // 부메랑: 벽에 닿으면 반사 (횟수 제한 없음, 적중 목록은 유지 → 같은 적 연타 X)
+      if (p.kind === 'boomerang') {
+        if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx); }
+        else if (p.x > CONFIG.W - p.r) { p.x = CONFIG.W - p.r; p.vx = -Math.abs(p.vx); }
+        if (p.y < p.r) { p.y = p.r; p.vy = Math.abs(p.vy); }
+        else if (p.y > CONFIG.H - p.r) { p.y = CONFIG.H - p.r; p.vy = -Math.abs(p.vy); }
+      }
+
       // 부메랑 제외 전 투사체 기본 벽 도탄
       if (p.kind !== 'boomerang') {
         let bounced = false;

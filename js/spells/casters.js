@@ -93,10 +93,10 @@ const SPELL_CASTERS = {
 
   boomerang(c, lv, world, k) {
     const { wandLen, ox, oy, shots, over, skillUid, spreadStep } = k;
-    const spd = 500 + lv * 15;
+    const spd = 720 + lv * 20;                        // 11/27d: 500+15lv → 빠르게
     const r = (11 + lv * 0.7) * c.areaMult;
-    const dmg = (25 + lv * 5) * c.atkMult * over;     // 11/27c 평균딜 맞춤 (17+4.5lv → 25+5lv)
-    const maxLife = (1.25 + lv * 0.12) * Math.sqrt(c.areaMult);
+    const dmg = (19.6 + lv * 1.3) * c.atkMult * over; // 11/27d: 빨라지고 멀리 가고 벽 반사라 더 자주 맞음 → 평균딜 맞춤 (25+5lv → 19.6+1.3lv)
+    const maxLife = (1.45 + lv * 0.12) * Math.sqrt(c.areaMult); // 11/27d: 사거리 ↑ (빠른 속도 × 긴 수명, 벽에 닿으면 반사)
     const step = spreadStep(shots, 0.22, Math.PI * 1.45);
     for (let i = 0; i < shots; i++) {
       const ang = c.angle + (i - (shots - 1) / 2) * step;
