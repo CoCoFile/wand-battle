@@ -110,11 +110,11 @@ Object.assign(SPELLS, {
     c.cdrMult = c.baseCdr * (1 - Math.min(V.cdrMax, cdrRed));
   },
 
-  // 황금 카드: 궁극기 50% / 랜덤 스탯 +1장 20% / 똥 30% (11/27i: 똥 50→30%) + 슬롯 룰렛 연출
+  // 황금 카드: 궁극기 35% / 랜덤 스탯 +1장 35% / 똥 30% (11/27w: 궁극기가 너무 자주 나와서 50→35) + 슬롯 룰렛 연출
   // 이미 있는 궁극기가 또 나오면 ×2, ×3 … (개수·피해 ↑, ultimates.js)
   resolveGoldenCard(c, world) {
     const roll = Math.random();
-    const success = roll < 0.5;
+    const success = roll < 0.35;
     const isStat = !success && roll < 0.7;
     const ultKeys = Object.keys(CONFIG.ULTIMATES);
     const pickedUlt = ultKeys[randInt(0, ultKeys.length - 1)];
