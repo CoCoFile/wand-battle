@@ -95,7 +95,7 @@ const SPELL_CASTERS = {
     const { wandLen, ox, oy, shots, over, skillUid, spreadStep } = k;
     const spd = 720 + lv * 20;                        // 11/27d: 500+15lv → 빠르게
     const r = (11 + lv * 0.7) * c.areaMult;
-    const dmg = (14.5 + lv * 1.25) * c.atkMult * over; // 11/27g: 빠름·멀리·벽 난반사(튕기면 다시 맞음)라 자주 맞음 → 평균딜 맞춤 (25+5lv → 14.5+1.25lv)
+    const dmg = (13.9 + lv * 1.0) * c.atkMult * over;  // 11/27k: 빠름·멀리·벽 난반사·방패 관통 → 평균딜 맞춤 (25+5lv → 13.9+1.0lv)
     const maxLife = (1.45 + lv * 0.12) * Math.sqrt(c.areaMult); // 11/27d: 사거리 ↑ (빠른 속도 × 긴 수명, 벽에 닿으면 반사)
     const step = spreadStep(shots, 0.22, Math.PI * 1.45);
     for (let i = 0; i < shots; i++) {
@@ -113,7 +113,7 @@ const SPELL_CASTERS = {
     const { wandLen, ox, oy, shots, over, skillUid, spreadStep } = k;
     const pellets = 3 + shots;                  // 밸런스(11/26): 2+shots → 3+shots
     const totalSpread = Math.min(Math.PI * 1.35, 0.65 + shots * 0.08);
-    const dmg = (7 + lv * 7.3) * c.atkMult * over;    // 11/27c 평균딜 맞춤 (10+3lv → 7+7.3lv)
+    const dmg = (4 + lv * 6.3) * c.atkMult * over;    // 11/27k: 닿으면 작은 폭발(주변 60%) → 평균딜 맞춤 (7+7.3lv → 4+6.3lv)
     const life = (0.95 + lv * 0.04) * c.areaMult;
     const r = 6.5 * c.areaMult;
     for (let i = 0; i < pellets; i++) {
@@ -123,7 +123,7 @@ const SPELL_CASTERS = {
         kind: 'scatter', skillUid, ownerId: c.id, team: c.team,
         x: clamp(ox, r + 4, CONFIG.W - r - 4), y: clamp(oy, r + 4, CONFIG.H - r - 4),
         vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
-        r, dmg, bounces: 2, color: '#57534E', life, hitIds: []
+        r, dmg, expR: (38 + Math.min(lv, 12) * 2) * c.areaMult, bounces: 2, color: '#57534E', life, hitIds: []
       });
     }
     if (c.isLocal) SFX.play('laser');

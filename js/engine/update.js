@@ -369,7 +369,9 @@ Object.assign(ENGINE, {
         if (!t.alive || t.id === p.ownerId || t.team === p.team) continue;
 
         // 마력 방패 충돌 판정
-        if (SPELLS.tryBlockPoint(t, p.x, p.y, w, p.skillUid)) {
+        // 🪃 부메랑: 방패도 관통 (방패는 깨지지만 칼날은 계속 날아감, 11/27k)
+        if (p.kind === 'boomerang') SPELLS.tryBlockPoint(t, p.x, p.y, w, p.skillUid);
+        else if (SPELLS.tryBlockPoint(t, p.x, p.y, w, p.skillUid)) {
           if (p.kind === 'fireball') {
             w.rings.push({ x: p.x, y: p.y, r: 10, maxR: p.expR, life: 0.25, maxLife: 0.25, color: '#f97316' });
           } else {
@@ -403,7 +405,18 @@ Object.assign(ENGINE, {
             w.projs.splice(i, 1);
             removed = true;
             break;
+          } else if (p.kind === 'boomerang') {
+            // 관통 연출: 보라 불꽃 + 작은 링 (적중 목록으로 같은 적은 한 번만)
+            SPELLS.spawnParticles(w, t.x, t.y, '#a78bfa', 6, 160);
+            w.rings.push({ x: t.x, y: t.y, r: t.r * 0.6, maxR: t.r + 14, life: 0.18, maxLife: 0.18, color: '#8b5cf6' });
           } else if (p.kind === 'scatter') {
+            // 💥 산탄 파편이 적에 닿으면 작은 폭발 (주변 다른 적 60%, 11/27k)
+            w.rings.push({ x: p.x, y: p.y, r: 6, maxR: p.expR, life: 0.2, maxLife: 0.2, color: '#78716c' });
+            SPELLS.spawnParticles(w, p.x, p.y, '#a8a29e', 6, 150);
+            for (const sp of w.chars) {
+              if (!sp.alive || sp.id === p.ownerId || sp.team === p.team || sp.id === t.id) continue;
+              if (dist(p.x, p.y, sp.x, sp.y) <= p.expR + sp.r) this.damageChar(sp, p.dmg * 0.6, attacker, w);
+            }
             w.projs.splice(i, 1);
             removed = true;
             break;
