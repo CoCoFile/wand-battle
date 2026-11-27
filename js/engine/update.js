@@ -184,7 +184,8 @@ Object.assign(ENGINE, {
       for (const uid of c.ultimates) {
         c.ultCooldowns[uid] = (c.ultCooldowns[uid] ?? 10.0) - dt;
         if (c.ultCooldowns[uid] <= 0) {
-          c.ultCooldowns[uid] = 10.0;
+          // 쿨타임 카드 영향 (⏱ 멈춰!만 고정 10초) — 11/27h
+          c.ultCooldowns[uid] = uid === 'stop' ? 10.0 : 10.0 * (c.cdrMult || 1);
           SPELLS.triggerUltimate(c, uid, w);
         }
       }
@@ -474,7 +475,7 @@ Object.assign(ENGINE, {
           boom = w.chars.some((t) => t.alive && t.team !== z.team && t.id !== z.ownerId && dist(z.x, z.y, t.x, t.y) <= t.r + z.r + 14);
         }
         if (boom) {
-          SPELLS.explodeAt(z.x, z.y, CONFIG.ART.mineR, z.dmg, z.ownerId, z.team, z.skillUid, w, '#f97316');
+          SPELLS.explodeAt(z.x, z.y, z.blastR || CONFIG.ART.mineR, z.dmg, z.ownerId, z.team, z.skillUid, w, '#f97316');
           w.zones.splice(i, 1);
         }
         continue;

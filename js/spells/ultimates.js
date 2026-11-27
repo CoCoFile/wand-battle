@@ -1,4 +1,5 @@
-// 황금카드 궁극기 3종 발동 (10초마다 자동): 멈춰!(광역 스턴) / 파괴 광선(즉사 빔) / 혼돈!파괴!망각!(장판 4개)
+// 황금카드 궁극기 4종 발동 (10초마다 자동): 멈춰!(광역 스턴) / 파괴 광선(즉사 빔) / 혼돈!파괴!망각!(장판 4개) / 폭발은 예술이다!
+// 스탯 영향 (11/27h): 멈춰! 빼고 전부 — 쿨타임(×cdrMult, update.js) · 범위(×areaMult) · 공격력(혼돈·예술 피해 ×atkMult, 파괴 광선은 즉사라 무관)
 
 Object.assign(SPELLS, {
   triggerUltimate(caster, sid, world) {
@@ -22,7 +23,7 @@ Object.assign(SPELLS, {
       const len = 1450; // 방패 무시 · 경로상 전원 관통 (아레나 대각선 ≈ 1442)
       const x2 = x1 + Math.cos(caster.angle) * len;
       const y2 = y1 + Math.sin(caster.angle) * len;
-      const width = CONFIG.HEAD_R * 2; // 굵기 = 캐릭터 지름
+      const width = CONFIG.HEAD_R * 2 * (caster.areaMult || 1); // 굵기 = 캐릭터 지름 × 범위 카드
       // glow: 바깥 붉은 빛이 ~1초 동안 천천히 흐려지는 잔상
       world.beams.push({ x1, y1, x2, y2, width, color: '#ef4444', life: 1.0, maxLife: 1.0, glow: true });
       SFX.play('killray');
@@ -49,7 +50,7 @@ Object.assign(SPELLS, {
         const zy = rand(150, CONFIG.H - 150);
         world.zones.push({
           kind: 'chaos', skillUid, ownerId: caster.id, team: caster.team,
-          x: zx, y: zy, r: 115, dmg: (12 + caster.lv * 2.2) * caster.atkMult,
+          x: zx, y: zy, r: 115 * (caster.areaMult || 1), dmg: (12 + caster.lv * 2.2) * caster.atkMult,
           tick: 0.25, life: 4.0, maxLife: 4.0, color: '#9333ea'
         });
         this.spawnParticles(world, zx, zy, '#a855f7', 14, 180);
@@ -84,11 +85,11 @@ Object.assign(SPELLS, {
     });
     for (let i = 0; i < A.mines; i++) {
       const ang = (Math.PI * 2 * i) / A.mines + rand(-0.15, 0.15);
-      const rr = A.mineRing * rand(0.85, 1.15);
+      const rr = A.mineRing * (caster.areaMult || 1) * rand(0.85, 1.15);
       world.zones.push({
         kind: 'mine', skillUid: ++world.uidSeq, holeUid, ownerId: caster.id, team: caster.team,
         x: clamp(cx + Math.cos(ang) * rr, 20, CONFIG.W - 20), y: clamp(cy + Math.sin(ang) * rr, 20, CONFIG.H - 20),
-        r: 10, arm: A.mineArm, life: A.holeLife + 0.5, maxLife: A.holeLife + 0.5, tick: 999,
+        r: 10, blastR: A.mineR * (caster.areaMult || 1), arm: A.mineArm, life: A.holeLife + 0.5, maxLife: A.holeLife + 0.5, tick: 999,
         color: '#ef4444', dmg: (A.mineDmg[0] + A.mineDmg[1] * lv) * caster.atkMult
       });
     }
