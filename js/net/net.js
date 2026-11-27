@@ -76,7 +76,7 @@ const NET = {
     this.peer = new Peer();
     this.peer.on('open', (id) => {
       ENGINE.localId = id;
-      const conn = this.peer.connect(`wand-battle-${code}`, { reliable: true });
+      const conn = this.peer.connect(`wand-battle-${code}`, { reliable: true, serialization: 'json' }); // json: binarypack보다 빠름 (11/27t)
       this.hostConn = conn;
       conn.on('open', () => {
         conn.send({ type: 'join', name: myName, relics: ACCOUNT.equippedList(), title: ACCOUNT.myTitle() });

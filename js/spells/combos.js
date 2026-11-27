@@ -93,9 +93,9 @@ Object.assign(SPELLS, {
   },
 
   // 직선 즉발 빔 (조합용 레이저)
-  comboBeam(c, w, x1, y1, ang, len, width, dmg, color) {
+  comboBeam(c, w, x1, y1, ang, len, width, dmg, color, glow = false) {
     const x2 = x1 + Math.cos(ang) * len, y2 = y1 + Math.sin(ang) * len;
-    w.beams.push({ x1, y1, x2, y2, width, color, life: 0.18, maxLife: 0.18 });
+    w.beams.push({ x1, y1, x2, y2, width, color, life: glow ? 0.35 : 0.18, maxLife: glow ? 0.35 : 0.18, glow: glow || undefined });
     for (const t of this.enemiesOf(c, w)) {
       if (distToSegment(t.x, t.y, x1, y1, x2, y2) <= t.r + width * 0.5) ENGINE.damageChar(t, dmg, c, w);
     }
@@ -250,7 +250,7 @@ Object.assign(SPELLS, {
     const tg = this.nearestEnemy(c, w, p.x, p.y);
     const base = tg ? Math.atan2(tg.y - p.y, tg.x - p.x) : rand(0, Math.PI * 2);
     for (let k = 0; k < n; k++) {
-      this.comboBeam(c, w, p.x, p.y, base + (k - (n - 1) / 2) * 0.25, 600, 6, this.baseDmg(c, 'laser') * 0.3, '#60a5fa');
+      this.comboBeam(c, w, p.x, p.y, base + (k - (n - 1) / 2) * 0.25, 600, 9, this.baseDmg(c, 'laser') * 0.3, '#a855f7', true);
     }
   },
 
@@ -379,7 +379,7 @@ Object.assign(SPELLS, {
         const cx = c.x, cy = c.y, a0 = rand(0, Math.PI * 2);
         for (let k = 0; k < 6; k++) {
           this.comboLater(w, 0.25 * k, () => {
-            for (let j = 0; j < 4; j++) this.comboBeam(c, w, cx, cy, a0 + k * 0.5 + (Math.PI / 2) * j, 600, 8, this.baseDmg(c, 'laser') * 0.5, '#93c5fd');
+            for (let j = 0; j < 4; j++) this.comboBeam(c, w, cx, cy, a0 + k * 0.5 + (Math.PI / 2) * j, 600, 10, this.baseDmg(c, 'laser') * 0.5, '#a855f7', true);
           });
         }
         break;

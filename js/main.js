@@ -17,6 +17,8 @@ function gameLoop(ts) {
     ENGINE.update(dt * sp / 2);
     NET.tickSync(dt);
     UI.updateHUD();
+  } else if (ENGINE.mode === 'online' && NET.active) {
+    NET.smoothClient();   // 참가자: 스냅샷 사이 보간
   }
 
   RENDER.draw();
