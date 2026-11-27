@@ -2,7 +2,7 @@
 // 크기·속도·체력·이름은 여기서 조정. ※ 마법별 피해·속도 등 수치는 js/spells/casters.js, 쿨타임은 js/spells/spells.js(baseCooldown)에 있음
 
 const CONFIG = {
-  GAME_VERSION: '2026.11.27m', // 11/27m: 리롤 원래대로(스테이지마다 +1) / 11/27k: 부메랑 방패 관통, 산탄 폭발 / 11/27j: 적·적 장판 눈 편한 색 / 11/27i: 궁극기 중복 ×n, 황카 똥 30%·스탯 20% / 11/27h: 황카 궁극기 스탯 영향(멈춰! 제외) / 11/27g: 부메랑 벽 난반사 후 늦게 귀환 / 11/27f: 장판 중첩 피해 제거 / 11/27e: 빙결 딜 절반 / 11/27d: 부메랑 빠르게·멀리·벽 반사 / 11/27c: 마법 7종 평균딜 맞춤 / 11/27b: 리롤 한 판 1번(금화 2번), 스탯 카드 수치 숨김 / 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
+  GAME_VERSION: '2026.11.27n', // 11/27n: 마력 방패 삭제 → 회전 칼날(최대 3, 닿으면 깨짐, 투사체 막음), 쉼터 적 ×0.92 / 11/27m: 리롤 원래대로(스테이지마다 +1) / 11/27k: 부메랑 방패 관통, 산탄 폭발 / 11/27j: 적·적 장판 눈 편한 색 / 11/27i: 궁극기 중복 ×n, 황카 똥 30%·스탯 20% / 11/27h: 황카 궁극기 스탯 영향(멈춰! 제외) / 11/27g: 부메랑 벽 난반사 후 늦게 귀환 / 11/27f: 장판 중첩 피해 제거 / 11/27e: 빙결 딜 절반 / 11/27d: 부메랑 빠르게·멀리·벽 반사 / 11/27c: 마법 7종 평균딜 맞춤 / 11/27b: 리롤 한 판 1번(금화 2번), 스탯 카드 수치 숨김 / 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
   // 플레이 기록 수집 주소 (구글 Apps Script 웹 앱 /exec URL). 비워두면 수집 안 함
   TELEMETRY_URL: 'https://script.google.com/macros/s/AKfycbyCRCqR5cZPodxsXFBUpEwNUSXvQBr1qMMGUGpo5E41HJxSlZWXWgDIqgjhjf8iHdieVQ/exec',
 
@@ -40,9 +40,9 @@ const CONFIG = {
     frost:     { id: 'frost',     name: '빙결 장판',   color: '#0EA5E9', bg: '#E0F2FE', icon: '🧊', desc: '얼음 장판: 감속 + 받는 피해 ↑', up: '장판·방깍·개수 ↑' },
     poison:    { id: 'poison',    name: '독 플라스크', color: '#16A34A', bg: '#DCFCE7', icon: '🧪', desc: '독 장판 투척',          up: '장판·피해·발사 수 ↑' },
     boomerang: { id: 'boomerang', name: '부메랑 칼날', color: '#8B5CF6', bg: '#EDE9FE', icon: '🪃', desc: '갔다가 돌아오는 칼날',  up: '사거리·피해·발사 수 ↑' },
-    blades:    { id: 'blades',    name: '회전 칼날',   color: '#64748B', bg: '#F1F5F9', icon: '🗡️', desc: '몸 주위를 도는 칼날',   up: '칼날 수·피해 ↑' },
-    scatter:   { id: 'scatter',   name: '산탄 파편',   color: '#57534E', bg: '#F5F5F4', icon: '▲', desc: '튕기는 산탄',           up: '파편·피해 ↑' },
-    shield:    { id: 'shield',    name: '마력 방패',   color: '#0284C7', bg: '#E0F2FE', icon: '🛡', desc: '공격을 막는 회전 방패', up: '방패 +1' }
+    blades:    { id: 'blades',    name: '회전 칼날',   color: '#64748B', bg: '#F1F5F9', icon: '🗡️', desc: '도는 칼날: 투사체를 막고 닿으면 벰', up: '칼날·피해 ↑' },
+    scatter:   { id: 'scatter',   name: '산탄 파편',   color: '#57534E', bg: '#F5F5F4', icon: '▲', desc: '튕기는 산탄',           up: '파편·피해 ↑' }
+    // 🛡 마력 방패는 11/27n 삭제 → 회전 칼날이 투사체를 막음
   },
   // 스탯 카드 효과 (11/27: 무한 성장용 — 공격·범위는 덧셈, 방어·쿨감은 상한으로 수렴)
   // 방어 = armorMax × n/(n+armorK), 쿨감 = cdrMax × n/(n+cdrK)  (n = 카드 장수)
@@ -79,7 +79,7 @@ const CONFIG = {
   // winText: 엔딩(광기는 30 돌파) 문구, loseText: 게임오버·전멸 문구
   ENDING_STAGE: 30,
   DIFFICULTY: {
-    easy:   { label: '겁쟁이들의 쉼터', short: '쉼터', manual: true, ending: true,  winText: '겁쟁이들의 왕',        loseText: '이걸?ㅋㅋㅋㅋㅋㅋ',           healOrbLife: null, enemyHp: 1.0, enemyAtk: 1.0, enemyCdr: 1.0,  bossHp: 1.0,  bossAtk: 1.0,  lateMult: 0.5 },
+    easy:   { label: '겁쟁이들의 쉼터', short: '쉼터', manual: true, ending: true,  winText: '겁쟁이들의 왕',        loseText: '이걸?ㅋㅋㅋㅋㅋㅋ',           healOrbLife: null, enemyHp: 0.92, enemyAtk: 0.92, enemyCdr: 1.0,  bossHp: 1.0,  bossAtk: 1.0,  lateMult: 0.5 },
     normal: { label: '현실에 타협',     short: '타협', ending: true,  winText: '현실에 안주한놈',      loseText: '걍 쉼터 가셈',               healOrbLife: 6,    enemyHp: 1.15, enemyAtk: 1.12, enemyCdr: 0.95, bossHp: 1.1,  bossAtk: 1.05, lateMult: 0.7 },
     hard:   { label: '만용 그자체',     short: '만용', ending: true,  winText: '인정 무한모드 ㄱ?',    loseText: '용기와 만용은 한끗차이다',   healOrbLife: 0,    enemyHp: 1.5, enemyAtk: 1.45, enemyCdr: 0.85, bossHp: 1.25, bossAtk: 1.15, lateMult: 1.0 },
     hell:   { label: '광기라 불리우는 지옥', short: '광기', ending: false, winText: '아직 숨 쉬고 있음 ㄷㄷ', loseText: '여긴 사람 올 데가 아니다', healOrbLife: 0,  enemyHp: 1.75, enemyAtk: 1.65, enemyCdr: 0.8, bossHp: 1.4, bossAtk: 1.25, lateMult: 1.0 }
@@ -174,15 +174,15 @@ const CONFIG = {
       atk: [0.42, 0.06],              // 밸런스(11/26): 0.6+0.05 → 첫 보스 약하게, 후반 보스는 비슷
       cdr: 1.15,
       xp: 130,
-      magics: { laser: 2, fireball: 2, blades: 1, shield: 2 }
+      magics: { laser: 2, fireball: 2, blades: 2 }
     },
     slime: { count: 4, hp: [14, 4], xp: 20 }
   },
 
   // ── 회전 칼날 ───────────────────────────────
-  // 칼날 수 = min(MAX_SHOTS, Lv+1), 같은 적은 hitGap초에 1번만 맞음
+  // 칼날 수 = min(3, Lv+1), 넘는 레벨은 피해 ×(Lv+1)/3. 닿으면 깨지고 재생
   // 쿨타임 카드 → 회전 빨라짐 (÷cdrMult), 범위 카드 → 크기·궤도 절반만 적용
-  BLADES: { orbit: 62, len: 22, omega: 2.6, hitGap: 0.35, dmg: [4, 20], enemyMult: 0.3 },  // 11/27c 평균딜 맞춤: 26+10lv → 4+20lv (같은 적 연타 제한이 있어서 레벨 기울기를 크게) // orbit = 몸 바깥에서 궤도까지(px), enemyMult = 솔로·파티 적이 쓸 때 피해 배율 (몸에 닿기 쉬워서)
+  BLADES: { max: 3, orbit: 62, len: 22, omega: 2.6, regen: [3.2, 0.15], regenMin: 1.0, dmg: [20, 8], enemyMult: 0.3 }, // 11/27n 방패 대신: 최대 3개, 닿으면(적 몸·적 투사체) 깨지고 regen초 뒤 재생 (3.2−0.15lv, 최소 1.0, ×쿨감). enemyMult = 솔로·파티 적이 쓸 때 피해 배율
 
   // ── 빙결 장판 ───────────────────────────────
   // 방깍(받는 피해 증가) = shredMax × Lv/(Lv+4), 감속 slow

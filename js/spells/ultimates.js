@@ -123,7 +123,7 @@ Object.assign(SPELLS, {
     }
   },
 
-  // 범위 폭발 (방패로 막을 수 있음)
+  // 범위 폭발 (칼날로 못 막음)
   explodeAt(x, y, radius, dmg, ownerId, team, skillUid, world, color = '#f97316') {
     const attacker = world.chars.find((c) => c.id === ownerId);
     world.rings.push({ x, y, r: 10, maxR: radius, life: 0.3, maxLife: 0.3, color });
@@ -132,11 +132,6 @@ Object.assign(SPELLS, {
       if (!t.alive || t.team === team || t.id === ownerId) continue;
       const d = dist(x, y, t.x, t.y);
       if (d > radius + t.r) continue;
-      if ((t.magics?.shield || 0) > 0 && (t.poopTimer || 0) <= 0) {
-        const ang = Math.atan2(y - t.y, x - t.x);
-        const r0 = CONFIG.SHIELD_R[0];
-        if (this.tryBlockPoint(t, t.x + Math.cos(ang) * r0, t.y + Math.sin(ang) * r0, world, skillUid)) continue;
-      }
       ENGINE.damageChar(t, dmg, attacker, world);
     }
     SFX.play('boom');

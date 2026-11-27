@@ -25,10 +25,8 @@ Object.assign(SPELLS, {
     const pool = [];
     for (const id of Object.keys(CONFIG.MAGICS)) {
       const cur = c.magics[id] || 0;
-      if (id === 'shield' && cur >= 6) continue;
       const info = CONFIG.MAGICS[id];
-      const maxGain = id === 'shield' ? (6 - cur) : 2;
-      const isEpic = cur > 0 && maxGain >= 2 && Math.random() < 0.22;
+      const isEpic = cur > 0 && Math.random() < 0.22;
       const gain = isEpic ? 2 : 1;
       const nextLv = cur + gain;
       pool.push({
@@ -70,13 +68,9 @@ Object.assign(SPELLS, {
     if (!choice) return;
     if (choice.type === 'magic') {
       const gain = choice.gain || 1;
-      if (choice.id === 'shield') {
-        c.magics.shield = Math.min(6, (c.magics.shield || 0) + gain);
-        this.ensureShieldSlots(c);
-      } else {
-        c.magics[choice.id] = (c.magics[choice.id] || 0) + gain;
-        if (!c.cooldowns[choice.id]) c.cooldowns[choice.id] = 0.08;
-      }
+      c.magics[choice.id] = (c.magics[choice.id] || 0) + gain;
+      if (!c.cooldowns[choice.id]) c.cooldowns[choice.id] = 0.08;
+      if (choice.id === 'blades') this.ensureShieldSlots(c);
     } else if (choice.type === 'stat') {
       if (!c.statCounts) c.statCounts = {};
       c.statCounts[choice.id] = (c.statCounts[choice.id] || 0) + 1;

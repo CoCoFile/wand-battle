@@ -1,6 +1,6 @@
 // 👑 보스 필살기: 보스마다 1개 (CONFIG.BOSS_ULT.list[보스 단계]), 경고 표시(warn) → delay초 뒤 발동
 // 전부 운빨형: 경고는 그 순간 위치/무작위 위치에 고정 — 따라오거나 끌어당기지 않음, 자동 이동은 안 피함
-// 원형·부채꼴은 마력 방패로 막힘, 줄(돌진·빔·레이저)과 가장자리 폭발은 방패 무시
+// 필살기는 칼날로 못 막음 (11/27n 방패 삭제)
 // 시뮬레이션은 방장/솔로에서만. 참가자는 스냅샷의 warns 로 그림만 그림
 
 Object.assign(SPELLS, {
@@ -181,17 +181,9 @@ Object.assign(SPELLS, {
     if (wn.booze) {
       w.zones.push({ kind: 'booze', skillUid: ++w.uidSeq, ownerId: wn.ownerId, team: wn.team, x: wn.x, y: wn.y, r: wn.r, dmg: 0, tick: 999, life: 4, maxLife: 4, color: '#f59e0b' });
     }
-    const blockable = wn.shape === 'circle' || wn.shape === 'sector';
-    const uid = ++w.uidSeq;
     for (const t of w.chars) {
       if (!t.alive || t.team === wn.team || t.isSmallMob) continue;
       if (!this.warnHits(wn, t)) continue;
-      if (blockable && (t.magics?.shield || 0) > 0) {
-        const ox = wn.x ?? t.x, oy = wn.y ?? t.y;
-        const ang = Math.atan2(oy - t.y, ox - t.x);
-        const r0 = CONFIG.SHIELD_R[0];
-        if (this.tryBlockPoint(t, t.x + Math.cos(ang) * r0, t.y + Math.sin(ang) * r0, w, uid)) continue;
-      }
       ENGINE.damageChar(t, wn.dmg, boss, w);
       if (wn.kb) { // 넉백: 줄에서 멀어지는 방향
         const ang = Math.atan2(wn.y2 - wn.y1, wn.x2 - wn.x1);

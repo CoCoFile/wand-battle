@@ -169,7 +169,7 @@ Object.assign(ENGINE, {
 
       // 보유 마법 자동 시전
       for (const [mid, lv] of Object.entries(c.magics)) {
-        if (lv <= 0 || mid === 'shield' || mid === 'blades') continue; // 방패·칼날은 상시 유지형
+        if (lv <= 0 || mid === 'blades') continue; // 칼날은 상시 유지형
         c.cooldowns[mid] = (c.cooldowns[mid] ?? 0.2) - dt;
         if (c.cooldowns[mid] <= 0) {
           c.cooldowns[mid] = SPELLS.baseCooldown(mid, lv) * c.cdrMult;
@@ -369,7 +369,7 @@ Object.assign(ENGINE, {
         if (!t.alive || t.id === p.ownerId || t.team === p.team) continue;
 
         // 마력 방패 충돌 판정
-        // 🪃 부메랑: 방패도 관통 (방패는 깨지지만 칼날은 계속 날아감, 11/27k)
+        // 🪃 부메랑: 칼날 막기도 관통 (상대 칼날은 깨지지만 부메랑은 계속 날아감)
         if (p.kind === 'boomerang') SPELLS.tryBlockPoint(t, p.x, p.y, w, p.skillUid);
         else if (SPELLS.tryBlockPoint(t, p.x, p.y, w, p.skillUid)) {
           if (p.kind === 'fireball') {
@@ -442,17 +442,6 @@ Object.assign(ENGINE, {
         if (wv.hitIds.includes(t.id) || wv.blockedIds.includes(t.id)) continue;
 
         const d = dist(wv.x, wv.y, t.x, t.y);
-        if ((t.magics?.shield || 0) > 0 && (t.poopTimer || 0) <= 0) {
-          const ang = Math.atan2(t.y - wv.y, t.x - wv.x);
-          const sr = (CONFIG.SHIELD_R[0] + CONFIG.SHIELD_R[1]) / 2;
-          const bx = t.x - Math.cos(ang) * Math.min(sr, d);
-          const by = t.y - Math.sin(ang) * Math.min(sr, d);
-          if (Math.abs(d - wv.r) <= 75 && SPELLS.tryBlockPoint(t, bx, by, w, wv.skillUid)) {
-            wv.blockedIds.push(t.id);
-            continue;
-          }
-        }
-
         if (Math.abs(d - wv.r) <= t.r + 12) {
           wv.hitIds.push(t.id);
           this.damageChar(t, wv.dmg, attacker, w);
@@ -514,12 +503,6 @@ Object.assign(ENGINE, {
           if (!t.alive || t.id === z.ownerId || t.team === z.team) continue;
           const d = dist(z.x, z.y, t.x, t.y);
           if (d <= z.r + t.r) {
-            if ((t.magics?.shield || 0) > 0 && (t.poopTimer || 0) <= 0) {
-              const ang = Math.atan2(z.y - t.y, z.x - t.x);
-              const bx = t.x + Math.cos(ang) * CONFIG.SHIELD_R[0];
-              const by = t.y + Math.sin(ang) * CONFIG.SHIELD_R[0];
-              if (SPELLS.tryBlockPoint(t, bx, by, w, z.skillUid)) continue;
-            }
             // 중첩 X: 같은 사람이 깐 같은 종류 장판은 여러 개 겹쳐 있어도 0.3초에 한 번만 피해 (11/27f)
             const stackKey = `${z.ownerId}:${z.kind}`;
             if (!t.zoneHits) t.zoneHits = {};

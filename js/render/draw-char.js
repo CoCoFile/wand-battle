@@ -1,30 +1,8 @@
-// 캐릭터 그리기: 마력 방패, 똥 변신, 몸통/상태 링, 팔+완드, HP바/닉네임, 내 캐릭터 화살표
+// 캐릭터 그리기: 회전 칼날, 똥 변신, 몸통/상태 링, 팔+완드, HP바/닉네임, 내 캐릭터 화살표
 
 Object.assign(RENDER, {
   drawChar(ctx, c, worldTime = 0, myTeam = null) {
     ctx.save();
-
-    // 마력 방패 렌더링 (최대 Lv.6 · 2겹)
-    if ((c.magics?.shield || 0) > 0 && (c.poopTimer || 0) <= 0) {
-      const slots = SPELLS.getShieldSlots(c);
-      for (const slot of slots) {
-        const cd = c.shieldCooldowns?.[slot.index] || 0;
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, slot.radius, slot.angle - slot.arc * 0.5, slot.angle + slot.arc * 0.5);
-        if (cd <= 0) {
-          ctx.lineWidth = 6;
-          ctx.lineCap = 'round';
-          ctx.strokeStyle = slot.layer === 0 ? '#0284c7' : '#38bdf8';
-        } else {
-          ctx.lineWidth = 2.5;
-          ctx.setLineDash([4, 5]);
-          ctx.strokeStyle = 'rgba(148, 163, 184, 0.5)';
-        }
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
 
     // 🗡️ 회전 칼날 (방패 바깥 궤도, 은색)
     if ((c.magics?.blades || 0) > 0 && (c.poopTimer || 0) <= 0) this.drawBlades(ctx, c);
@@ -176,7 +154,7 @@ Object.assign(RENDER, {
 
   drawBlades(ctx, c) {
     const lv = c.magics.blades;
-    const n = spellShotCount(lv);
+    const n = Math.min(CONFIG.BLADES.max, Math.max(1, lv) + 1);
     const R = c.bladeR || (c.r + CONFIG.BLADES.orbit);
     const L = c.bladeL || CONFIG.BLADES.len;
     const base = c.bladeAngle || 0;
@@ -187,6 +165,16 @@ Object.assign(RENDER, {
     ctx.beginPath(); ctx.arc(c.x, c.y, R, 0, Math.PI * 2); ctx.stroke();
     for (let i = 0; i < n; i++) {
       const a = base + (Math.PI * 2 * i) / n;
+      const broken = (c.bladeCds?.[i] || 0) > 0;           // 깨진 칼날: 흐린 점선 자국만
+      if (broken) {
+        ctx.save();
+        ctx.setLineDash([3, 4]);
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(c.x + Math.cos(a) * R, c.y + Math.sin(a) * R, L * 0.45, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+        continue;
+      }
       ctx.save();
       ctx.translate(c.x + Math.cos(a) * R, c.y + Math.sin(a) * R);
       ctx.rotate(a + Math.PI / 2);                         // 진행 방향으로 칼날

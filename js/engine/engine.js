@@ -181,7 +181,7 @@ const ENGINE = {
       magics,
       cooldowns,
       shieldAngle: rand(0, Math.PI * 2),
-      shieldCooldowns: [],
+      bladeCds: [],     // 🗡️ 칼날별 재생 남은 시간 (0 = 살아 있음)
       recentShieldSkills: {},
       ultimates: [],
       ultLv: {},        // 🃏 궁극기 중복 횟수 {id: n} — 겹칠수록 개수·피해 ↑ (×n 표시)

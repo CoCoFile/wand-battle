@@ -137,7 +137,7 @@ Object.assign(NET, {
         ultLv: c.ultLv,
         statCounts: c.statCounts,
         shieldAngle: Number((c.shieldAngle || 0).toFixed(2)),
-        shieldCooldowns: c.shieldCooldowns,
+        bladeCds: c.bladeCds,
         stunTimer: Number((c.stunTimer || 0).toFixed(1)),
         slowTimer: Number((c.slowTimer || 0).toFixed(1)),
         shredTimer: Number((c.shredTimer || 0).toFixed(1)),
