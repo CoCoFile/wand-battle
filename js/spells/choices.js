@@ -44,7 +44,7 @@ Object.assign(SPELLS, {
         type: 'stat', id, isEpic: false, gain: 1,
         name: st.name, icon: st.icon, color: st.color, bg: st.bg,
         badge: '스탯',
-        desc: this.statCardDesc(c, id) || st.desc
+        desc: st.desc   // 수치는 안 보여줌 (11/27)
       });
     }
 
@@ -110,17 +110,6 @@ Object.assign(SPELLS, {
     c.armor = Math.min(V.armorMax, arm);
     const cdrRed = 1 - (1 - this.statParts(n('cdr'), 'cdr')) * (1 - (rb.cdr || 0) / 100);
     c.cdrMult = c.baseCdr * (1 - Math.min(V.cdrMax, cdrRed));
-  },
-
-  // 스탯 카드 설명: 지금 → 다음 수치 (덧셈/수렴이라 남은 효과가 보이게)
-  statCardDesc(c, id) {
-    const n = (c.statCounts && c.statCounts[id]) || 0;
-    const pct = (v) => `${Math.round(v * 100)}%`;
-    if (id === 'atk') return `피해 +${pct(this.statParts(n, id))} → +${pct(this.statParts(n + 1, id))}`;
-    if (id === 'area') return `범위 +${pct(this.statParts(n, id))} → +${pct(this.statParts(n + 1, id))}`;
-    if (id === 'armor') return `받는 피해 -${pct(this.statParts(n, id))} → -${pct(this.statParts(n + 1, id))} (최대 75%)`;
-    if (id === 'cdr') return `쿨타임 -${pct(this.statParts(n, id))} → -${pct(this.statParts(n + 1, id))} (최대 70%)`;
-    return '';
   },
 
   // 황금 카드 50:50 추첨 + 슬롯 룰렛 연출

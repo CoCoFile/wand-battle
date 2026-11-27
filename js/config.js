@@ -2,7 +2,7 @@
 // 크기·속도·체력·이름은 여기서 조정. ※ 마법별 피해·속도 등 수치는 js/spells/casters.js, 쿨타임은 js/spells/spells.js(baseCooldown)에 있음
 
 const CONFIG = {
-  GAME_VERSION: '2026.11.27a', // 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
+  GAME_VERSION: '2026.11.27b', // 11/27b: 리롤 한 판 1번(금화 2번), 스탯 카드 수치 숨김 / 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
   // 플레이 기록 수집 주소 (구글 Apps Script 웹 앱 /exec URL). 비워두면 수집 안 함
   TELEMETRY_URL: 'https://script.google.com/macros/s/AKfycbyCRCqR5cZPodxsXFBUpEwNUSXvQBr1qMMGUGpo5E41HJxSlZWXWgDIqgjhjf8iHdieVQ/exec',
 
@@ -53,11 +53,11 @@ const CONFIG = {
   },
   MAX_SHOTS: 8,      // 마법 동시 발사 수 상한. 넘는 레벨은 피해량으로 (Lv.n → ×(n+1)/8)
   STATS: {
-    atk:   { id: 'atk',   name: '공격력',     icon: '⚔️', color: '#DC2626', bg: '#FEE2E2', desc: '피해 +35%p' },
-    armor: { id: 'armor', name: '방어력',     icon: '🛡️', color: '#2563EB', bg: '#DBEAFE', desc: '받는 피해 감소 ↑ (최대 75%)' },
-    regen: { id: 'regen', name: '체력 재생',  icon: '💚', color: '#059669', bg: '#D1FAE5', desc: '초당 HP +2.5' },
-    area:  { id: 'area',  name: '마법 크기',  icon: '🔮', color: '#7C3AED', bg: '#EDE9FE', desc: '범위 +22%' },
-    cdr:   { id: 'cdr',   name: '쿨타임',     icon: '⏱️', color: '#D97706', bg: '#FEF3C7', desc: '쿨타임 감소 ↑ (최대 70%)' }
+    atk:   { id: 'atk',   name: '공격력',     icon: '⚔️', color: '#DC2626', bg: '#FEE2E2', desc: '피해 증가' },
+    armor: { id: 'armor', name: '방어력',     icon: '🛡️', color: '#2563EB', bg: '#DBEAFE', desc: '받는 피해 감소' },
+    regen: { id: 'regen', name: '체력 재생',  icon: '💚', color: '#059669', bg: '#D1FAE5', desc: '초당 HP 회복' },
+    area:  { id: 'area',  name: '마법 크기',  icon: '🔮', color: '#7C3AED', bg: '#EDE9FE', desc: '마법 범위 증가' },
+    cdr:   { id: 'cdr',   name: '쿨타임',     icon: '⏱️', color: '#D97706', bg: '#FEF3C7', desc: '쿨타임 감소' }
   },
   ULTIMATES: {
     stop:    { id: 'stop',    name: '멈춰!',             icon: '⏱', color: '#F59E0B', desc: '적 전체 3초 스턴' },
@@ -132,7 +132,7 @@ const CONFIG = {
     coffee: { name: '시간술사의 모래시계', icon: '⏳', v: [3, 5, 7],     desc: (x) => `쿨타임 -${x}%` },
     lens:   { name: '현자의 눈',         icon: '👁️', v: [4, 7, 10],    desc: (x) => `범위 +${x}%` },
     heart:  { name: '거인의 심장',       icon: '🫀', v: [15, 30, 45],  desc: (x) => `최대 HP +${x}` },
-    coin:   { name: '운명의 금화',       icon: '🪙', v: [1, 2, 3],     desc: (x) => `리롤 +${x >= 3 ? 2 : 1}${x >= 2 ? ', 황금카드 +5%p' : ''}` },
+    coin:   { name: '운명의 금화',       icon: '🪙', v: [1, 2, 3],     desc: (x) => `리롤 +1${x >= 2 ? ', 황금카드 +5%p' : ''}` }, // 리롤은 한 판 1번 → 금화 있으면 2번 (Lv 무관)
     shoes:  { name: '질풍의 장화',       icon: '🌪️', v: [5, 10, 15],   desc: (x) => `이동속도 +${x}%` },
     book:   { name: '고대 마도서',       icon: '📜', v: [8, 14, 20],   desc: (x) => `경험치 +${x}%` },
     magnet: { name: '탐욕의 손아귀',     icon: '✋', v: [20, 40, 60],  desc: (x) => `구슬 흡수 범위 +${x}` }

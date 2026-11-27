@@ -44,7 +44,7 @@ Object.assign(NET, {
       } else {
         c.choiceQueue.push({
           isInitial: true,
-          rerolls: 1,
+          rerolls: c.rerollsLeft ?? 1,
           choices: SPELLS.generateInitialSpellChoices(c)
         });
       }

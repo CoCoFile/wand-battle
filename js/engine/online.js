@@ -17,7 +17,7 @@ Object.assign(ENGINE, {
       if (c.initialDrafts > 0) {
         c.choiceQueue.unshift({
           isInitial: true,
-          rerolls: 1 + (c.extraRerolls || 0),
+          rerolls: c.rerollsLeft ?? 1,
           choices: SPELLS.generateInitialSpellChoices(c)
         });
       }
@@ -29,8 +29,9 @@ Object.assign(ENGINE, {
     const c = this.world.chars.find((ch) => ch.id === charId);
     if (!c || c.choiceQueue.length === 0) return;
     const item = c.choiceQueue[0];
-    if ((item.rerolls || 0) <= 0) return;
-    item.rerolls--;
+    if ((c.rerollsLeft ?? 1) <= 0) return;
+    c.rerollsLeft = (c.rerollsLeft ?? 1) - 1;            // 한 판 전체에서 공유
+    for (const q of c.choiceQueue) q.rerolls = c.rerollsLeft;
     item.choices = item.isInitial
       ? SPELLS.generateInitialSpellChoices(c)
       : SPELLS.generateChoices(c);

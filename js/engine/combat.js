@@ -30,7 +30,7 @@ Object.assign(ENGINE, {
         } else {
           c.choiceQueue.push({
             isInitial: false,
-            rerolls: 1 + (c.extraRerolls || 0),
+            rerolls: c.rerollsLeft ?? 1,
             choices: SPELLS.generateChoices(c)
           });
           if (c.isLocal) UI.renderOnlineChoiceSlot();

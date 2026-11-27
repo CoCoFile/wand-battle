@@ -221,7 +221,7 @@ Object.assign(ENGINE, {
     }
     // 클리어 창 대신 위쪽 작은 알림 → CONFIG.SOLO_NEXT_DELAY초 뒤 자동으로 다음 스테이지 (update.js에서 카운트)
     this.paused = false;
-    UI.toast(`✅ STAGE ${this.stage} 클리어 · 리롤 +1`);
+    UI.toast(`✅ STAGE ${this.stage} 클리어`);
     this.soloNextStageTimer = Math.max(0.001, CONFIG.SOLO_NEXT_DELAY); // 0이어도 다음 프레임에 넘김 (전투 처리 도중 월드를 바꾸지 않게)
   },
 
@@ -270,7 +270,6 @@ Object.assign(ENGINE, {
     this.soloStageCleared = false;
     this.soloNextStageTimer = 0;
     this.stage++;
-    this.soloRerolls++;
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.35);
     this.world.chars = this.world.chars.filter((c) => c.alive || c.isLocal); // 죽은 적 정리
     this.world.projs = [];

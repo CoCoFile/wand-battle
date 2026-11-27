@@ -41,7 +41,7 @@ const RELICS = {
       else if (id === 'coffee') rb.cdr = x;
       else if (id === 'lens') rb.area = x;
       else if (id === 'heart') { c.maxHp += x; c.hp = c.maxHp; }
-      else if (id === 'coin') { c.extraRerolls = (lv >= 3 ? 2 : 1); c.goldenBonus = lv >= 2 ? 0.05 : 0; }
+      else if (id === 'coin') { c.extraRerolls = 1; c.rerollsLeft = 2; c.goldenBonus = lv >= 2 ? 0.05 : 0; }
       else if (id === 'shoes') c.speed *= 1 + x / 100;
       else if (id === 'book') c.xpMult = 1 + x / 100;
       else if (id === 'magnet') c.pickupBonus = x;
