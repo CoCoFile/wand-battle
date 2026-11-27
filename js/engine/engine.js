@@ -191,7 +191,6 @@ const ENGINE = {
       poopTimer: 0,
       hurtTimer: 0,
       initialDrafts: opts.initialDrafts || 0,
-      rerollsLeft: 1,   // 🎲 리롤: 한 판에 1번 (운명의 금화 유물 있으면 2번) — 온라인용, 솔로는 ENGINE.soloRerolls
       statCounts: {},   // 스탯 카드 선택 횟수 (결산용)
       choiceQueue: []
     };

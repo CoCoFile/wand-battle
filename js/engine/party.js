@@ -39,7 +39,7 @@ Object.assign(ENGINE, {
         c.magics = { laser: 1, fireball: 1 };
       } else {
         RELICS.apply(c, p.relics); // 🎒 각자 보낸 장착 유물
-        c.choiceQueue.push({ isInitial: true, rerolls: c.rerollsLeft ?? 1, choices: SPELLS.generateInitialSpellChoices(c) });
+        c.choiceQueue.push({ isInitial: true, rerolls: 1 + (c.extraRerolls || 0), choices: SPELLS.generateInitialSpellChoices(c) });
       }
       w.chars.push(c);
     });

@@ -12,7 +12,7 @@ Object.assign(ENGINE, {
     this.userPaused = false;
     this.runEnded = false;
     this.localId = 'player';
-    this.soloRerolls = 1;
+    this.soloRerolls = 1;      // 🎲 선택창마다 1장 (안 쓰면 다음 창에 안 넘어감, 금화 유물 +1) — 11/27l
     this.soloInitialDrafts = 3;
     this.soloPendingLevels = 0;
     this.soloStageCleared = false;
@@ -172,6 +172,7 @@ Object.assign(ENGINE, {
       this.paused = true;
       const step = 4 - this.soloInitialDrafts;
       if (titleEl) titleEl.textContent = `시작 마법 선택 (${step} / 3)`;
+      this.soloRerolls = 1 + (player.extraRerolls || 0); // 새 선택창마다 리롤 다시 채움
       this.soloCurrentChoices = SPELLS.generateInitialSpellChoices(player);
       this.renderSoloChoiceModal();
       return;
@@ -180,6 +181,7 @@ Object.assign(ENGINE, {
     if (this.soloPendingLevels > 0) {
       this.paused = true;
       if (titleEl) titleEl.textContent = `레벨 업! Lv.${player.lv}`;
+      this.soloRerolls = 1 + (player.extraRerolls || 0); // 새 선택창마다 리롤 다시 채움
       this.soloCurrentChoices = SPELLS.generateChoices(player);
       this.renderSoloChoiceModal();
       return;
