@@ -16,7 +16,10 @@ const SPELL_CASTERS = {
       const ang = c.angle + (i - (shots - 1) / 2) * step;
       const x1 = c.x + Math.cos(ang) * wandLen;
       const y1 = c.y + Math.sin(ang) * wandLen;
-      const len = SPELLS.clipBeamByShields(c, x1, y1, ang, maxLen, world, true, skillUid);
+      let len = SPELLS.clipBeamByShields(c, x1, y1, ang, maxLen, world, true, skillUid);
+      const [hx, hy] = SPELLS.wallHit(x1, y1, ang);            // 11/27z2: 벽에서 끊기고 불꽃 튐
+      const wd = dist(x1, y1, hx, hy);
+      if (wd <= len) { len = wd; if (!enemySide) SPELLS.wallSpark(world, hx, hy, '#7dd3fc', width); } // 적 레이저는 불꽃 X (화면 덜 시끄럽게)
       const x2 = x1 + Math.cos(ang) * len;
       const y2 = y1 + Math.sin(ang) * len;
       world.beams.push({ x1, y1, x2, y2, width, color: '#0EA5E9', life: 0.16, maxLife: 0.16 });

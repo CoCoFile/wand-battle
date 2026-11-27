@@ -94,12 +94,23 @@ Object.assign(SPELLS, {
 
   // 직선 즉발 빔 (조합용 레이저)
   comboBeam(c, w, x1, y1, ang, len, width, dmg, color, glow = false) {
+    // 11/27z2: 벽까지만 가고, 벽에 닿으면 불꽃 튐
+    const [hx, hy] = this.wallHit(x1, y1, ang);
+    const wd = dist(x1, y1, hx, hy);
+    if (wd <= len) { len = wd; this.wallSpark(w, hx, hy, color, width); }
     const x2 = x1 + Math.cos(ang) * len, y2 = y1 + Math.sin(ang) * len;
     w.beams.push({ x1, y1, x2, y2, width, color, life: glow ? 0.35 : 0.18, maxLife: glow ? 0.35 : 0.18, glow: glow || undefined });
     for (const t of this.enemiesOf(c, w)) {
       if (distToSegment(t.x, t.y, x1, y1, x2, y2) <= t.r + width * 0.5) ENGINE.damageChar(t, dmg, c, w);
     }
     return [x2, y2];
+  },
+
+  // 레이저가 벽에 맞은 자리: 작은 링(온라인 동기화됨) + 불꽃 파편
+  wallSpark(w, x, y, color, width = 8) {
+    const R = Math.min(34, 8 + width * 1.3);
+    w.rings.push({ x, y, r: 3, maxR: R, life: 0.18, maxLife: 0.18, color });
+    this.spawnParticles(w, x, y, color, 4, 150);
   },
 
   // 가시/칼날 조각 투사체 (산탄 모양, 폭발 없음)
@@ -252,8 +263,10 @@ Object.assign(SPELLS, {
     }
     const tg = this.nearestEnemy(c, w, p.x, p.y);
     const base = tg ? Math.atan2(tg.y - p.y, tg.x - p.x) : rand(0, Math.PI * 2);
+    const lv = Math.min(Math.max(1, c.magics?.laser || 1), CONFIG.MAX_SHOTS - 1);
+    const width = (6 + lv * 1.4) * (c.areaMult || 1);        // 11/27z2: 내 레이저와 같은 굵기, 벽까지
     for (let k = 0; k < n; k++) {
-      this.comboBeam(c, w, p.x, p.y, base + (k - (n - 1) / 2) * 0.25, 600, 9, this.baseDmg(c, 'laser') * (bounce ? 0.17 : 0.36), '#a855f7', true); // 벽 튕김 빔은 자주 나가서 ×0.17
+      this.comboBeam(c, w, p.x, p.y, base + (k - (n - 1) / 2) * 0.25, 1500, width, this.baseDmg(c, 'laser') * (bounce ? 0.14 : 0.3), '#a855f7', true); // 벽 튕김 빔은 자주 나가서 ×0.14, 굵기 같아져서 날아가는 빔도 ×0.3
     }
   },
 
