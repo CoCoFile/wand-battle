@@ -36,7 +36,8 @@ Object.assign(NET, {
         y: CONFIG.H * 0.5 + Math.sin(ang) * 200,
         maxHp: CONFIG.HP.online,
         magics: {},
-        initialDrafts: p.isBot ? 0 : 3
+        initialDrafts: p.isBot ? 0 : 3,
+        title: p.title
       });
       if (p.isBot) {
         c.magics = { laser: 1, fireball: 1 };
@@ -80,8 +81,16 @@ Object.assign(NET, {
     ENGINE.matchStartedAt = Date.now();
     ENGINE.mode = 'online';
     ENGINE.paused = false;
+    ENGINE.userPaused = false;
+    ENGINE.runEnded = false;
+    ENGINE.quitFlag = false;
     const party = this.matchType === 'party';
     $('#modal-on-over').classList.add('hidden');
+    $('#modal-pause').classList.add('hidden');
+    $('#paused-banner').classList.add('hidden');
+    // ⏸️ 일시정지는 파티 방장만 (중단도 거기서) / 나머지는 나가기
+    $('#btn-pause').classList.toggle('hidden', !(party && this.isHost));
+    $('#btn-quit-game').classList.toggle('hidden', party && this.isHost);
     UI.showScreen('game');
     $('#online-bottom-dock').classList.remove('hidden');
     $('#btn-manual-toggle').classList.add('hidden');
@@ -113,10 +122,12 @@ Object.assign(NET, {
     const baseSnap = {
       time: w.time,
       stage: ENGINE.stage,
+      paused: !!ENGINE.userPaused,
+      shake: Number((w.shake || 0).toFixed(2)),
       matchType: this.matchType,
       chars: w.chars.map((c) => ({
         id: c.id, name: c.name, color: c.color, team: c.team,
-        isSmallMob: c.isSmallMob, isBoss: c.isBoss,
+        isSmallMob: c.isSmallMob, isBoss: c.isBoss, bossTier: c.bossTier, title: c.title,
         x: Math.round(c.x), y: Math.round(c.y), r: c.r,
         hp: Math.round(c.hp), maxHp: Math.round(c.maxHp),
         lv: c.lv, xp: Math.round(c.xp), nextXp: Math.round(c.nextXp),
@@ -128,6 +139,8 @@ Object.assign(NET, {
         shieldCooldowns: c.shieldCooldowns,
         stunTimer: Number((c.stunTimer || 0).toFixed(1)),
         slowTimer: Number((c.slowTimer || 0).toFixed(1)),
+        shredTimer: Number((c.shredTimer || 0).toFixed(1)),
+        bladeAngle: Number((c.bladeAngle || 0).toFixed(2)), bladeR: c.bladeR, bladeL: c.bladeL,
         poopTimer: Number((c.poopTimer || 0).toFixed(1)),
         hurtTimer: c.hurtTimer
       })),
@@ -138,7 +151,12 @@ Object.assign(NET, {
       })),
       beams: w.beams,
       waves: w.waves.map((wv) => ({ x: wv.x, y: wv.y, r: wv.r, color: wv.color })),
-      zones: w.zones.map((z) => ({ kind: z.kind, x: z.x, y: z.y, r: z.r, color: z.color })),
+      zones: w.zones.map((z) => ({ kind: z.kind, x: z.x, y: z.y, r: z.r, color: z.color, team: z.team })),
+      warns: (w.warns || []).map((wn) => ({
+        shape: wn.shape, x: wn.x, y: wn.y, r: wn.r, x1: wn.x1, y1: wn.y1, x2: wn.x2, y2: wn.y2, width: wn.width,
+        a0: wn.a0, a1: wn.a1, bx: wn.bx, by: wn.by, delay: Number(wn.delay.toFixed(2)), maxDelay: wn.maxDelay, fired: wn.fired, life: Number(wn.life.toFixed(2))
+      })),
+      pulses: w.pulses || [],
       rings: w.rings,
       orbs: w.orbs,
       texts: w.texts,
@@ -172,6 +190,10 @@ Object.assign(NET, {
     w.beams = snap.beams || [];
     w.waves = snap.waves || [];
     w.zones = snap.zones || [];
+    w.warns = snap.warns || [];
+    w.pulses = snap.pulses || [];
+    w.shake = Number(snap.shake) || 0;
+    $('#paused-banner').classList.toggle('hidden', !snap.paused || NET.isHost); // ⏸️ 방장이 일시정지
     w.rings = snap.rings || [];
     w.orbs = snap.orbs || [];
     w.particles = w.particles || [];

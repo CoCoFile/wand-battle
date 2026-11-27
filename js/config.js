@@ -2,7 +2,7 @@
 // 크기·속도·체력·이름은 여기서 조정. ※ 마법별 피해·속도 등 수치는 js/spells/casters.js, 쿨타임은 js/spells/spells.js(baseCooldown)에 있음
 
 const CONFIG = {
-  GAME_VERSION: '2026.11.26d', // b: 충격파·화염구 너프, c: 만용 후반 완화 축소, d: 후반 완화 쉼터0.5/타협0.75/만용1.0  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
+  GAME_VERSION: '2026.11.27a', // 11/27a: 스탯 덧셈/수렴, 빙결 장판·회전 칼날, 보스 필살기, 만용 30엔딩 + 광기(무한)  // 밸런스 바꿀 때마다 올리기 (수집 데이터에서 버전별 비교용)
   // 플레이 기록 수집 주소 (구글 Apps Script 웹 앱 /exec URL). 비워두면 수집 안 함
   TELEMETRY_URL: 'https://script.google.com/macros/s/AKfycbyCRCqR5cZPodxsXFBUpEwNUSXvQBr1qMMGUGpo5E41HJxSlZWXWgDIqgjhjf8iHdieVQ/exec',
 
@@ -34,27 +34,30 @@ const CONFIG = {
   MAGICS: {
     laser:     { id: 'laser',     name: '레이저',      color: '#0EA5E9', bg: '#E0F2FE', icon: '⚡', desc: '즉발 관통 빔',          up: '굵기·피해·빔 수 ↑' },
     fireball:  { id: 'fireball',  name: '화염구',      color: '#F97316', bg: '#FFEDD5', icon: '🔥', desc: '튕기다 터지는 불덩이',  up: '폭발·피해·발사 수 ↑' },
-    icespear:  { id: 'icespear',  name: '얼음 창',     color: '#06B6D4', bg: '#CFFAFE', icon: '❄️', desc: '관통 + 감속',          up: '관통·피해·발사 수 ↑' },
+    frost:     { id: 'frost',     name: '빙결 장판',   color: '#0EA5E9', bg: '#E0F2FE', icon: '🧊', desc: '얼음 장판: 감속 + 받는 피해 ↑', up: '장판·방깍·개수 ↑' },
     poison:    { id: 'poison',    name: '독 플라스크', color: '#16A34A', bg: '#DCFCE7', icon: '🧪', desc: '독 장판 투척',          up: '장판·피해·발사 수 ↑' },
     boomerang: { id: 'boomerang', name: '부메랑 칼날', color: '#8B5CF6', bg: '#EDE9FE', icon: '🪃', desc: '갔다가 돌아오는 칼날',  up: '사거리·피해·발사 수 ↑' },
-    shockwave: { id: 'shockwave', name: '충격파 링',   color: '#C026D3', bg: '#FAE8FF', icon: '◎', desc: '밀쳐내는 원형 파동',    up: '반경·피해·파동 수 ↑' },
+    blades:    { id: 'blades',    name: '회전 칼날',   color: '#64748B', bg: '#F1F5F9', icon: '🗡️', desc: '몸 주위를 도는 칼날',   up: '칼날 수·피해 ↑' },
     scatter:   { id: 'scatter',   name: '산탄 파편',   color: '#57534E', bg: '#F5F5F4', icon: '▲', desc: '튕기는 산탄',           up: '파편·피해 ↑' },
     shield:    { id: 'shield',    name: '마력 방패',   color: '#0284C7', bg: '#E0F2FE', icon: '🛡', desc: '공격을 막는 회전 방패', up: '방패 +1' }
   },
-  // 스탯 카드 1장당 효과 (밸런스 조정은 여기서. 카드 설명 문구 STATS.desc도 같이 맞출 것)
+  // 스탯 카드 효과 (11/27: 무한 성장용 — 공격·범위는 덧셈, 방어·쿨감은 상한으로 수렴)
+  // 방어 = armorMax × n/(n+armorK), 쿨감 = cdrMax × n/(n+cdrK)  (n = 카드 장수)
+  // 시뮬(11/27): +25%p·K4는 예전(곱연산)보다 쉼터 클리어율이 절반 → +35%p·쿨감K3으로 맞춤
   STAT_VALUES: {
-    atk: 1.25,     // 피해 ×
-    armor: 0.13,   // 받는 피해 -비율 (곱연산 누적)
-    regen: 2.5,    // 초당 HP 회복 +
-    area: 1.22,   // 범위 ×
-    cdr: 0.86      // 쿨타임 × (작을수록 빠름)
+    atk: 0.35,                   // 피해 +35%p (덧셈: 1 + 0.35n)
+    armorMax: 0.75, armorK: 4,   // 받는 피해 감소 최대 75% (1장 15%, 4장 37.5%, 12장 56%)
+    regen: 2.5,                  // 초당 HP 회복 +
+    area: 0.22,                  // 범위 +22%p (덧셈)
+    cdrMax: 0.7, cdrK: 3         // 쿨타임 감소 최대 70% (1장 17.5%, 3장 35%, 9장 52.5%)
   },
+  MAX_SHOTS: 8,      // 마법 동시 발사 수 상한. 넘는 레벨은 피해량으로 (Lv.n → ×(n+1)/8)
   STATS: {
-    atk:   { id: 'atk',   name: '공격력',     icon: '⚔️', color: '#DC2626', bg: '#FEE2E2', desc: '피해 +25%' },
-    armor: { id: 'armor', name: '방어력',     icon: '🛡️', color: '#2563EB', bg: '#DBEAFE', desc: '받는 피해 -13%' },
+    atk:   { id: 'atk',   name: '공격력',     icon: '⚔️', color: '#DC2626', bg: '#FEE2E2', desc: '피해 +35%p' },
+    armor: { id: 'armor', name: '방어력',     icon: '🛡️', color: '#2563EB', bg: '#DBEAFE', desc: '받는 피해 감소 ↑ (최대 75%)' },
     regen: { id: 'regen', name: '체력 재생',  icon: '💚', color: '#059669', bg: '#D1FAE5', desc: '초당 HP +2.5' },
     area:  { id: 'area',  name: '마법 크기',  icon: '🔮', color: '#7C3AED', bg: '#EDE9FE', desc: '범위 +22%' },
-    cdr:   { id: 'cdr',   name: '쿨타임',     icon: '⏱️', color: '#D97706', bg: '#FEF3C7', desc: '시전 속도 +14%' }
+    cdr:   { id: 'cdr',   name: '쿨타임',     icon: '⏱️', color: '#D97706', bg: '#FEF3C7', desc: '쿨타임 감소 ↑ (최대 70%)' }
   },
   ULTIMATES: {
     stop:    { id: 'stop',    name: '멈춰!',             icon: '⏱', color: '#F59E0B', desc: '적 전체 3초 스턴' },
@@ -69,13 +72,14 @@ const CONFIG = {
   // bossHp / bossAtk: 보스 전용 배율 (보스엔 약하게 — 어려움 첫 보스가 벽이던 문제 11/26)
   // lateMult/lateFrom: 이 난이도만 후반 성장 완화를 따로 (없으면 SOLO 값)
   // manual: true인 난이도만 수동 조작(🕹️) 가능 (11/26: 쉼터만)
-  // ending: true면 ENDING_STAGE 클리어 시 엔딩 (만용은 끝없음 — 30 넘기면 winText 배너만 뜨고 계속)
-  // winText: 엔딩(만용은 30 돌파) 문구, loseText: 게임오버·전멸 문구
+  // ending: true면 ENDING_STAGE 클리어 시 엔딩 (광기는 끝없음 — 30 넘기면 winText 배너만 뜨고 계속)
+  // winText: 엔딩(광기는 30 돌파) 문구, loseText: 게임오버·전멸 문구
   ENDING_STAGE: 30,
   DIFFICULTY: {
     easy:   { label: '겁쟁이들의 쉼터', short: '쉼터', manual: true, ending: true,  winText: '겁쟁이들의 왕',        loseText: '이걸?ㅋㅋㅋㅋㅋㅋ',           healOrbLife: null, enemyHp: 1.0, enemyAtk: 1.0, enemyCdr: 1.0,  bossHp: 1.0,  bossAtk: 1.0,  lateMult: 0.5 },
-    normal: { label: '현실에 타협',     short: '타협', ending: true,  winText: '현실에 안주한놈',      loseText: '걍 쉼터 가셈',               healOrbLife: 6,    enemyHp: 1.15, enemyAtk: 1.12, enemyCdr: 0.95, bossHp: 1.1,  bossAtk: 1.05, lateMult: 0.75 },
-    hard:   { label: '만용 그자체',     short: '만용', ending: false, winText: '인정 무한모드 ㄱ?',    loseText: '용기와 만용은 한끗차이다',   healOrbLife: 0,    enemyHp: 1.5, enemyAtk: 1.45, enemyCdr: 0.85, bossHp: 1.25, bossAtk: 1.15, lateMult: 1.0 }
+    normal: { label: '현실에 타협',     short: '타협', ending: true,  winText: '현실에 안주한놈',      loseText: '걍 쉼터 가셈',               healOrbLife: 6,    enemyHp: 1.15, enemyAtk: 1.12, enemyCdr: 0.95, bossHp: 1.1,  bossAtk: 1.05, lateMult: 0.7 },
+    hard:   { label: '만용 그자체',     short: '만용', ending: true,  winText: '인정 무한모드 ㄱ?',    loseText: '용기와 만용은 한끗차이다',   healOrbLife: 0,    enemyHp: 1.5, enemyAtk: 1.45, enemyCdr: 0.85, bossHp: 1.25, bossAtk: 1.15, lateMult: 1.0 },
+    hell:   { label: '광기라 불리우는 지옥', short: '광기', ending: false, winText: '아직 숨 쉬고 있음 ㄷㄷ', loseText: '여긴 사람 올 데가 아니다', healOrbLife: 0,  enemyHp: 1.75, enemyAtk: 1.65, enemyCdr: 0.8, bossHp: 1.4, bossAtk: 1.25, lateMult: 1.0 }
   },
 
   // ── 화염구 ─────────────────────────────────
@@ -113,11 +117,12 @@ const CONFIG = {
   RELIC_MAX_LV: 3,
   RELIC_BLANK_CHANCE: 0.25,  // 뽑기 꽝 확률 (뽑기권은 소모됨)
   RELIC_BLANKS: ['💩 똥', '🧦 냄새나는 양말', '🪨 그냥 돌멩이', '🥄 녹슨 숟가락', '📄 심규형의 반성문', '🦴 누군가의 뼈다귀'],
-  // 심장 조각: 엔딩(만용은 30스테이지 돌파 + 이후 10스테이지마다) 때 1개. perTicket개 = 뽑기권 1장
+  // 심장 조각: 엔딩(광기는 30스테이지 돌파 + 이후 10스테이지마다) 때 1개. perTicket개 = 뽑기권 1장
   HEARTS: {
     easy:   { name: '겁쟁이의 심장 조각',     icon: '💛', perTicket: 5 },
     normal: { name: '타협한 자의 심장 조각',  icon: '💙', perTicket: 3 },
-    hard:   { name: '만용의 심장 조각',       icon: '❤️‍🔥', perTicket: 1 }
+    hard:   { name: '만용의 심장 조각',       icon: '❤️‍🔥', perTicket: 1 },
+    hell:   { name: '광인의 심장 조각',       icon: '🖤', perTicket: 1 }
   },
   // 유물: 솔로·파티에만 적용 (대전 X). v = Lv.1/2/3 수치
   RELICS: {
@@ -152,13 +157,13 @@ const CONFIG = {
     // 후반 성장 완화: lateFrom 스테이지 이후엔 적 HP·공격력·쿨타임의 스테이지당 증가폭 × lateMult (경험치·마리 수는 그대로)
     lateFrom: 7, lateMult: 0.5,
     mage: {
-      count: [2, 1], countMax: 7,     // 일반 스테이지 마법사 수
+      count: [2, 0.75], countMax: 7,  // 일반 스테이지 마법사 수 (11/27: +1/스테이지 → +0.75, 7스테이지 벽 완화)
       bossStageCount: [2, 0.34],      // 보스 스테이지 마법사 수 (보스와 함께)
       hp: [40, 20],
       atk: [0.45, 0.07],
       cdr: [1.55, -0.06], cdrMin: 0.8, // 클수록 느리게 쏨
-      xp: [40, 6],
-      extraMagicFrom: 3, extraMagicMax: 3 // 이 스테이지부터 레이저 외 랜덤 마법 추가
+      xp: [46, 7],                    // 11/27: 40+6 → 46+7 (마리 수 증가가 느려진 만큼 보충)
+      extraMagicFrom: 3, extraMagicEvery: 3, extraMagicMax: 3 // 3스테이지부터 레이저 외 랜덤 마법, 3스테이지마다 +1 (최대 3)
     },
     boss: {
       every: 3,
@@ -166,9 +171,43 @@ const CONFIG = {
       atk: [0.42, 0.06],              // 밸런스(11/26): 0.6+0.05 → 첫 보스 약하게, 후반 보스는 비슷
       cdr: 1.15,
       xp: 130,
-      magics: { laser: 2, fireball: 2, shockwave: 1, shield: 2 }
+      magics: { laser: 2, fireball: 2, blades: 1, shield: 2 }
     },
     slime: { count: 4, hp: [14, 4], xp: 20 }
+  },
+
+  // ── 회전 칼날 ───────────────────────────────
+  // 칼날 수 = min(MAX_SHOTS, Lv+1), 같은 적은 hitGap초에 1번만 맞음
+  // 쿨타임 카드 → 회전 빨라짐 (÷cdrMult), 범위 카드 → 크기·궤도 절반만 적용
+  BLADES: { orbit: 62, len: 22, omega: 2.6, hitGap: 0.35, dmg: [26, 10], enemyMult: 0.3 }, // orbit = 몸 바깥에서 궤도까지(px), enemyMult = 솔로·파티 적이 쓸 때 피해 배율 (몸에 닿기 쉬워서)
+
+  // ── 빙결 장판 ───────────────────────────────
+  // 방깍(받는 피해 증가) = shredMax × Lv/(Lv+4), 감속 slow
+  FROST: { slow: 0.6, shredMax: 0.4, dmg: [5, 1.5] },
+
+  // ── 보스 필살기 (보스마다 1개, 경고 표시 후 발동 — 자동 이동은 안 피함: 운빨) ──
+  // dmg = k × 보스 공격력 배율 × 난이도 ultMult. cd = 쿨타임(초, 난이도 enemyCdr 곱함), first = 등장 후 첫 사용
+  BOSS_ULT: {
+    cd: 10, first: 4,
+    ultMult: { easy: 0.6, normal: 0.9, hard: 1.15, hell: 1.25 },
+    list: [ // k: 한 번 맞으면 그 스테이지 평균 HP의 약 12~30% (여러 번 맞을 수 있는 건 낮게)
+      { id: 'dash',     name: '동네 한 바퀴!',       icon: '🛵', k: 63 },
+      { id: 'assembly', name: '전교생 집합!',        icon: '📢', k: 88 },
+      { id: 'cane',     name: '아직 현역이다!',      icon: '🦯', k: 45 },
+      { id: 'trophy',   name: '트로피 세례',         icon: '🏆', k: 40 },
+      { id: 'drink',    name: '2차 가자!',           icon: '🍺', k: 32 },
+      { id: 'rent',     name: '월세 올린다!',        icon: '💸', k: 78 },
+      { id: 'sword',    name: '간부의 칼춤',         icon: '⚔️', k: 77 },
+      { id: 'cross',    name: '사천왕 진형 (혼자임)', icon: '🌀', k: 73 },
+      { id: 'king',     name: '마왕의 왕레이저',     icon: '🔴', k: 85 },
+      { id: 'doom',     name: '종말의 메테오',       icon: '☄️', k: 33 }
+    ]
+  },
+
+  // ── 칭호 (구글 시트 titles 탭에서 직접 수여: id | title | style | memo) ──
+  // style 키 → 글자 그라데이션 색. 새 스타일은 여기 추가 + css/style.css 에 .title-<키> 추가
+  TITLE_STYLES: {
+    shock: ['#7C3AED', '#C084FC', '#E9D5FF', '#C084FC', '#7C3AED']
   },
 
   // ── 적 이름 (솔로 적 · 온라인 봇) ─────────────

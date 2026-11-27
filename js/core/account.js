@@ -1,6 +1,7 @@
 // 계정(아이디+비밀번호) & 유물 데이터 — 서버: 구글 Apps Script (CONFIG.TELEMETRY_URL)
 // 비밀번호는 서버에서 해시로만 저장. 로그인하면 토큰을 받아 이 브라우저에 보관(60일)
-// 데이터: { fragments:{easy,normal,hard}, tickets, relics:{id:lv}, equipped:[id...] }
+// 데이터: { fragments:{easy,normal,hard,hell}, tickets, relics:{id:lv}, equipped:[id...] }
+// 칭호: state.title = { text, style } — 서버 titles 시트에서 내려옴 (login/load 응답)
 // 변경은 로컬에 먼저 저장(dirty) → 서버 저장. 오프라인이면 다음에 다시 시도
 
 const ACCOUNT = {
@@ -21,7 +22,7 @@ const ACCOUNT = {
     try {
       const s = JSON.parse(localStorage.getItem(this.KEY) || 'null');
       if (s && typeof s.id === 'string' && typeof s.token === 'string') {
-        this.state = { id: s.id, token: s.token, data: this.clean(s.data), dirty: !!s.dirty };
+        this.state = { id: s.id, token: s.token, data: this.clean(s.data), dirty: !!s.dirty, title: sanitizeTitle(s.title) };
       }
     } catch (_) {}
   },
@@ -43,7 +44,7 @@ const ACCOUNT = {
     }
     const equipped = (Array.isArray(d.equipped) ? d.equipped : []).filter((id) => relics[id]).slice(0, CONFIG.RELIC_SLOTS);
     return {
-      fragments: { easy: n(d.fragments?.easy), normal: n(d.fragments?.normal), hard: n(d.fragments?.hard) },
+      fragments: Object.fromEntries(Object.keys(CONFIG.HEARTS).map((k) => [k, n(d.fragments?.[k])])),
       tickets: n(d.tickets),
       relics,
       equipped: [...new Set(equipped)]
@@ -66,7 +67,7 @@ const ACCOUNT = {
     try {
       const r = await this.call(action, { id, pw });
       if (!r.ok) return r;
-      this.state = { id, token: r.token, data: this.clean(r.data), dirty: false };
+      this.state = { id, token: r.token, data: this.clean(r.data), dirty: false, title: sanitizeTitle(r.title) };
       this.persist();
       return { ok: true };
     } catch (_) {
@@ -88,7 +89,7 @@ const ACCOUNT = {
     if (this.state.dirty) return this.sync();
     try {
       const r = await this.call('load', { id: this.state.id, token: this.state.token });
-      if (r.ok) { this.state.data = this.clean(r.data); this.persist(); }
+      if (r.ok) { this.state.data = this.clean(r.data); this.state.title = sanitizeTitle(r.title); this.persist(); }
       else if (r.relogin) this.expire();
     } catch (_) {}
   },
@@ -126,6 +127,11 @@ const ACCOUNT = {
     this.state.rev = (this.state.rev || 0) + 1;
     this.persist();
     this.sync();
+  },
+
+  // 내 칭호 ({text, style} 또는 null)
+  myTitle() {
+    return this.loggedIn() ? (this.state.title || null) : null;
   },
 
   // ── 유물 ──

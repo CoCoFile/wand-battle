@@ -44,7 +44,7 @@ Object.assign(SPELLS, {
         type: 'stat', id, isEpic: false, gain: 1,
         name: st.name, icon: st.icon, color: st.color, bg: st.bg,
         badge: '스탯',
-        desc: st.desc
+        desc: this.statCardDesc(c, id) || st.desc
       });
     }
 
@@ -80,20 +80,47 @@ Object.assign(SPELLS, {
     } else if (choice.type === 'stat') {
       if (!c.statCounts) c.statCounts = {};
       c.statCounts[choice.id] = (c.statCounts[choice.id] || 0) + 1;
-      if (choice.id === 'atk') {
-        c.atkMult *= CONFIG.STAT_VALUES.atk;
-      } else if (choice.id === 'armor') {
-        c.armor = 1 - (1 - (c.armor || 0)) * (1 - CONFIG.STAT_VALUES.armor);
-      } else if (choice.id === 'regen') {
-        c.regen = (c.regen || 0) + CONFIG.STAT_VALUES.regen;
-      } else if (choice.id === 'area') {
-        c.areaMult *= CONFIG.STAT_VALUES.area;
-      } else if (choice.id === 'cdr') {
-        c.cdrMult *= CONFIG.STAT_VALUES.cdr;
-      }
+      if (choice.id === 'regen') c.regen = (c.regen || 0) + CONFIG.STAT_VALUES.regen;
+      this.recalcStats(c);
     } else if (choice.type === 'golden') {
       this.resolveGoldenCard(c, world);
     }
+  },
+
+  // 스탯 카드 장수 + 유물 보너스 → 실제 배율 다시 계산
+  // 공격·범위: 1 + 0.25n (덧셈), 방어·쿨감: max × n/(n+k) (수렴). 유물(%)은 각각 더하기/곱하기로 얹음
+  statParts(n, id) {
+    const V = CONFIG.STAT_VALUES;
+    if (id === 'atk') return V.atk * n;
+    if (id === 'area') return V.area * n;
+    if (id === 'armor') return V.armorMax * n / (n + V.armorK);
+    if (id === 'cdr') return V.cdrMax * n / (n + V.cdrK);
+    return 0;
+  },
+
+  recalcStats(c) {
+    if (!c) return;
+    const V = CONFIG.STAT_VALUES;
+    const n = (id) => (c.statCounts && c.statCounts[id]) || 0;
+    const rb = c.relicBonus || {};
+    if (c.baseAtk == null) { c.baseAtk = c.atkMult || 1; c.baseArea = c.areaMult || 1; c.baseCdr = c.cdrMult || 1; c.baseArmor = c.armor || 0; }
+    c.atkMult = c.baseAtk * (1 + this.statParts(n('atk'), 'atk') + (rb.atk || 0) / 100);
+    c.areaMult = c.baseArea * (1 + this.statParts(n('area'), 'area') + (rb.area || 0) / 100);
+    const arm = 1 - (1 - c.baseArmor) * (1 - this.statParts(n('armor'), 'armor')) * (1 - (rb.armor || 0) / 100);
+    c.armor = Math.min(V.armorMax, arm);
+    const cdrRed = 1 - (1 - this.statParts(n('cdr'), 'cdr')) * (1 - (rb.cdr || 0) / 100);
+    c.cdrMult = c.baseCdr * (1 - Math.min(V.cdrMax, cdrRed));
+  },
+
+  // 스탯 카드 설명: 지금 → 다음 수치 (덧셈/수렴이라 남은 효과가 보이게)
+  statCardDesc(c, id) {
+    const n = (c.statCounts && c.statCounts[id]) || 0;
+    const pct = (v) => `${Math.round(v * 100)}%`;
+    if (id === 'atk') return `피해 +${pct(this.statParts(n, id))} → +${pct(this.statParts(n + 1, id))}`;
+    if (id === 'area') return `범위 +${pct(this.statParts(n, id))} → +${pct(this.statParts(n + 1, id))}`;
+    if (id === 'armor') return `받는 피해 -${pct(this.statParts(n, id))} → -${pct(this.statParts(n + 1, id))} (최대 75%)`;
+    if (id === 'cdr') return `쿨타임 -${pct(this.statParts(n, id))} → -${pct(this.statParts(n + 1, id))} (최대 70%)`;
+    return '';
   },
 
   // 황금 카드 50:50 추첨 + 슬롯 룰렛 연출

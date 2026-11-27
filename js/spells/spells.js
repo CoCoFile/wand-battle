@@ -24,10 +24,9 @@ const SPELLS = {
     const table = {
       laser: 1.05,
       fireball: 1.45,
-      icespear: 1.15,
+      frost: 1.8,
       poison: 1.9,
       boomerang: 1.5,
-      shockwave: 2.0,
       scatter: 1.35
     };
     const base = table[mid] || 1.3;
@@ -41,9 +40,10 @@ const SPELLS = {
     const ox = c.x + Math.cos(c.angle) * wandLen;
     const oy = c.y + Math.sin(c.angle) * wandLen;
     const shots = spellShotCount(lv);
+    const over = spellOverMult(lv);
     const skillUid = ++world.uidSeq;
     const spreadStep = (count, baseStep, maxTotal) =>
       count <= 1 ? 0 : Math.min(baseStep, maxTotal / (count - 1));
-    caster(c, lv, world, { wandLen, ox, oy, shots, skillUid, spreadStep });
+    caster(c, lv, world, { wandLen, ox, oy, shots, over, skillUid, spreadStep });
   }
 };

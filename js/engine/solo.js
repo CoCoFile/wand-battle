@@ -9,6 +9,8 @@ Object.assign(ENGINE, {
     this.mode = 'solo';
     this.stage = 1;
     this.paused = false;
+    this.userPaused = false;
+    this.runEnded = false;
     this.localId = 'player';
     this.soloRerolls = 1;
     this.soloInitialDrafts = 3;
@@ -28,7 +30,8 @@ Object.assign(ENGINE, {
       x: CONFIG.W * 0.5,
       y: CONFIG.H * 0.5,
       maxHp: CONFIG.HP.solo,
-      magics: {}
+      magics: {},
+      title: ACCOUNT.myTitle()   // 🏷️
     });
     w.chars.push(player);
     if (ACCOUNT.loggedIn()) {
@@ -44,6 +47,9 @@ Object.assign(ENGINE, {
     $('#online-bottom-dock').classList.add('hidden');
     $('#btn-manual-toggle').classList.toggle('hidden', !this.manualAllowed()); // 수동 조작은 쉼터만
     $('#btn-speed').classList.remove('hidden');
+    $('#btn-pause').classList.remove('hidden');      // ⏸️ (중단은 일시정지 창에서)
+    $('#btn-quit-game').classList.add('hidden');
+    $('#modal-pause').classList.add('hidden');
     this.cycleSoloSpeed(this.soloSpeed);
     this.toggleManualControl(this.manualControl);
     $('#hud-mode-badge').textContent = `SOLO · ${(CONFIG.DIFFICULTY[this.difficulty] || {}).label || ''}`;
@@ -86,7 +92,8 @@ Object.assign(ENGINE, {
       const [ex, ey] = farFromAllies();
       const magics = { laser: 1 };
       if (stage >= B.mage.extraMagicFrom) {
-        const extraCnt = Math.min(B.mage.extraMagicMax, Math.floor((stage - 1) / 2));
+        // 3스테이지 1개 → 6스테이지 2개 → 9스테이지 3개 (11/27: 2스테이지마다 → 3스테이지마다, 7스테이지 벽 완화)
+        const extraCnt = Math.min(B.mage.extraMagicMax, 1 + Math.floor((stage - B.mage.extraMagicFrom) / B.mage.extraMagicEvery));
         for (let k = 0; k < extraCnt; k++) {
           const mid = allMagicIds[randInt(0, allMagicIds.length - 1)];
           magics[mid] = (magics[mid] || 0) + 1;
@@ -113,9 +120,10 @@ Object.assign(ENGINE, {
     }
 
     if (isBossStage) {
+      const bossTier = Math.min(stage / B.boss.every - 1, CONFIG.BOSS_NAMES.length - 1); // 0 = 동네 대마왕 … 9 = 대마왕
       const boss = this.makeChar({
         id: `boss_${stage}_${Date.now()}`,
-        name: CONFIG.BOSS_NAMES[Math.min(stage / B.boss.every - 1, CONFIG.BOSS_NAMES.length - 1)],
+        name: CONFIG.BOSS_NAMES[bossTier],
         color: '#9333EA',
         team: 2,
         isBot: true,
@@ -128,6 +136,7 @@ Object.assign(ENGINE, {
         xpReward: B.boss.xp,
         magics: { ...B.boss.magics }
       });
+      boss.bossTier = bossTier;       // 👑 왕관 모양 + 필살기 종류
       SPELLS.ensureShieldSlots(boss);
       w.chars.push(boss);
     }
@@ -189,6 +198,7 @@ Object.assign(ENGINE, {
     const D = CONFIG.DIFFICULTY[this.difficulty] || {};
     if (D.ending && this.stage >= CONFIG.ENDING_STAGE) { // 🎉 엔딩
       this.paused = true;
+      this.runEnded = true;
       const me = this.getLocalChar();
       const r = PROFILE.submit(PROFILE.currentId(), 'solo', this.difficulty, CONFIG.ENDING_STAGE + 1, me.lv);
       TELEMETRY.record(me, { mode: 'solo', cleared: true });
@@ -203,10 +213,10 @@ Object.assign(ENGINE, {
       return;
     }
     if (!D.ending && this.stage === CONFIG.ENDING_STAGE && D.winText) {
-      UI.showDramatic(D.winText, '#dc2626', `${CONFIG.ENDING_STAGE}스테이지 돌파`); // 만용: 배너만, 계속 진행
+      UI.showDramatic(D.winText, '#dc2626', `${CONFIG.ENDING_STAGE}스테이지 돌파`); // 광기: 배너만, 계속 진행
     }
     if (!D.ending && this.stage >= CONFIG.ENDING_STAGE && (this.stage - CONFIG.ENDING_STAGE) % 10 === 0) {
-      const frag = ACCOUNT.addFragment(this.difficulty); // ❤️‍🔥 만용: 30 돌파 + 10스테이지마다
+      const frag = ACCOUNT.addFragment(this.difficulty); // 🖤 광기: 30 돌파 + 10스테이지마다
       if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);
     }
     // 클리어 창 대신 위쪽 작은 알림 → CONFIG.SOLO_NEXT_DELAY초 뒤 자동으로 다음 스테이지 (update.js에서 카운트)
@@ -267,6 +277,8 @@ Object.assign(ENGINE, {
     this.world.beams = [];
     this.world.waves = [];
     this.world.zones = [];
+    this.world.warns = [];
+    this.world.bossTimers = [];
     this.spawnSoloStageEnemies(this.stage);
     $('#modal-solo-stage').classList.add('hidden');
     this.paused = false;

@@ -39,9 +39,31 @@ Object.assign(ENGINE, {
     }
   },
 
+  // 솔로 한 판 끝 (사망 or 🏳️ 중단): 기록 저장 + 결산 창
+  endSoloRun(me, quit) {
+    if (this.runEnded) return;
+    this.runEnded = true;
+    this.paused = true;
+    this.userPaused = false;
+    $('#modal-pause')?.classList.add('hidden');
+    const D = CONFIG.DIFFICULTY[this.difficulty] || {};
+    $('#solo-over-desc').textContent = `${D.label || ''} · STAGE ${this.stage} · Lv.${me.lv}`;
+    UI.renderBuildSummary($('#solo-over-build'), me);
+    const r = PROFILE.submit(PROFILE.currentId(), 'solo', this.difficulty, this.stage, me.lv);
+    TELEMETRY.record(me, { mode: 'solo', cleared: false, result: quit ? 'quit' : '' });
+    RANKING.submit({ difficulty: this.difficulty, stage: this.stage, lv: me.lv, cleared: false }); // 중단도 도달 스테이지로 랭킹 반영
+    $('#solo-over-icon').textContent = quit ? '🏳️' : '💀';
+    $('#solo-over-title').textContent = quit ? '🏳️ 중단' : (D.loseText || '전투 불능!');
+    if (r.isNew) $('#solo-over-desc').textContent += '  🏆 신기록!';
+    else if (r.prev) $('#solo-over-desc').textContent += ` (최고 ${D.ending && r.prev.stage > CONFIG.ENDING_STAGE ? '👑' : 'STAGE ' + r.prev.stage})`;
+    $('#modal-solo-choice')?.classList.add('hidden');
+    $('#modal-solo-over').classList.remove('hidden');
+  },
+
   damageChar(target, rawDmg, attacker, world, ignoreArmor = false) {
     if (!target || !target.alive) return;
-    const dmgMult = ignoreArmor ? 1.0 : (1 - (target.armor || 0));
+    const shred = target.shredTimer > 0 ? (target.shred || 0) : 0; // 🧊 빙결 장판: 받는 피해 +%
+    const dmgMult = (ignoreArmor ? 1.0 : (1 - (target.armor || 0))) * (1 + shred);
     const finalDmg = Math.max(1, rawDmg * dmgMult);
     target.hp -= finalDmg;
     target.hurtTimer = 0.14;
@@ -82,19 +104,7 @@ Object.assign(ENGINE, {
 
       if (this.mode === 'solo') {
         if (target.isLocal) {
-          this.paused = true;
-          $('#solo-over-desc').textContent = `${(CONFIG.DIFFICULTY[this.difficulty] || {}).label || ''} · STAGE ${this.stage} · Lv.${target.lv}`;
-          UI.renderBuildSummary($('#solo-over-build'), target);
-          {
-            const r = PROFILE.submit(PROFILE.currentId(), 'solo', this.difficulty, this.stage, target.lv);
-            TELEMETRY.record(target, { mode: 'solo', cleared: false });
-            RANKING.submit({ difficulty: this.difficulty, stage: this.stage, lv: target.lv, cleared: false });
-            const D = CONFIG.DIFFICULTY[this.difficulty] || {};
-            $('#solo-over-title').textContent = D.loseText || '전투 불능!';
-            if (r.isNew) $('#solo-over-desc').textContent += '  🏆 신기록!';
-            else if (r.prev) $('#solo-over-desc').textContent += ` (최고 ${r.prev.stage > CONFIG.ENDING_STAGE ? '👑' : 'STAGE ' + r.prev.stage})`;
-          }
-          $('#modal-solo-over').classList.remove('hidden');
+          this.endSoloRun(target, false);
         } else {
           const remainEnemies = world.chars.filter((ch) => ch.alive && ch.team !== 1);
           if (remainEnemies.length === 0) {

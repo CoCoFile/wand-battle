@@ -38,9 +38,15 @@ function distToSegment(px, py, x1, y1, x2, y2) {
   return dist(px, py, x1 + t * dx, y1 + t * dy);
 }
 
-// 마법 레벨에 따른 동시 발사 수 (Lv.1 2발, 레벨당 +1발)
+// 마법 레벨에 따른 동시 발사 수 (Lv.1 2발, 레벨당 +1발, 최대 CONFIG.MAX_SHOTS)
 function spellShotCount(lv) {
-  return Math.max(1, lv) + 1;
+  return Math.min((typeof CONFIG !== 'undefined' && CONFIG.MAX_SHOTS) || 8, Math.max(1, lv) + 1);
+}
+
+// 발사 수 상한을 넘은 레벨 → 피해 배율 (Lv.7 이하 1, Lv.n이면 (n+1)/8 → 총 화력은 상한 없을 때와 같음)
+function spellOverMult(lv) {
+  const max = (typeof CONFIG !== 'undefined' && CONFIG.MAX_SHOTS) || 8;
+  return Math.max(1, (Math.max(1, lv) + 1) / max);
 }
 
 // 보안: innerHTML에 넣는 모든 외부 문자열은 escapeHtml, style 속성의 색은 safeColor 통과 필수
@@ -59,6 +65,23 @@ function safeColor(v, fallback = '#0f172a') {
 function sanitizeName(v, fallback) {
   const s = String(v ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 10);
   return s || fallback;
+}
+
+// 칭호 정리: { text(최대 12자), style(CONFIG.TITLE_STYLES 키) } 또는 null
+function sanitizeTitle(t) {
+  if (!t || typeof t !== 'object') return null;
+  const text = String(t.text ?? '').replace(/[\u0000-\u001f\u007f<>\[\]]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
+  if (!text) return null;
+  const styles = (typeof CONFIG !== 'undefined' && CONFIG.TITLE_STYLES) || {};
+  const style = Object.prototype.hasOwnProperty.call(styles, t.style) ? t.style : (Object.keys(styles)[0] || '');
+  return { text, style };
+}
+
+// 칭호 HTML 조각 (`[충격적인] ` 형태, 그라데이션 글자). 없으면 ''
+function titleHtml(t) {
+  t = sanitizeTitle(t);
+  if (!t) return '';
+  return `<span class="title-tag title-${escapeHtml(t.style)}">[${escapeHtml(t.text)}]</span> `;
 }
 
 // 이름 풀에서 겹치지 않게 하나 뽑기 (다 쓰면 겹침 허용)

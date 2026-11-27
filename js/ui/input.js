@@ -106,6 +106,14 @@ Object.assign(UI, {
       if (ENGINE.manualAllowed()) ENGINE.toggleManualControl();
     });
 
+    // ⏸️ 일시정지 / 🏳️ 중단
+    $('#btn-pause').addEventListener('click', () => ENGINE.togglePause());
+    $('#btn-resume').addEventListener('click', () => ENGINE.togglePause(false));
+    $('#btn-give-up').addEventListener('click', () => ENGINE.giveUp());
+    document.addEventListener('visibilitychange', () => {   // 다른 탭으로 가면 솔로 자동 일시정지
+      if (document.hidden && ENGINE.mode === 'solo') ENGINE.togglePause(true);
+    });
+
     $('#btn-quit-game').addEventListener('click', () => {
       if (ENGINE.mode === 'online') {
         NET.leaveRoom();
@@ -149,6 +157,13 @@ Object.assign(UI, {
         if (ENGINE.mode === 'solo' && ENGINE.manualControl) e.preventDefault();
       }
 
+      if ((key === 'Escape' || lower === 'p') && ENGINE.canPause()) {
+        e.preventDefault();
+        ENGINE.togglePause();
+        return;
+      }
+      if (ENGINE.userPaused) return; // 일시정지 중엔 선택·리롤 단축키 막음
+
       if (key === '1' || key === '2' || key === '3') {
         const idx = Number(key) - 1;
         if (ENGINE.mode === 'solo' && !$('#modal-solo-choice').classList.contains('hidden')) {
@@ -170,6 +185,7 @@ Object.assign(UI, {
           }
         }
       }
+
 
       if (lower === 'f' && ENGINE.mode === 'solo') {
         ENGINE.cycleSoloSpeed();

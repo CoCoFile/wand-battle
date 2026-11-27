@@ -29,8 +29,8 @@
           </div>
           <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">완드 대전 <span class="text-orange-500">Wand Battle</span></h1>
           <p class="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">카드만 고르세요. 싸움은 알아서 합니다.</p>
-          <!-- 만용 그자체 1위 (모두에게 공개) -->
-          <div id="hard-champion" class="hidden mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 border-2 border-rose-400 text-rose-900 text-[11px] font-black"></div>
+          <!-- 광기(없으면 만용) 1위 (모두에게 공개) -->
+          <div id="hard-champion" class="hidden mt-2 items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 border-2 border-rose-400 text-rose-900 text-[11px] font-black"></div>
         </div>
         <!-- 계정: 로그아웃 상태(아이디만 or 아이디+비번) / 로그인 상태(유물) -->
         <div class="w-full sm:w-52">
@@ -67,10 +67,11 @@
               <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-lg bg-orange-200 text-orange-900">스테이지 돌파</span>
             </div>
           </div>
-          <div id="difficulty-picker" class="grid grid-cols-3 gap-1.5">
+          <div id="difficulty-picker" class="grid grid-cols-2 gap-1.5">
             <button data-diff="easy" class="diff-btn arcade-btn py-1.5 rounded-lg text-xs font-black cursor-pointer">쉬움</button>
             <button data-diff="normal" class="diff-btn arcade-btn py-1.5 rounded-lg text-xs font-black cursor-pointer">중간</button>
             <button data-diff="hard" class="diff-btn arcade-btn py-1.5 rounded-lg text-xs font-black cursor-pointer">어려움</button>
+            <button data-diff="hell" class="diff-btn arcade-btn py-1.5 rounded-lg text-xs font-black cursor-pointer">지옥</button>
           </div>
           <button id="btn-solo" class="arcade-btn w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-black text-sm sm:text-base cursor-pointer">
             시작
@@ -139,10 +140,11 @@
           <button data-mode="versus" class="mode-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">⚔️ 대전</button>
           <button data-mode="party" class="mode-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">🤝 파티</button>
         </div>
-        <div id="lobby-diff-picker" class="grid grid-cols-3 gap-1.5 flex-1">
+        <div id="lobby-diff-picker" class="grid grid-cols-2 gap-1.5 flex-1">
           <button data-diff="easy" class="diff-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">쉬움</button>
           <button data-diff="normal" class="diff-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">중간</button>
           <button data-diff="hard" class="diff-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">어려움</button>
+          <button data-diff="hell" class="diff-btn arcade-btn py-2 rounded-lg text-xs font-black cursor-pointer">지옥</button>
         </div>
       </div>
 
@@ -202,11 +204,14 @@
         <button id="btn-manual-toggle" class="hidden arcade-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black cursor-pointer" title="솔로 수동조작 전환 (WASD/방향키 + 마우스)">
           🕹️ 수동 OFF
         </button>
+        <button id="btn-pause" class="hidden arcade-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black cursor-pointer" title="일시정지 (ESC / P)">
+          ⏸️
+        </button>
         <button id="btn-sound" class="arcade-btn px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-black cursor-pointer" title="효과음 켜기/끄기">
           🔊 ON
         </button>
         <button id="btn-quit-game" class="arcade-btn px-2.5 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-900 text-xs font-black cursor-pointer">
-          종료
+          나가기
         </button>
       </div>
     </div>
@@ -226,6 +231,19 @@
             <div id="boss-bar-fill" class="h-full bg-gradient-to-r from-purple-500 to-fuchsia-500 transition-all duration-150" style="width: 100%"></div>
           </div>
         </div>
+      </div>
+
+      <!-- 👑 보스 필살기 배너: 황카 배너(화면 정중앙)와 안 겹치게 위쪽, 보스 HP바 바로 아래 -->
+      <div id="boss-ult-banner" class="hidden pointer-events-none absolute top-[68px] left-1/2 -translate-x-1/2 z-[25] w-[80%] max-w-lg">
+        <div class="boss-ult-band rounded-lg px-3 py-1.5 text-center animate-pop">
+          <span id="boss-ult-name" class="text-[11px] sm:text-xs font-black text-rose-200"></span>
+          <div id="boss-ult-text" class="text-base sm:text-xl font-black text-white tracking-tight"></div>
+        </div>
+      </div>
+
+      <!-- ⏸️ 파티: 방장이 일시정지 -->
+      <div id="paused-banner" class="hidden pointer-events-none absolute inset-0 z-[35] flex items-center justify-center bg-slate-900/40">
+        <div class="px-5 py-3 rounded-2xl bg-slate-900/95 border-2 border-white text-white text-base sm:text-lg font-black">⏸️ 방장이 일시정지함</div>
       </div>
 
       <!-- 대형 연출 배너 (멈춰! / 한방 컷 ㅋㅋ / 혼돈! 파괴! 망각! / 똥!똥!똥!) -->
@@ -327,10 +345,21 @@
     </div>
   </div>
 
+  <!-- ⏸️ 일시정지 모달 (솔로 / 파티 방장) -->
+  <div id="modal-pause" class="hidden fixed inset-0 z-[45] bg-slate-900/60 flex items-center justify-center p-3">
+    <div class="arcade-card rounded-2xl w-full max-w-xs p-5 text-center flex flex-col gap-3 animate-pop">
+      <div class="text-3xl">⏸️</div>
+      <h3 class="text-xl font-black text-slate-900">일시정지</h3>
+      <p id="pause-desc" class="text-xs font-bold text-slate-500"></p>
+      <button id="btn-resume" class="arcade-btn w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-sm cursor-pointer">계속하기</button>
+      <button id="btn-give-up" class="arcade-btn w-full py-2.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-900 font-black text-sm cursor-pointer">🏳️ 중단하기</button>
+    </div>
+  </div>
+
   <!-- 솔로 게임 오버 모달 -->
   <div id="modal-solo-over" class="hidden fixed inset-0 z-40 bg-slate-900/60 flex items-center justify-center p-3">
     <div class="arcade-card rounded-2xl w-full max-w-md p-5 text-center flex flex-col gap-3 animate-pop">
-      <div class="text-3xl">💀</div>
+      <div id="solo-over-icon" class="text-3xl">💀</div>
       <h3 id="solo-over-title" class="text-xl font-black text-slate-900">전투 불능!</h3>
       <p id="solo-over-desc" class="text-xs sm:text-sm font-bold text-slate-600">STAGE 1</p>
       <div id="solo-over-build" class="bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5"></div>
@@ -345,7 +374,7 @@
     </div>
   </div>
 
-  <!-- 솔로 엔딩 모달 (만용 제외, ENDING_STAGE 클리어) -->
+  <!-- 솔로 엔딩 모달 (광기 제외, ENDING_STAGE 클리어) -->
   <div id="modal-solo-ending" class="hidden fixed inset-0 z-40 bg-slate-900/70 flex items-center justify-center p-3">
     <div class="arcade-card rounded-2xl w-full max-w-md p-5 text-center flex flex-col gap-3 animate-pop">
       <div class="text-4xl">🎉👑🎉</div>
@@ -371,7 +400,7 @@
         <h3 class="text-lg font-black text-slate-900">🏆 솔로 랭킹</h3>
         <button id="btn-ranking-close" class="arcade-btn px-3 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-black cursor-pointer">닫기</button>
       </div>
-      <div id="ranking-tabs" class="grid grid-cols-3 gap-1.5"></div>
+      <div id="ranking-tabs" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5"></div>
       <div id="ranking-list" class="flex flex-col gap-1 overflow-y-auto min-h-[200px]"></div>
       <div id="ranking-hint" class="text-[10px] font-bold text-slate-400 text-center"></div>
     </div>
@@ -384,7 +413,7 @@
         <h3 class="text-lg font-black text-slate-900">🎒 내 유물</h3>
         <button id="btn-relics-close" class="arcade-btn px-3 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs font-black cursor-pointer">닫기</button>
       </div>
-      <div id="relic-hearts" class="grid grid-cols-3 gap-1.5"></div>
+      <div id="relic-hearts" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5"></div>
       <div class="flex items-center gap-2">
         <div id="relic-reel" class="flex-1 py-2.5 px-3 rounded-xl bg-amber-50 border-2 border-amber-400 text-center text-sm font-black text-slate-900">🎟 뽑기권 0장</div>
         <button id="btn-relic-draw" class="arcade-btn px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-sm font-black cursor-pointer">뽑기!</button>
@@ -424,6 +453,8 @@
   <script src="js/spells/spells.js"></script>
   <script src="js/spells/casters.js"></script>
   <script src="js/spells/shield.js"></script>
+  <script src="js/spells/blades.js"></script>
+  <script src="js/spells/boss.js"></script>
   <script src="js/spells/choices.js"></script>
   <script src="js/spells/ultimates.js"></script>
   <script src="js/engine/engine.js"></script>

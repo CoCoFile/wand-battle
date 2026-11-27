@@ -15,6 +15,8 @@ Object.assign(ENGINE, {
   startParty(players) {
     this.mode = 'online';
     this.paused = false;
+    this.userPaused = false;
+    this.quitFlag = false;
     this.stage = 0;
     const w = this.createEmptyWorld();
     players.forEach((p, idx) => {
@@ -30,7 +32,8 @@ Object.assign(ENGINE, {
         y: CONFIG.H * 0.5 + Math.sin(ang) * 90,
         maxHp: CONFIG.HP.solo,
         magics: {},
-        initialDrafts: p.isBot ? 0 : 3
+        initialDrafts: p.isBot ? 0 : 3,
+        title: p.title
       });
       if (p.isBot) {
         c.magics = { laser: 1, fireball: 1 };
@@ -62,7 +65,7 @@ Object.assign(ENGINE, {
     this.stage = n;
     const allies = w.chars.filter((c) => c.team === 1 && !c.isSmallMob);
     for (const c of allies) {
-      if (!c.alive) {
+      if (!c.alive && !c.left) {
         // 부활
         c.alive = true;
         c.hp = c.maxHp * CONFIG.PARTY.reviveHp;
@@ -74,9 +77,29 @@ Object.assign(ENGINE, {
       }
     }
     w.chars = w.chars.filter((c) => c.alive || c.team === 1);
-    w.projs = []; w.beams = []; w.waves = []; w.zones = [];
+    w.projs = []; w.beams = []; w.waves = []; w.zones = []; w.warns = []; w.bossTimers = [];
     this.spawnSoloStageEnemies(n);
     UI.broadcastDramatic(`STAGE ${n}`, '#0f172a');
+  },
+
+  // 방장만: 경기 중 참가자가 나감 → 캐릭터 제거, 남은 사람으로 판정 (파티 전멸 / 대전 우승)
+  removeLeaver(id) {
+    const w = this.world;
+    if (!w || this.mode !== 'online' || !NET.isHost) return;
+    const c = w.chars.find((ch) => ch.id === id);
+    if (!c) return;
+    w.chars = w.chars.filter((ch) => ch.id !== id);
+    if (this.runEnded || !$('#modal-on-over').classList.contains('hidden')) return;
+    if (this.isParty()) {
+      if (c.team === 1 && !w.chars.some((ch) => ch.alive && ch.team === 1 && !ch.isSmallMob)) this.onPartyDeath(c, w);
+    } else {
+      const alive = w.chars.filter((ch) => ch.alive && !ch.isSmallMob);
+      if (alive.length <= 1) {
+        const title = alive[0] ? `🏆 ${alive[0].name} 우승!` : '무승부!';
+        NET.broadcast({ type: 'gameover', title, desc: '' });
+        UI.showOnlineGameOver(title, '');
+      }
+    }
   },
 
   // 방장만: 파티 중 누군가 죽었을 때
@@ -110,12 +133,12 @@ Object.assign(ENGINE, {
         return;
       }
       if (!D.ending && this.stage === CONFIG.ENDING_STAGE && D.winText) {
-        UI.broadcastDramatic(D.winText, '#dc2626', `${CONFIG.ENDING_STAGE}스테이지 돌파`); // 만용: 배너만
+        UI.broadcastDramatic(D.winText, '#dc2626', `${CONFIG.ENDING_STAGE}스테이지 돌파`); // 광기: 배너만
       } else {
         UI.broadcastDramatic(`STAGE ${this.stage} 클리어!`, '#16a34a', '쓰러진 동료 부활');
       }
       if (!D.ending && this.stage >= CONFIG.ENDING_STAGE && (this.stage - CONFIG.ENDING_STAGE) % 10 === 0) {
-        NET.broadcast({ type: 'fragment', diff: this.difficulty }); // ❤️‍🔥 참가자 각자 획득
+        NET.broadcast({ type: 'fragment', diff: this.difficulty }); // 🖤 참가자 각자 획득
         const frag = ACCOUNT.addFragment(this.difficulty);
         if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);
       }

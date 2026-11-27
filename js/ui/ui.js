@@ -21,7 +21,7 @@ const UI = {
   },
 
   hideAllModals() {
-    ['#modal-solo-choice', '#modal-solo-stage', '#modal-solo-over', '#modal-solo-ending', '#modal-on-over', '#modal-relics', '#modal-ranking'].forEach((sel) => {
+    ['#modal-solo-choice', '#modal-solo-stage', '#modal-solo-over', '#modal-solo-ending', '#modal-on-over', '#modal-relics', '#modal-ranking', '#modal-pause', '#paused-banner'].forEach((sel) => {
       $(sel).classList.add('hidden');
     });
   },
@@ -49,7 +49,7 @@ const UI = {
       item.innerHTML = `
         <div class="flex items-center gap-2 min-w-0">
           <span class="w-3.5 h-3.5 rounded-full border border-slate-900 shrink-0" style="background:${CONFIG.COLORS[idx % CONFIG.COLORS.length]}"></span>
-          <span class="text-xs sm:text-sm font-black text-slate-900 truncate">${escapeHtml(p.name)}</span>
+          <span class="text-xs sm:text-sm font-black text-slate-900 truncate">${titleHtml(p.title)}${escapeHtml(p.name)}</span>
         </div>
         <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${p.isHost ? 'bg-amber-200 text-amber-900' : p.isBot ? 'bg-emerald-100 text-emerald-800' : 'bg-sky-100 text-sky-800'}">
           ${p.isHost ? '방장' : p.isBot ? 'AI 봇' : '플레이어'}
@@ -85,6 +85,24 @@ const UI = {
     if (NET.active && NET.isHost) {
       NET.broadcast({ type: 'dramatic', text, color, sub });
     }
+  },
+
+  // 👑 보스 필살기 배너 (화면 위쪽, 1.5초)
+  showBossUlt(name, text, icon = '💀') {
+    const el = $('#boss-ult-banner');
+    if (!el) return;
+    $('#boss-ult-name').textContent = `💀 ${String(name || '').replace(/^👑\s*/, '')}`;
+    $('#boss-ult-text').textContent = `${String(icon || '')} ${String(text || '')}`;
+    el.classList.remove('hidden');
+    const band = el.firstElementChild;
+    band.classList.remove('animate-pop'); void band.offsetWidth; band.classList.add('animate-pop');
+    clearTimeout(this.bossUltTimer);
+    this.bossUltTimer = setTimeout(() => el.classList.add('hidden'), 1500);
+  },
+
+  broadcastBossUlt(name, def) {
+    this.showBossUlt(name, def.name, def.icon);
+    if (NET.active && NET.isHost) NET.broadcast({ type: 'bossUlt', name, text: def.name, icon: def.icon });
   },
 
   playRoulette(finalLabel, isWin) {
@@ -295,7 +313,7 @@ const UI = {
     $('#acc-in').classList.toggle('hidden', !inn);
     $('#btn-ranking').classList.toggle('hidden', !RANKING.enabled());
     if (inn) {
-      $('#acc-name').textContent = ACCOUNT.state.id;
+      $('#acc-name').innerHTML = `${titleHtml(ACCOUNT.myTitle())}${escapeHtml(ACCOUNT.state.id)}`;
       $('#input-name').value = ACCOUNT.state.id;
       const t = ACCOUNT.state.data.tickets;
       $('#acc-tickets').textContent = t ? `(뽑기권 ${t})` : '';
@@ -316,17 +334,21 @@ const UI = {
     this.renderAccount();
   },
 
-  // 타이틀: 만용 그자체 1위 공개 (1분에 한 번만 새로 불러옴)
+  // 타이틀: 광기 1위 공개 (광기 기록이 없으면 만용 1위). 1분에 한 번만 새로 불러옴
   async renderHardChampion() {
     const el = $('#hard-champion');
     if (!el || !RANKING.enabled()) return;
     if (this.championAt && Date.now() - this.championAt < 60000) return;
     this.championAt = Date.now();
     try {
-      const top = (await RANKING.top('hard'))[0];
-      if (!top) { el.classList.add('hidden'); return; }
-      el.textContent = `🔥 ${CONFIG.DIFFICULTY.hard.label} 1위 · ${top.id}${top.manual ? ' 🕹️' : ''} · STAGE ${Number(top.stage)} · Lv.${Number(top.lv)}`;
+      let diff = 'hell';
+      let top = (await RANKING.top('hell'))[0];
+      if (!top) { diff = 'hard'; top = (await RANKING.top('hard'))[0]; }
+      if (!top) { el.classList.add('hidden'); el.classList.remove('inline-flex'); return; }
+      const stage = top.cleared ? '👑 클리어' : `STAGE ${Number(top.stage)}`;
+      el.innerHTML = `🔥 ${escapeHtml(CONFIG.DIFFICULTY[diff].label)} 1위 · ${titleHtml(top.title)}${escapeHtml(top.id)}${top.manual ? ' 🕹️' : ''} · ${stage} · Lv.${Number(top.lv)}`;
       el.classList.remove('hidden');
+      el.classList.add('inline-flex');
     } catch (_) {
       this.championAt = 0; // 실패하면 다음에 다시
     }
@@ -342,7 +364,7 @@ const UI = {
   async loadRanking(diff) {
     this.rankingDiff = diff;
     $('#ranking-tabs').innerHTML = Object.entries(CONFIG.DIFFICULTY).map(([k, d]) =>
-      `<button data-rank-diff="${k}" class="arcade-btn py-1.5 rounded-lg text-[11px] font-black cursor-pointer ${k === diff ? 'bg-slate-900 text-white' : 'bg-white text-slate-700'}">${d.label}</button>`
+      `<button data-rank-diff="${k}" class="arcade-btn py-1.5 px-1 rounded-lg text-[11px] font-black cursor-pointer leading-tight ${k === diff ? 'bg-slate-900 text-white' : 'bg-white text-slate-700'}">${d.label}</button>`
     ).join('');
     const box = $('#ranking-list');
     box.innerHTML = '<div class="text-center text-xs font-bold text-slate-400 py-8">불러오는 중…</div>';
@@ -364,7 +386,7 @@ const UI = {
       const stage = r.cleared ? '👑 클리어' : `STAGE ${Number(r.stage)}`;
       return `<div class="flex items-center gap-2 px-3 py-1.5 rounded-lg border ${me ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white'}">
         <span class="w-7 text-center text-sm font-black">${medal[i] || i + 1}</span>
-        <span class="flex-1 min-w-0 truncate text-xs font-black text-slate-900">${escapeHtml(r.id)}${r.manual ? ' 🕹️' : ''}</span>
+        <span class="flex-1 min-w-0 truncate text-xs font-black text-slate-900">${titleHtml(r.title)}${escapeHtml(r.id)}${r.manual ? ' 🕹️' : ''}</span>
         <span class="text-xs font-black ${r.cleared ? 'text-amber-700' : 'text-slate-700'}">${stage}</span>
         <span class="w-12 text-right text-[11px] font-bold text-slate-500">Lv.${Number(r.lv)}</span>
         <span class="w-12 text-right text-[11px] font-bold text-slate-400">${fmtTime(Number(r.playSec) || 0)}</span>
@@ -443,7 +465,7 @@ const UI = {
     const fmt = (mode) => diffs.map(([k, d]) => {
       const b = PROFILE.best(id, mode, k);
       if (!b) return `${d.short} -`;
-      return `${d.short} ${b.stage > CONFIG.ENDING_STAGE ? '👑' : b.stage}`; // 👑 = 엔딩 클리어
+      return `${d.short} ${d.ending && b.stage > CONFIG.ENDING_STAGE ? '👑' : b.stage}`; // 👑 = 엔딩 클리어 (광기는 숫자)
     }).join(' · ');
     const soloEl = $('#solo-records');
     if (soloEl) soloEl.textContent = `🏆 최고 스테이지  ${fmt('solo')}`;
@@ -467,7 +489,11 @@ const UI = {
     }
   },
 
-  showOnlineGameOver(title, desc, cleared = false) {
+  showOnlineGameOver(title, desc, cleared = false, quit = false) {
+    ENGINE.runEnded = true;
+    ENGINE.userPaused = false;
+    $('#modal-pause').classList.add('hidden');
+    $('#paused-banner').classList.add('hidden');
     $('#on-over-title').textContent = desc ? `${title} ${desc}` : title;
     $('#btn-on-rematch').classList.toggle('hidden', !NET.isHost);
     $('#on-over-hint').classList.toggle('hidden', NET.isHost);
@@ -480,7 +506,7 @@ const UI = {
       const players = (ENGINE.world?.chars || []).filter((c) => !c.isSmallMob && (!ENGINE.isParty() || c.team === 1)).length || 1;
       if (ENGINE.isParty()) {
         ENGINE.recordIsNew = PROFILE.submit(id, 'party', ENGINE.difficulty, cleared ? CONFIG.ENDING_STAGE + 1 : Math.max(1, ENGINE.stage), me?.lv || 1).isNew;
-        TELEMETRY.record(me, { mode: 'party', cleared, players });
+        TELEMETRY.record(me, { mode: 'party', cleared, players, result: quit ? 'quit' : '' });
         if (cleared) {
           const frag = ACCOUNT.addFragment(ENGINE.difficulty); // 💛💙 파티 엔딩 조각 (각자)
           if (frag) UI.toast(`+1 ${frag.icon} ${frag.name}`);

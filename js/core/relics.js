@@ -32,18 +32,20 @@ const RELICS = {
   apply(c, list) {
     if (!c) return;
     c.relics = this.sanitize(list);
+    const rb = (c.relicBonus = {});   // 공격·방어·쿨감·범위(%)는 SPELLS.recalcStats 에서 카드와 합쳐 계산
     for (const { id, lv } of c.relics) {
       const x = this.value(id, lv);
-      if (id === 'staff') c.atkMult *= 1 + x / 100;
-      else if (id === 'cloak') c.armor = 1 - (1 - (c.armor || 0)) * (1 - x / 100);
+      if (id === 'staff') rb.atk = x;
+      else if (id === 'cloak') rb.armor = x;
       else if (id === 'herb') c.regen = (c.regen || 0) + x;
-      else if (id === 'coffee') c.cdrMult *= 1 - x / 100;
-      else if (id === 'lens') c.areaMult *= 1 + x / 100;
+      else if (id === 'coffee') rb.cdr = x;
+      else if (id === 'lens') rb.area = x;
       else if (id === 'heart') { c.maxHp += x; c.hp = c.maxHp; }
       else if (id === 'coin') { c.extraRerolls = (lv >= 3 ? 2 : 1); c.goldenBonus = lv >= 2 ? 0.05 : 0; }
       else if (id === 'shoes') c.speed *= 1 + x / 100;
       else if (id === 'book') c.xpMult = 1 + x / 100;
       else if (id === 'magnet') c.pickupBonus = x;
     }
+    SPELLS.recalcStats(c);
   }
 };

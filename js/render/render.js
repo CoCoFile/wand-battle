@@ -65,23 +65,50 @@ const RENDER = {
 
     if (!w) return;
 
-    // 1. 장판(독 / 혼돈)
+    // 화면 흔들림 (보스 필살기)
+    ctx.save();
+    if (w.shake > 0) {
+      const m = Math.min(12, 28 * w.shake);
+      ctx.translate(rand(-m, m), rand(-m, m));
+    }
+    const myTeam = ENGINE.getLocalChar()?.team;
+
+    // 1. 장판(독 / 빙결 / 혼돈 / 술) — 내 편 것과 적 것은 색이 다름
     for (const z of w.zones) {
       if (z.kind === 'blackhole' || z.kind === 'mine') {
-        this.drawArtZone(ctx, z, w.time);
+        this.drawArtZone(ctx, z, w.time, myTeam);
         continue;
       }
+      const ally = myTeam != null && z.team === myTeam;
+      const col = this.ZONE_COLORS[z.kind] || this.ZONE_COLORS.poison;
+      const [fill, line] = ally ? col.ally : col.enemy;
       ctx.save();
       ctx.beginPath();
       ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
-      ctx.fillStyle = z.kind === 'chaos' ? 'rgba(147, 51, 234, 0.22)' : 'rgba(22, 163, 74, 0.20)';
+      ctx.fillStyle = fill;
       ctx.fill();
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([8, 6]);
-      ctx.strokeStyle = z.color || '#16a34a';
+      ctx.lineWidth = ally ? 2.5 : 3;
+      ctx.setLineDash(ally ? [8, 6] : [4, 4]);
+      ctx.strokeStyle = line;
       ctx.stroke();
+      if (z.kind === 'frost') { // 눈꽃 무늬
+        ctx.setLineDash([]);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = ally ? 'rgba(255,255,255,0.8)' : 'rgba(224,231,255,0.8)';
+        const rr = z.r * 0.35;
+        ctx.beginPath();
+        for (let k = 0; k < 3; k++) {
+          const a = (Math.PI / 3) * k;
+          ctx.moveTo(z.x - Math.cos(a) * rr, z.y - Math.sin(a) * rr);
+          ctx.lineTo(z.x + Math.cos(a) * rr, z.y + Math.sin(a) * rr);
+        }
+        ctx.stroke();
+      }
       ctx.restore();
     }
+
+    // 1.2 👑 보스 필살기 경고 (빨간 바닥) / 발동 순간 번쩍
+    for (const wn of (w.warns || [])) this.drawWarn(ctx, wn, w.time);
 
     // 1.5 바운스 지뢰 (청록 원 + 스프링 무늬)
     for (const m of (w.bouncers || [])) {
@@ -130,7 +157,21 @@ const RENDER = {
       ctx.restore();
     }
 
-    // 3. 충격파 링
+    // 3. 멈춰! 파동 (맵 끝까지)
+    for (const pl of (w.pulses || [])) {
+      const k = 1 - clamp(pl.life / pl.maxLife, 0, 1);
+      const r = pl.r0 + (pl.maxR - pl.r0) * (1 - Math.pow(1 - k, 2.2));
+      ctx.save();
+      ctx.globalAlpha = 0.85 * (1 - k * 0.8);
+      ctx.beginPath();
+      ctx.arc(pl.x, pl.y, Math.max(1, r), 0, Math.PI * 2);
+      ctx.lineWidth = pl.lw || 6;
+      ctx.strokeStyle = pl.color || '#f59e0b';
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 3.5 (예전 충격파 링 — 지금은 생성 안 함)
     for (const wv of w.waves) {
       ctx.save();
       ctx.beginPath();
@@ -189,21 +230,30 @@ const RENDER = {
       ctx.restore();
     }
 
-    // 6. 레이저 빔
+    // 6. 레이저 빔 (glow = 파괴 광선·보스 레이저: 바깥 빛이 천천히 흐려지는 잔상)
     for (const b of w.beams) {
       const alpha = clamp(b.life / (b.maxLife || 0.16), 0, 1);
       ctx.save();
-      ctx.globalAlpha = alpha;
+      if (b.glow) {
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = 0.35 * Math.sqrt(alpha);
+        ctx.strokeStyle = b.color || '#ef4444';
+        ctx.lineWidth = b.width * (1.5 + (1 - alpha) * 0.9);
+        ctx.beginPath(); ctx.moveTo(b.x1, b.y1); ctx.lineTo(b.x2, b.y2); ctx.stroke();
+        ctx.globalAlpha = Math.min(1, alpha * 1.6);
+      } else {
+        ctx.globalAlpha = alpha;
+      }
       ctx.lineCap = 'round';
       ctx.strokeStyle = b.color || '#0ea5e9';
-      ctx.lineWidth = b.width;
+      ctx.lineWidth = b.glow ? b.width * (0.4 + 0.6 * alpha) : b.width;
       ctx.beginPath();
       ctx.moveTo(b.x1, b.y1);
       ctx.lineTo(b.x2, b.y2);
       ctx.stroke();
 
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = Math.max(2, b.width * 0.35);
+      ctx.lineWidth = Math.max(2, b.width * (b.glow ? 0.16 * alpha : 0.35));
       ctx.beginPath();
       ctx.moveTo(b.x1, b.y1);
       ctx.lineTo(b.x2, b.y2);
@@ -211,7 +261,6 @@ const RENDER = {
       ctx.restore();
     }
 
-    const myTeam = ENGINE.getLocalChar()?.team;
     // 7. 캐릭터 & 마력 방패
     for (const c of w.chars) {
       if (!c.alive) continue;
@@ -242,6 +291,8 @@ const RENDER = {
       ctx.restore();
     }
 
+    ctx.restore(); // 흔들림 끝
+
     // 10. 솔로 수동조작 ON 시 마우스 조준 크로스헤어 표시
     if (ENGINE.mode === 'solo' && ENGINE.manualControl && ENGINE.input.hasMouse && !ENGINE.input.touchActive) {
       const mx = ENGINE.input.mouseX;
@@ -260,8 +311,55 @@ const RENDER = {
     }
   },
 
-  // 💥 블랙홀(소용돌이) / 💣 지뢰(깜빡이는 빨간 점)
-  drawArtZone(ctx, z, t) {
+  // 장판 색 [채우기, 테두리] — ally = 내 편(내 화면 기준), enemy = 상대 편
+  ZONE_COLORS: {
+    poison: { ally: ['rgba(22, 163, 74, 0.20)', '#16a34a'],  enemy: ['rgba(219, 39, 119, 0.20)', '#be185d'] },  // 초록 / 분홍
+    frost:  { ally: ['rgba(56, 189, 248, 0.24)', '#0284c7'], enemy: ['rgba(99, 102, 241, 0.24)', '#4338ca'] },  // 하늘 / 남색
+    chaos:  { ally: ['rgba(147, 51, 234, 0.22)', '#9333ea'], enemy: ['rgba(220, 38, 38, 0.20)', '#b91c1c'] },   // 보라 / 빨강
+    booze:  { ally: ['rgba(245, 158, 11, 0.22)', '#d97706'], enemy: ['rgba(245, 158, 11, 0.25)', '#b45309'] }   // 술 장판 (보스)
+  },
+
+  // 👑 보스 필살기 경고: 발동 전엔 빨간 반투명(점점 진해짐), 발동 순간 주황으로 번쩍
+  drawWarn(ctx, wn, t) {
+    ctx.save();
+    let fill, line;
+    if (wn.fired) {
+      const a = clamp(wn.life / 0.3, 0, 1);
+      fill = `rgba(249, 115, 22, ${0.45 * a})`;
+      line = `rgba(220, 38, 38, ${a})`;
+    } else {
+      const p = 1 - clamp(wn.delay / (wn.maxDelay || 1), 0, 1);  // 0 → 1 (곧 터짐)
+      const blink = wn.delay < 0.35 && Math.sin(t * 40) > 0 ? 0.12 : 0;
+      fill = `rgba(239, 68, 68, ${0.10 + 0.22 * p + blink})`;
+      line = 'rgba(185, 28, 28, 0.9)';
+    }
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 2.5;
+    if (!wn.fired) ctx.setLineDash([10, 6]);
+    if (wn.shape === 'circle') {
+      ctx.beginPath(); ctx.arc(wn.x, wn.y, wn.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    } else if (wn.shape === 'sector') {
+      ctx.beginPath(); ctx.moveTo(wn.x, wn.y); ctx.arc(wn.x, wn.y, wn.r, wn.a0, wn.a1); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if (wn.shape === 'line') {
+      const ang = Math.atan2(wn.y2 - wn.y1, wn.x2 - wn.x1);
+      const len = Math.hypot(wn.x2 - wn.x1, wn.y2 - wn.y1);
+      ctx.translate(wn.x1, wn.y1); ctx.rotate(ang);
+      ctx.fillRect(0, -wn.width / 2, len, wn.width);
+      ctx.strokeRect(0, -wn.width / 2, len, wn.width);
+    } else if (wn.shape === 'edge') {
+      const W = CONFIG.W, H = CONFIG.H, bx = wn.bx, by = wn.by;
+      ctx.beginPath();
+      ctx.rect(0, 0, W, by); ctx.rect(0, H - by, W, by);
+      ctx.rect(0, by, bx, H - by * 2); ctx.rect(W - bx, by, bx, H - by * 2);
+      ctx.fill();
+      ctx.strokeRect(bx, by, W - bx * 2, H - by * 2);
+    }
+    ctx.restore();
+  },
+
+  // 💥 블랙홀(소용돌이) / 💣 지뢰(깜빡이는 점: 내 편 초록 / 상대 빨강)
+  drawArtZone(ctx, z, t, myTeam = null) {
     ctx.save();
     if (z.kind === 'blackhole') {
       const g = ctx.createRadialGradient(z.x, z.y, 4, z.x, z.y, z.r);
@@ -295,7 +393,8 @@ const RENDER = {
       ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = Math.sin(t * 22) > 0 ? '#ef4444' : '#7f1d1d';
+      const allyMine = myTeam != null && z.team === myTeam;
+      ctx.fillStyle = Math.sin(t * 22) > 0 ? (allyMine ? '#22c55e' : '#ef4444') : (allyMine ? '#14532d' : '#7f1d1d');
       ctx.beginPath();
       ctx.arc(z.x, z.y, 3.5, 0, Math.PI * 2);
       ctx.fill();

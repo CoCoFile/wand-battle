@@ -35,7 +35,7 @@ const NET = {
     this.peer = new Peer(`wand-battle-${this.roomCode}`);
     this.peer.on('open', (id) => {
       ENGINE.localId = id;
-      this.players = [{ id, name: myName, isHost: true, isBot: false, relics: ACCOUNT.equippedList() }];
+      this.players = [{ id, name: myName, isHost: true, isBot: false, relics: ACCOUNT.equippedList(), title: ACCOUNT.myTitle() }];
       UI.openLobby();
       UI.toast(`방 코드: ${this.roomCode}`);
     });
@@ -45,6 +45,7 @@ const NET = {
       conn.on('close', () => {
         this.conns.delete(conn.peer);
         this.players = this.players.filter((p) => p.id !== conn.peer);
+        ENGINE.removeLeaver(conn.peer); // 경기 중에 나간 사람 정리
         this.broadcastLobby();
       });
     });
@@ -77,7 +78,7 @@ const NET = {
       const conn = this.peer.connect(`wand-battle-${code}`, { reliable: true });
       this.hostConn = conn;
       conn.on('open', () => {
-        conn.send({ type: 'join', name: myName, relics: ACCOUNT.equippedList() });
+        conn.send({ type: 'join', name: myName, relics: ACCOUNT.equippedList(), title: ACCOUNT.myTitle() });
         UI.openLobby();
       });
       conn.on('data', (msg) => this.onClientReceive(msg));
@@ -146,6 +147,7 @@ const NET = {
         id: conn.peer,
         name: sanitizeName(msg.name, '참가자'),
         relics: RELICS.sanitize(msg.relics),
+        title: sanitizeTitle(msg.title),
         isHost: false,
         isBot: false
       });
@@ -183,8 +185,10 @@ const NET = {
       }
     } else if (msg.type === 'dramatic') {
       UI.showDramatic(msg.text, msg.color, msg.sub || '');
+    } else if (msg.type === 'bossUlt') {
+      UI.showBossUlt(msg.name, msg.text, msg.icon);
     } else if (msg.type === 'gameover') {
-      UI.showOnlineGameOver(msg.title, msg.desc, msg.cleared === true);
+      UI.showOnlineGameOver(msg.title, msg.desc, msg.cleared === true, msg.quit === true);
     } else if (msg.type === 'back_lobby') {
       $('#modal-on-over').classList.add('hidden');
       UI.openLobby();

@@ -21,7 +21,8 @@ const ENGINE = {
     touchY: 0
   },
   soloSpeed: 1,         // 솔로 배속 (CONFIG.SOLO_SPEEDS 중 하나)
-  difficulty: 'normal', // 솔로 난이도: easy | normal | hard
+  difficulty: 'normal', // 솔로 난이도: easy | normal | hard | hell
+  userPaused: false,    // ⏸️ 일시정지 (솔로 / 파티 방장)
   soloRerolls: 1,
   soloInitialDrafts: 0,
   soloPendingLevels: 0,
@@ -64,6 +65,50 @@ const ENGINE = {
     }
   },
 
+  // ⏸️ 일시정지: 솔로, 파티는 방장만 (대전 없음)
+  canPause() {
+    if (!this.world || this.runEnded) return false;
+    return this.mode === 'solo' || (this.isParty() && NET.isHost);
+  },
+
+  togglePause(force) {
+    if (!this.canPause()) return;
+    this.userPaused = typeof force === 'boolean' ? force : !this.userPaused;
+    this.giveUpArmed = false;
+    const btn = $('#btn-give-up');
+    if (btn) btn.textContent = '🏳️ 중단하기';
+    const D = CONFIG.DIFFICULTY[this.difficulty] || {};
+    const desc = $('#pause-desc');
+    if (desc) desc.textContent = `${this.isParty() ? '파티 · ' : ''}${D.label || ''} · STAGE ${Math.max(1, this.stage)}`;
+    $('#modal-pause')?.classList.toggle('hidden', !this.userPaused);
+  },
+
+  // 🏳️ 중단: 한 번 더 눌러야 확정
+  giveUp() {
+    if (!this.userPaused) return;
+    if (!this.giveUpArmed) {
+      this.giveUpArmed = true;
+      $('#btn-give-up').textContent = '정말 중단? (한 번 더)';
+      return;
+    }
+    this.giveUpArmed = false;
+    if (this.mode === 'solo') {
+      const me = this.getLocalChar();
+      if (me) this.endSoloRun(me, true);
+    } else if (this.isParty() && NET.isHost) {
+      this.userPaused = false;
+      $('#modal-pause').classList.add('hidden');
+      this.paused = true; // 판 멈춤 (대기실 복귀 때 풀림)
+      if (this.world) this.world.nextStageTimer = 0;
+      this.quitFlag = true;
+      const D = CONFIG.DIFFICULTY[this.difficulty] || {};
+      const title = '🏳️ 중단';
+      const desc = `${D.label || ''} · STAGE ${Math.max(1, this.stage)}`;
+      NET.broadcast({ type: 'gameover', title, desc, quit: true });
+      UI.showOnlineGameOver(title, desc, false, true);
+    }
+  },
+
   createEmptyWorld() {
     return {
       uidSeq: 1,
@@ -78,7 +123,11 @@ const ENGINE = {
       orbs: [],
       particles: [],
       texts: [],
-      bouncers: []       // 바운스 지뢰
+      bouncers: [],      // 바운스 지뢰
+      warns: [],         // 👑 보스 필살기 경고 (발동 전 빨간 표시)
+      bossTimers: [],    // 보스 필살기 예약 (방장/솔로만)
+      pulses: [],        // 멈춰! 파동 (연출)
+      shake: 0           // 화면 흔들림 남은 시간
     };
   },
 
@@ -116,6 +165,12 @@ const ENGINE = {
       areaMult: opts.areaMult || 1.0,
       cdrMult: opts.cdrMult || 1.0,
       armor: opts.armor || 0,
+      // 스탯 카드·유물이 얹히기 전 기본값 (SPELLS.recalcStats)
+      baseAtk: opts.atkMult || 1.0,
+      baseArea: opts.areaMult || 1.0,
+      baseCdr: opts.cdrMult || 1.0,
+      baseArmor: opts.armor || 0,
+      title: sanitizeTitle(opts.title),   // 🏷️ 칭호 {text, style}
       regen: opts.regen || 0,
       angle: rand(0, Math.PI * 2),
       aimTimer: rand(0.1, 0.5),

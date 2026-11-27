@@ -4,8 +4,9 @@ Object.assign(ENGINE, {
   // 매 프레임 월드 시뮬레이션 (솔로: 항상 / 온라인: 방장만 실행 → 클라이언트는 스냅샷만 받음)
   update(dt) {
     const w = this.world;
-    if (!w || this.paused) return;
+    if (!w || this.paused || this.userPaused) return; // userPaused: ⏸️ 일시정지 (솔로 / 파티 방장)
     w.time += dt;
+    if (w.shake > 0) w.shake = Math.max(0, w.shake - dt); // 화면 흔들림 (보스 필살기)
 
     this.updatePartyFlow(w, dt);
     // 솔로: 스테이지 클리어 후 자동 진행 카운트 (게임 시간 기준 → 배속·일시정지 반영)
@@ -20,6 +21,7 @@ Object.assign(ENGINE, {
     this.updateProjectiles(w, dt);
     this.updateWaves(w, dt);
     this.updateZones(w, dt);
+    SPELLS.updateBossWarns(w, dt);
     this.updateEffects(w, dt);
   },
 
@@ -51,7 +53,8 @@ Object.assign(ENGINE, {
 
       if (c.hurtTimer > 0) c.hurtTimer = Math.max(0, c.hurtTimer - dt);
       if (c.stunTimer > 0) c.stunTimer = Math.max(0, c.stunTimer - dt);
-      if (c.slowTimer > 0) c.slowTimer = Math.max(0, c.slowTimer - dt);
+      if (c.slowTimer > 0) { c.slowTimer = Math.max(0, c.slowTimer - dt); if (c.slowTimer === 0) c.slowMult = 0; }
+      if (c.shredTimer > 0) { c.shredTimer = Math.max(0, c.shredTimer - dt); if (c.shredTimer === 0) c.shred = 0; } // 🧊 방깍
       if (c.poopTimer > 0) c.poopTimer = Math.max(0, c.poopTimer - dt);
 
       if (c.regen > 0 && c.hp < c.maxHp) {
@@ -71,13 +74,14 @@ Object.assign(ENGINE, {
       }
 
       SPELLS.updateShields(c, dt, w);
+      if (!(c.poopTimer > 0)) SPELLS.updateBlades(c, dt, w); // 🗡️ 회전 칼날 (똥 상태면 멈춤)
 
       const isIncapacitated = c.stunTimer > 0 || c.poopTimer > 0;
       const isManual = (this.mode === 'solo' && this.manualControl && c.isLocal);
 
       // 이동 처리 (솔로 수동조작 ON이면 키보드/터치 이동, 그 외에는 100% 올랜덤 이동)
       if (!isIncapacitated) {
-        const spdMult = c.slowTimer > 0 ? 0.55 : 1.0;
+        const spdMult = c.slowTimer > 0 ? (c.slowMult || 0.55) : 1.0;
         const spd = c.speed * spdMult;
         const pad = c.r + 12;
 
@@ -165,13 +169,16 @@ Object.assign(ENGINE, {
 
       // 보유 마법 자동 시전
       for (const [mid, lv] of Object.entries(c.magics)) {
-        if (lv <= 0 || mid === 'shield') continue;
+        if (lv <= 0 || mid === 'shield' || mid === 'blades') continue; // 방패·칼날은 상시 유지형
         c.cooldowns[mid] = (c.cooldowns[mid] ?? 0.2) - dt;
         if (c.cooldowns[mid] <= 0) {
           c.cooldowns[mid] = SPELLS.baseCooldown(mid, lv) * c.cdrMult;
           SPELLS.cast(c, mid, lv, w);
         }
       }
+
+      // 👑 보스 필살기 (솔로·파티 보스만)
+      if (c.isBoss) SPELLS.tickBossUlt(c, dt, w);
 
       // 황금 카드 궁극기 자동 시전 (10초 쿨타임)
       for (const uid of c.ultimates) {
@@ -263,6 +270,22 @@ Object.assign(ENGINE, {
     }
   },
 
+  // 독/빙결 플라스크가 떨어진 자리에 장판 생성
+  dropFlaskZone(p, w) {
+    if (p.kind === 'poison') {
+      w.zones.push({
+        kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
+        x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.0, maxLife: 3.0, color: '#16A34A'
+      });
+    } else if (p.kind === 'frost') {
+      w.zones.push({
+        kind: 'frost', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
+        x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, shred: p.shred, tick: 0.05, life: p.zoneLife, maxLife: p.zoneLife, color: '#38BDF8'
+      });
+      SPELLS.spawnParticles(w, p.x, p.y, '#bae6fd', 8, 120);
+    }
+  },
+
   updateProjectiles(w, dt) {
     // 2. 투사체 업데이트 (벽 도탄 · 마력 방패 차단 · 적중)
     for (let i = w.projs.length - 1; i >= 0; i--) {
@@ -270,12 +293,7 @@ Object.assign(ENGINE, {
       p.life -= dt;
       if (p.life <= 0) {
         if (p.kind === 'fireball') this.explodeFireball(p, w); // 사거리 끝 → 그 자리 폭발
-        if (p.kind === 'poison') {
-          w.zones.push({
-            kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
-            x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.0, maxLife: 3.0, color: '#16A34A'
-          });
-        }
+        this.dropFlaskZone(p, w);
         w.projs.splice(i, 1);
         continue;
       }
@@ -334,11 +352,8 @@ Object.assign(ENGINE, {
         if (SPELLS.tryBlockPoint(t, p.x, p.y, w, p.skillUid)) {
           if (p.kind === 'fireball') {
             w.rings.push({ x: p.x, y: p.y, r: 10, maxR: p.expR, life: 0.25, maxLife: 0.25, color: '#f97316' });
-          } else if (p.kind === 'poison') {
-            w.zones.push({
-              kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
-              x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.0, maxLife: 3.0, color: '#16A34A'
-            });
+          } else {
+            this.dropFlaskZone(p, w);
           }
           w.projs.splice(i, 1);
           removed = true;
@@ -363,20 +378,8 @@ Object.assign(ENGINE, {
             w.projs.splice(i, 1);
             removed = true;
             break;
-          } else if (p.kind === 'icespear') {
-            t.slowTimer = Math.max(t.slowTimer || 0, 2.0);
-            if (p.pierce > 0) {
-              p.pierce--;
-            } else {
-              w.projs.splice(i, 1);
-              removed = true;
-              break;
-            }
-          } else if (p.kind === 'poison') {
-            w.zones.push({
-              kind: 'poison', skillUid: p.skillUid, ownerId: p.ownerId, team: p.team,
-              x: p.x, y: p.y, r: p.zoneR, dmg: p.dmg, tick: 0.32, life: 3.0, maxLife: 3.0, color: '#16A34A'
-            });
+          } else if (p.kind === 'poison' || p.kind === 'frost') {
+            this.dropFlaskZone(p, w);
             w.projs.splice(i, 1);
             removed = true;
             break;
@@ -462,6 +465,14 @@ Object.assign(ENGINE, {
         w.zones.splice(i, 1);
         continue;
       }
+      // 🍺 술 장판 (보스 필살기 '2차 가자!'): 피해 없이 감속만, 방패 무시
+      if (z.kind === 'booze') {
+        for (const t of w.chars) {
+          if (!t.alive || t.team === z.team) continue;
+          if (dist(z.x, z.y, t.x, t.y) <= z.r + t.r) { t.slowTimer = Math.max(t.slowTimer || 0, 0.3); t.slowMult = 0.5; }
+        }
+        continue;
+      }
       z.tick -= dt;
       if (z.tick <= 0) {
         z.tick = 0.35;
@@ -475,6 +486,12 @@ Object.assign(ENGINE, {
               const bx = t.x + Math.cos(ang) * CONFIG.SHIELD_R[0];
               const by = t.y + Math.sin(ang) * CONFIG.SHIELD_R[0];
               if (SPELLS.tryBlockPoint(t, bx, by, w, z.skillUid)) continue;
+            }
+            if (z.kind === 'frost') { // 🧊 감속 + 받는 피해 증가 (장판 안에 있는 동안 + 잠깐)
+              t.slowTimer = Math.max(t.slowTimer || 0, 0.5);
+              t.slowMult = Math.min(t.slowMult || 1, CONFIG.FROST.slow);
+              t.shred = Math.max(t.shredTimer > 0 ? (t.shred || 0) : 0, z.shred || 0);
+              t.shredTimer = 0.5;
             }
             this.damageChar(t, z.dmg, attacker, w);
           }
@@ -495,6 +512,10 @@ Object.assign(ENGINE, {
     for (let i = w.beams.length - 1; i >= 0; i--) {
       w.beams[i].life -= dt;
       if (w.beams[i].life <= 0) w.beams.splice(i, 1);
+    }
+    for (let i = (w.pulses || []).length - 1; i >= 0; i--) {
+      w.pulses[i].life -= dt;
+      if (w.pulses[i].life <= 0) w.pulses.splice(i, 1);
     }
     for (let i = w.rings.length - 1; i >= 0; i--) {
       const rg = w.rings[i];

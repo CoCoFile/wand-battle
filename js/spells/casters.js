@@ -1,14 +1,14 @@
-// 마법 7종 시전 로직 (마력 방패는 상시 유지형이라 js/spells/shield.js 에 있음)
+// 마법 6종 시전 로직 (상시 유지형: 마력 방패 = js/spells/shield.js, 회전 칼날 = js/spells/blades.js)
 // 새 마법 추가: 1) config.js MAGICS에 정보 추가  2) 여기 같은 이름으로 함수 추가
 //              3) spells.js baseCooldown 표에 쿨타임 추가  4) 투사체면 engine/update.js updateProjectiles + render 에 kind 처리
-// k = { wandLen, ox, oy(완드 끝 좌표), shots(동시 발사 수), skillUid(방패 1개 파괴 판정용), spreadStep(부채꼴 간격 함수) }
+// k = { wandLen, ox, oy(완드 끝 좌표), shots(동시 발사 수, 최대 8), over(발사 수 상한 넘은 레벨의 피해 배율), skillUid(방패 1개 파괴 판정용), spreadStep(부채꼴 간격 함수) }
 
 const SPELL_CASTERS = {
   laser(c, lv, world, k) {
-    const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
+    const { wandLen, ox, oy, shots, over, skillUid, spreadStep } = k;
     const maxLen = 1500;
     const width = (6 + lv * 1.4) * c.areaMult;
-    const dmg = (15 + lv * 4.5) * c.atkMult;
+    const dmg = (15 + lv * 4.5) * c.atkMult * over;
     const step = spreadStep(shots, 0.13, Math.PI * 1.35);
     for (let i = 0; i < shots; i++) {
       const ang = c.angle + (i - (shots - 1) / 2) * step;
@@ -29,11 +29,11 @@ const SPELL_CASTERS = {
   },
 
   fireball(c, lv, world, k) {
-    const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
+    const { wandLen, ox, oy, shots, over, skillUid, spreadStep } = k;
     const spd = 410 + lv * 15;
     const r = (9 + lv * 0.7) * c.areaMult;
     const expR = (62 + lv * 9) * c.areaMult;
-    const dmg = (12.5 + lv * 3.5) * c.atkMult; // 근접 신관이라 명중률 높음 → 낮게 (11/26 2차: 14+4lv → 12.5+3.5lv)
+    const dmg = (12.5 + lv * 3.5) * c.atkMult * over; // 근접 신관이라 명중률 높음 → 낮게 (11/26 2차: 14+4lv → 12.5+3.5lv)
     const step = spreadStep(shots, 0.16, Math.PI * 1.4);
     for (let i = 0; i < shots; i++) {
       const ang = c.angle + (i - (shots - 1) / 2) * step;
@@ -47,30 +47,34 @@ const SPELL_CASTERS = {
     if (c.isLocal) SFX.play('fire');
   },
 
-  icespear(c, lv, world, k) {
-    const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
-    const spd = 600 + lv * 22;
-    const r = (8 + lv * 0.5) * c.areaMult;
-    const pierce = 1 + Math.floor(lv / 2);
-    const dmg = (14 + lv * 4) * c.atkMult;
-    const step = spreadStep(shots, 0.12, Math.PI * 1.35);
+  // 🧊 빙결 장판: 플라스크처럼 던짐 → 떨어진 곳에 얼음 장판 (감속 + 받는 피해 증가 + 약한 지속 피해)
+  frost(c, lv, world, k) {
+    const { wandLen, ox, oy, shots, over, skillUid, spreadStep } = k;
+    const F = CONFIG.FROST;
+    const spd = 380 + lv * 12;
+    const zoneR = (56 + Math.min(lv, 12) * 6) * c.areaMult;
+    const life = Math.min(4.5, 2.4 + lv * 0.15);
+    const shred = F.shredMax * lv / (lv + 4);              // 받는 피해 +%, 최대 40%로 수렴
+    const dmg = (F.dmg[0] + lv * F.dmg[1]) * c.atkMult * over;
+    const r = 8 * c.areaMult;
+    const step = spreadStep(shots, 0.26, Math.PI * 1.5);
     for (let i = 0; i < shots; i++) {
       const ang = c.angle + (i - (shots - 1) / 2) * step;
       world.projs.push({
-        kind: 'icespear', skillUid, ownerId: c.id, team: c.team,
+        kind: 'frost', skillUid, ownerId: c.id, team: c.team,
         x: clamp(ox, r + 4, CONFIG.W - r - 4), y: clamp(oy, r + 4, CONFIG.H - r - 4),
         vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd,
-        r, pierce, dmg, bounces: 2, color: '#06B6D4', life: 2.1, hitIds: []
+        r, zoneR, zoneLife: life, shred, dmg, bounces: 2, color: '#38BDF8', life: 0.75 + rand(0, 0.35), hitIds: []
       });
     }
     if (c.isLocal) SFX.play('ice');
   },
 
   poison(c, lv, world, k) {
-    const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
+    const { wandLen, ox, oy, shots, over, skillUid, spreadStep } = k;
     const spd = 360 + lv * 12;
     const zoneR = (58 + lv * 8) * c.areaMult;
-    const dmg = (8 + lv * 1.9) * c.atkMult;     // 밸런스(11/26): 10+2.5lv → 너프
+    const dmg = (8 + lv * 1.9) * c.atkMult * over;     // 밸런스(11/26): 10+2.5lv → 너프
     const r = 8 * c.areaMult;
     const step = spreadStep(shots, 0.22, Math.PI * 1.45);
     for (let i = 0; i < shots; i++) {
@@ -86,10 +90,10 @@ const SPELL_CASTERS = {
   },
 
   boomerang(c, lv, world, k) {
-    const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
+    const { wandLen, ox, oy, shots, over, skillUid, spreadStep } = k;
     const spd = 500 + lv * 15;
     const r = (11 + lv * 0.7) * c.areaMult;
-    const dmg = (17 + lv * 4.5) * c.atkMult;   // 밸런스(11/26): 15+4lv → 버프
+    const dmg = (17 + lv * 4.5) * c.atkMult * over;   // 밸런스(11/26): 15+4lv → 버프
     const maxLife = (1.25 + lv * 0.12) * Math.sqrt(c.areaMult);
     const step = spreadStep(shots, 0.22, Math.PI * 1.45);
     for (let i = 0; i < shots; i++) {
@@ -103,26 +107,11 @@ const SPELL_CASTERS = {
     if (c.isLocal) SFX.play('ricochet');
   },
 
-  shockwave(c, lv, world, k) {
-    const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
-    const maxR = (150 + lv * 22) * c.areaMult;
-    const speed = 340 + lv * 20;
-    const dmg = (9.5 + lv * 2.6) * c.atkMult;  // 밸런스(11/26): 14+3.8lv → 11+3lv → 9.5+2.6lv
-    for (let i = 0; i < shots; i++) {
-      world.waves.push({
-        skillUid, ownerId: c.id, team: c.team,
-        x: c.x, y: c.y, r: 22 + i * 18, maxR: maxR + i * 16,
-        speed, dmg, color: '#C026D3', hitIds: [], blockedIds: []
-      });
-    }
-    if (c.isLocal) SFX.play('fire');
-  },
-
   scatter(c, lv, world, k) {
-    const { wandLen, ox, oy, shots, skillUid, spreadStep } = k;
+    const { wandLen, ox, oy, shots, over, skillUid, spreadStep } = k;
     const pellets = 3 + shots;                  // 밸런스(11/26): 2+shots → 3+shots
     const totalSpread = Math.min(Math.PI * 1.35, 0.65 + shots * 0.08);
-    const dmg = (10 + lv * 3) * c.atkMult;     // 밸런스(11/26): 7+2.1lv → 버프
+    const dmg = (10 + lv * 3) * c.atkMult * over;     // 밸런스(11/26): 7+2.1lv → 버프
     const life = (0.95 + lv * 0.04) * c.areaMult;
     const r = 6.5 * c.areaMult;
     for (let i = 0; i < pellets; i++) {
